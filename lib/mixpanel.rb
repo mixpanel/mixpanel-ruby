@@ -4,13 +4,8 @@ require File.join(File.dirname(__FILE__), 'mixpanel/events.rb')
 class Mixpanel < MixpanelEvents
   attr_reader :people
   def initialize(token, consumer=nil, &block)
-    if block
-      consumer = BlockConsumer.new(block)
-    elsif not consumer
-      consumer = MixpanelConsumer.new
-    end
-    super(token, consumer)
-    @people = MixpanelPeople.new(token, consumer)
+    super(token, consumer, &block)
+    @people = MixpanelPeople.new(token, consumer, &block)
   end
 
   private
@@ -20,12 +15,8 @@ class Mixpanel < MixpanelEvents
       @block = block
     end
 
-    def send_profile_update(message)
+    def send(message)
       @block.call(:profile_update, message)
-    end
-
-    def send_event(message)
-      @block.call(:event, message)
     end
   end
 end

@@ -20,9 +20,16 @@ class MixpanelPeopleDate
 end
 
 class MixpanelPeople
-  def initialize(token, consumer=nil)
+  def initialize(token, consumer=nil, &block)
     @token = token
-    @consumer = consumer || MixpanelConsumer.new
+    if block
+      @sink = block
+    elsif consumer
+      @sink = consumer.method(:send)
+    else
+      consumer = MixpanelConsumer.new
+      @sink = consumer.method(:send)
+    end
   end
 
   def set(distinct_id, properties, ip=nil)
@@ -74,7 +81,7 @@ class MixpanelPeople
       message['$ip'] = ip
     end
 
-    @consumer.send_profile_update(message.to_json)
+    @sink.call(:profile_update, message.to_json)
   end
 
   private

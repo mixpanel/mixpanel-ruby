@@ -1,11 +1,14 @@
 require 'spec_helper'
 require 'date'
+require 'json'
 require 'mixpanel/people.rb'
 
 describe MixpanelPeople do
   before(:each) do
-    @log = LogConsumer.new
-    @people = MixpanelPeople.new('TEST TOKEN', @log)
+    @log = []
+    @people = MixpanelPeople.new('TEST TOKEN') do |type, message|
+      @log << [ type, JSON.load(message) ]
+    end
   end
 
   it 'should send a well formed engage/set message' do
@@ -13,7 +16,7 @@ describe MixpanelPeople do
         '$firstname' => 'David',
         '$lastname' => 'Bowie',
     })
-    @log.messages.should eq([[ 'PEOPLE', {
+    @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
         '$set' => {
@@ -28,7 +31,7 @@ describe MixpanelPeople do
         '$firstname' => 'David',
         '$lastname' => 'Bowie',
     })
-    @log.messages.should eq([[ 'PEOPLE', {
+    @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
         '$set_once' => {
@@ -40,7 +43,7 @@ describe MixpanelPeople do
 
   it 'should send a well formed engage/add message' do
     @people.increment("TEST ID", { 'Albums Released' => 10 })
-    @log.messages.should eq([[ 'PEOPLE', {
+    @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
         '$add' => {
@@ -51,7 +54,7 @@ describe MixpanelPeople do
 
   it 'should send a well formed engage/append message' do
     @people.append("TEST ID", { 'Albums' => 'Diamond Dogs' })
-    @log.messages.should eq([[ 'PEOPLE', {
+    @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
         '$append' => {
@@ -62,7 +65,7 @@ describe MixpanelPeople do
 
   it 'should send a well formed engage/union message' do
     @people.union("TEST ID", { 'Albums' => 'Diamond Dogs' })
-    @log.messages.should eq([[ 'PEOPLE', {
+    @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
         '$union' => {
@@ -76,7 +79,7 @@ describe MixpanelPeople do
         '$time' => DateTime.new(1999,12,24,14, 02, 53),
         'SKU' => '1234567'
     })
-    @log.messages.should eq([[ 'PEOPLE', {
+    @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
         '$append' => {
@@ -91,7 +94,7 @@ describe MixpanelPeople do
 
   it 'should send a well formed engage/unset message for $transaction' do
     @people.clear_charges("TEST ID")
-    @log.messages.should eq([[ 'PEOPLE', {
+    @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
         '$unset' => [ '$transactions' ]
@@ -100,7 +103,7 @@ describe MixpanelPeople do
 
   it 'should send a well formed engage/delete message' do
     @people.delete_user("TEST ID")
-    @log.messages.should eq([[ 'PEOPLE', {
+    @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
         '$delete' => ''
