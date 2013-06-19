@@ -21,3 +21,4 @@ describe MixpanelEvents do
     }]])
   end
 end
+
