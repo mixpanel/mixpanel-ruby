@@ -4,15 +4,14 @@ require 'json'
 require 'uri'
 
 describe Mixpanel do
-  before(:each) do
+
+  it 'should send a request to the track api with the default consumer' do
     WebMock.reset!
     stub_request(:any, 'http://api.mixpanel.com:443/track').to_return({ :body => "1\n" })
     stub_request(:any, 'http://api.mixpanel.com:443/engage').to_return({ :body => "1\n" })
-    @mixpanel = Mixpanel.new('TEST TOKEN')
-  end
+    mixpanel = Mixpanel.new('TEST TOKEN')
 
-  it 'should send a request to the track api with the default consumer' do
-    @mixpanel.track('TEST ID', 'TEST EVENT', { 'Circumstances' => 'During test' })
+    mixpanel.track('TEST ID', 'TEST EVENT', { 'Circumstances' => 'During test' })
 
     body = nil
     WebMock.should have_requested(:post, 'api.mixpanel.com:443/track').with { |req|

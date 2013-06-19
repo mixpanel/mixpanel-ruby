@@ -1,6 +1,6 @@
 spec = Gem::Specification.new do |spec|
   spec.name = 'mixpanel-ruby'
-  spec.version = '1.0.0'
+  spec.version = '0.0.1'
   spec.require_paths = ['lib']
   spec.summary = 'Official Mixpanel tracking library for ruby'
   spec.description = 'The official Mixpanel tracking library for ruby'
