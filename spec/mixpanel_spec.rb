@@ -31,4 +31,37 @@ describe Mixpanel do
         }
     })
   end
+
+  it 'should call a consumer block if one is given' do
+    messages = []
+    mixpanel = Mixpanel.new('TEST TOKEN') do |type, message|
+      messages << [ type, JSON.load(message) ]
+    end
+    mixpanel.track('ID', 'Event')
+    mixpanel.people.set('ID', { 'k' => 'v' })
+    mixpanel.people.append('ID', { 'k' => 'v' })
+
+    messages.should eq([
+        [ :event,
+          { 'event' => 'Event',
+            'properties' => {
+              'distinct_id' => 'ID',
+              'token' => 'TEST TOKEN'
+            }
+          }
+        ],
+        [ :profile_update,
+          { '$token' => 'TEST TOKEN',
+            '$distinct_id' => 'ID',
+            '$set' => { 'k' => 'v' }
+          }
+        ],
+        [ :profile_update,
+          { '$token' => 'TEST TOKEN',
+            '$distinct_id' => 'ID',
+            '$append' => { 'k' => 'v' }
+          }
+        ]
+    ])
+  end
 end
