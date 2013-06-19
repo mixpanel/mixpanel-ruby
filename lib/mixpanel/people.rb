@@ -74,7 +74,7 @@ class MixpanelPeople
       message['$ip'] = ip
     end
 
-    @options[:consumer].send(message.to_json)
+    @options[:consumer].send_people(message.to_json)
   end
 
   private

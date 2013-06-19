@@ -18,7 +18,7 @@ class MixpanelEvents
       'properties' => properties
     }
 
-    @options[:consumer].send(message.to_json)
+    @options[:consumer].send_events(message.to_json)
   end
 
   def alias(aliasId, realId)

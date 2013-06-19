@@ -6,8 +6,12 @@ class LogConsumer
     @json_messages = []
   end
 
-  def send(message)
-    @json_messages << message
+  def send_people(message)
+    @json_messages << %Q([ "PEOPLE", #{message} ])
+  end
+
+  def send_events(message)
+    @json_messages << %Q([ "EVENTS", #{message} ])
   end
 
   def messages
