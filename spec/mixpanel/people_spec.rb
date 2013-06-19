@@ -10,9 +10,9 @@ describe MixpanelPeople do
 
   it 'should send a well formed engage/set message' do
     @people.set("TEST ID", {
-                  '$firstname' => 'David',
-                  '$lastname' => 'Bowie',
-                })
+        '$firstname' => 'David',
+        '$lastname' => 'Bowie',
+    })
     @log.messages.should eq([{
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
@@ -25,9 +25,9 @@ describe MixpanelPeople do
 
   it 'should send a well formed engage/set_once message' do
     @people.set_once("TEST ID", {
-                       '$firstname' => 'David',
-                       '$lastname' => 'Bowie',
-                     })
+        '$firstname' => 'David',
+        '$lastname' => 'Bowie',
+    })
     @log.messages.should eq([{
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
