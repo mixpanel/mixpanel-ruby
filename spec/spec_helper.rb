@@ -1,4 +1,5 @@
 require 'json'
+require 'webmock/rspec'
 
 # See http://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 class LogConsumer
@@ -6,7 +7,7 @@ class LogConsumer
     @json_messages = []
   end
 
-  def send_people(message)
+  def send_profile_update(message)
     @json_messages << %Q([ "PEOPLE", #{message} ])
   end
 

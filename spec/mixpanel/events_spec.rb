@@ -4,7 +4,7 @@ require 'mixpanel/events.rb'
 describe MixpanelEvents do
   before(:each) do
     @log = LogConsumer.new
-    @events = MixpanelEvents.new('TEST TOKEN', { :consumer => @log })
+    @events = MixpanelEvents.new('TEST TOKEN', @log)
   end
 
   it 'should send a well formed track/ message' do

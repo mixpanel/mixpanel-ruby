@@ -5,7 +5,7 @@ require 'mixpanel/people.rb'
 describe MixpanelPeople do
   before(:each) do
     @log = LogConsumer.new
-    @people = MixpanelPeople.new('TEST TOKEN', { :consumer => @log })
+    @people = MixpanelPeople.new('TEST TOKEN', @log)
   end
 
   it 'should send a well formed engage/set message' do

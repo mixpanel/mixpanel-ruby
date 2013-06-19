@@ -1,7 +1,9 @@
+require 'mixpanel/consumer.rb'
+
 class MixpanelEvents
-  def initialize(token, options={})
+  def initialize(token, consumer=nil)
     @token = token
-    @options = options
+    @consumer = consumer || MixpanelConsumer.new
   end
 
   def track(distinct_id, event, properties={}, ip=nil)
@@ -18,7 +20,7 @@ class MixpanelEvents
       'properties' => properties
     }
 
-    @options[:consumer].send_events(message.to_json)
+    @consumer.send_events(message.to_json)
   end
 
   def alias(aliasId, realId)
