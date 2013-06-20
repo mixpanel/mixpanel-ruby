@@ -7,16 +7,15 @@ describe Mixpanel do
 
   it 'should send a request to the track api with the default consumer' do
     WebMock.reset!
-    stub_request(:any, 'http://api.mixpanel.com:443/track').to_return({ :body => "1\n" })
-    stub_request(:any, 'http://api.mixpanel.com:443/engage').to_return({ :body => "1\n" })
+    stub_request(:any, 'https://api.mixpanel.com/track').to_return({ :body => "1" })
+    stub_request(:any, 'https://api.mixpanel.com/engage').to_return({ :body => "1" })
     mixpanel = Mixpanel.new('TEST TOKEN')
 
     mixpanel.track('TEST ID', 'TEST EVENT', { 'Circumstances' => 'During test' })
 
     body = nil
-    WebMock.should have_requested(:post, 'api.mixpanel.com:443/track').with { |req|
-      body = req.body
-    }
+    WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
+      with { |req| body = req.body }
 
     message_urlencoded = body[/^data=(.*)$/, 1]
     message_json = Base64.strict_decode64(URI.unescape(message_urlencoded))
