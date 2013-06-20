@@ -1,6 +1,7 @@
 require 'mixpanel-ruby/consumer'
 require 'json'
 require 'date'
+require 'time'
 
 module Mixpanel
   class PeopleDate
@@ -36,53 +37,103 @@ module Mixpanel
 
     def set(distinct_id, properties, ip=nil)
       properties = fix_property_dates(properties)
-      update('$set', properties, distinct_id, ip)
+      message = {
+          '$distinct_id' => distinct_id,
+          '$set' => properties,
+      }
+
+      if ip
+        message['$ip'] = ip
+      end
+
+      update(message)
     end
 
     def set_once(distinct_id, properties, ip=nil)
       properties = fix_property_dates(properties)
-      update('$set_once', properties, distinct_id, ip)
+      message = {
+          '$distinct_id' => distinct_id,
+          '$set_once' => properties,
+      }
+
+      if ip
+        message['$ip'] = ip
+      end
+
+      update(message)
     end
 
     def increment(distinct_id, properties, ip=nil)
       properties = fix_property_dates(properties)
-      update('$add', properties, distinct_id, ip)
+      message = {
+          '$distinct_id' => distinct_id,
+          '$add' => properties,
+      }
+
+      if ip
+        message['$ip'] = ip
+      end
+
+      update(message)
     end
 
     def append(distinct_id, properties, ip=nil)
       properties = fix_property_dates(properties)
-      update('$append', properties, distinct_id, ip)
+      message = {
+          '$distinct_id' => distinct_id,
+          '$append' => properties,
+      }
+
+      if ip
+        message['$ip'] = ip
+      end
+
+      update(message)
     end
 
     def union(distinct_id, properties, ip=nil)
       properties = fix_property_dates(properties)
-      update('$union', properties, distinct_id, ip)
+      message = {
+          '$distinct_id' => distinct_id,
+          '$union' => properties,
+      }
+
+      if ip
+        message['$ip'] = ip
+      end
+
+      update(message)
+    end
+
+    def unset(distinct_id, property)
+      update({
+          '$distinct_id' => distinct_id,
+          '$unset' => [ property ]
+      })
     end
 
     def track_charge(distinct_id, amount, properties, ip=nil)
       properties = fix_property_dates(properties)
       charge_properties = properties.merge({ '$amount' => amount })
-      update('$append', { '$transactions' => charge_properties }, distinct_id, ip)
+      append(distinct_id, { '$transactions' => charge_properties }, ip)
     end
 
     def clear_charges(distinct_id)
-      update('$unset', [ '$transactions' ], distinct_id)
+      unset(distinct_id, '$transactions')
     end
 
     def delete_user(distinct_id)
-      update('$delete', '', distinct_id)
+      update({
+          '$distinct_id' => distinct_id,
+          '$delete' => ''
+      })
     end
 
-    def update(operation, operand, distinct_id, ip=nil)
+    def update(message)
       message = {
           '$token' => @token,
-          '$distinct_id' => distinct_id,
-          operation => operand
-      }
-      if ip
-        message['$ip'] = ip
-      end
-
+          '$time' =>  ((Time.now.to_f) * 1000.0).to_i
+      }.merge(message)
       @sink.call(:profile_update, message.to_json)
     end
 

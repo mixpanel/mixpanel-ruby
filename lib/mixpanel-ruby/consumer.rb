@@ -5,6 +5,8 @@ module Mixpanel
   class ConnectionError < IOError
   end
 
+  @@init_http = nil
+
   # Ruby's default SSL does not verify the server certificate.
   # To verify a certificate, or install a proxy, pass a block
   # to Mixpanel::use_ssl that configures the Net::HTTP object.

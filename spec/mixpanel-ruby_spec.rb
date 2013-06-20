@@ -4,6 +4,10 @@ require 'json'
 require 'uri'
 
 describe Mixpanel::Tracker do
+  before(:each) do
+    @time_now = Time.parse('Jun 6 1972, 16:23:04')
+    Time.stub!(:now).and_return(@time_now)
+  end
 
   it 'should send a request to the track api with the default consumer' do
     WebMock.reset!
@@ -26,6 +30,7 @@ describe Mixpanel::Tracker do
             'Circumstances' => 'During test',
             'distinct_id' => 'TEST ID',
             'token' => 'TEST TOKEN',
+            'time' => 76695784
         }
     })
   end
@@ -44,19 +49,22 @@ describe Mixpanel::Tracker do
           { 'event' => 'Event',
             'properties' => {
               'distinct_id' => 'ID',
-              'token' => 'TEST TOKEN'
+              'token' => 'TEST TOKEN',
+              'time' => 76695784
             }
           }
         ],
         [ :profile_update,
           { '$token' => 'TEST TOKEN',
             '$distinct_id' => 'ID',
+            '$time' => 76695784000,
             '$set' => { 'k' => 'v' }
           }
         ],
         [ :profile_update,
           { '$token' => 'TEST TOKEN',
             '$distinct_id' => 'ID',
+            '$time' => 76695784000,
             '$append' => { 'k' => 'v' }
           }
         ]

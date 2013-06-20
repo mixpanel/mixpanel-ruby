@@ -1,4 +1,5 @@
 require 'mixpanel-ruby/consumer'
+require 'time'
 
 module Mixpanel
   class Events
@@ -15,10 +16,11 @@ module Mixpanel
     end
 
     def track(distinct_id, event, properties={}, ip=nil)
-      properties = properties.merge({
+      properties = {
           'distinct_id' => distinct_id,
-          'token' => @token
-      })
+          'token' => @token,
+          'time' => Time.now.to_i
+      }.merge(properties)
       if ip
         properties['ip'] = ip
       end
@@ -31,8 +33,10 @@ module Mixpanel
       @sink.call(:event, message.to_json)
     end
 
-    def alias(aliasId, realId)
-      # TODO UNIMPLEMENTED
+    def alias(alias_id, real_id)
+      track(real_id, '$create_alias', {
+          'alias' => alias_id
+      })
     end
   end
 end

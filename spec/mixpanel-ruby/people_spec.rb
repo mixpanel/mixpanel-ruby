@@ -5,6 +5,9 @@ require 'mixpanel-ruby/people.rb'
 
 describe Mixpanel::People do
   before(:each) do
+    @time_now = Time.parse('Jun 6 1972, 16:23:04')
+    Time.stub!(:now).and_return(@time_now)
+
     @log = []
     @people = Mixpanel::People.new('TEST TOKEN') do |type, message|
       @log << [ type, JSON.load(message) ]
@@ -19,6 +22,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$time' => 76695784000,
         '$set' => {
             '$firstname' => 'David',
             '$lastname' => 'Bowie'
@@ -34,6 +38,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$time' => 76695784000,
         '$set_once' => {
             '$firstname' => 'David',
             '$lastname' => 'Bowie'
@@ -46,6 +51,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$time' => 76695784000,
         '$add' => {
             'Albums Released' => 10
         }
@@ -57,6 +63,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$time' => 76695784000,
         '$append' => {
             'Albums' => 'Diamond Dogs'
         }
@@ -68,9 +75,20 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$time' => 76695784000,
         '$union' => {
             'Albums' => 'Diamond Dogs'
         }
+    }]])
+  end
+
+  it 'should send a well formed unset message' do
+    @people.unset('TEST ID', 'Albums')
+    @log.should eq([[ :profile_update, {
+        '$token' => 'TEST TOKEN',
+        '$distinct_id' => 'TEST ID',
+        '$time' => 76695784000,
+        '$unset' => [ 'Albums' ]
     }]])
   end
 
@@ -82,6 +100,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$time' => 76695784000,
         '$append' => {
             '$transactions' => {
                 '$time' => '1999-12-24T14:02:53',
@@ -97,6 +116,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$time' => 76695784000,
         '$unset' => [ '$transactions' ]
     }]])
   end
@@ -106,6 +126,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$time' => 76695784000,
         '$delete' => ''
     }]])
   end
