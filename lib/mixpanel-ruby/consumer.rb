@@ -15,8 +15,8 @@ module Mixpanel
   #        http.ca_file = '/etc/ssl/certs/ca-certificates.crt'
   #        http.verify_mode = OpenSSL::SSL::VERIFY_PEER
   #    end
-  def use_ssl(&block)
-    @@init_ssl = block
+  def self.config_http(&block)
+    @@init_http = block
   end
 
   # Simple, unbuffered, synchronous consumer. Every call
@@ -41,7 +41,7 @@ module Mixpanel
 
       client = Net::HTTP.new(uri.host, uri.port)
       client.use_ssl = true
-      client.verify_mode = OpenSSL::SSL::VERIFY_NONE # TODO CAN'T SHIP WITH THIS
+      Mixpanel.with_http(client)
 
       request = Net::HTTP::Post.new(uri.request_uri)
       request.set_form_data({"data" => data })
@@ -97,9 +97,9 @@ module Mixpanel
   end
 
   private
-  def with_ssl(http)
-    if @@init_ssl
-      @@init_ssl.call(http)
+  def self.with_http(http)
+    if @@init_http
+      @@init_http.call(http)
     end
   end
 end
