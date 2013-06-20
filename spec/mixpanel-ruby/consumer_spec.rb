@@ -1,12 +1,12 @@
 require 'spec_helper'
 require 'webmock'
 require 'base64'
-require 'mixpanel/consumer'
+require 'mixpanel-ruby/consumer'
 
-describe MixpanelConsumer do
+describe Mixpanel::Consumer do
   before(:each) do
     WebMock.reset!
-    @consumer = MixpanelConsumer.new
+    @consumer = Mixpanel::Consumer.new
   end
 
   it 'should send a request to api.mixpanel.com/track on events' do
@@ -24,11 +24,11 @@ describe MixpanelConsumer do
   end
 end
 
-describe MixpanelBufferedConsumer do
+describe Mixpanel::BufferedConsumer do
   before(:each) do
     WebMock.reset!
     @max_length = 10
-    @consumer = MixpanelBufferedConsumer.new(nil, nil, @max_length)
+    @consumer = Mixpanel::BufferedConsumer.new(nil, nil, @max_length)
   end
 
   it 'should not send a request for a single message until flush is called' do

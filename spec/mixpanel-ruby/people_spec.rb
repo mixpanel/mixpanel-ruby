@@ -1,12 +1,12 @@
 require 'spec_helper'
 require 'date'
 require 'json'
-require 'mixpanel/people.rb'
+require 'mixpanel-ruby/people.rb'
 
-describe MixpanelPeople do
+describe Mixpanel::People do
   before(:each) do
     @log = []
-    @people = MixpanelPeople.new('TEST TOKEN') do |type, message|
+    @people = Mixpanel::People.new('TEST TOKEN') do |type, message|
       @log << [ type, JSON.load(message) ]
     end
   end

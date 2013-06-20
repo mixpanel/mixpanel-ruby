@@ -1,10 +1,10 @@
 require 'spec_helper'
-require 'mixpanel/events.rb'
+require 'mixpanel-ruby/events.rb'
 
-describe MixpanelEvents do
+describe Mixpanel::Events do
   before(:each) do
     @log = []
-    @events = MixpanelEvents.new('TEST TOKEN') do |type, message|
+    @events = Mixpanel::Events.new('TEST TOKEN') do |type, message|
       @log << [ type, JSON.load(message) ]
     end
   end

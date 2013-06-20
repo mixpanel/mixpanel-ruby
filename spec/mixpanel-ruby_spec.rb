@@ -1,15 +1,15 @@
-require 'mixpanel'
+require 'mixpanel-ruby'
 require 'base64'
 require 'json'
 require 'uri'
 
-describe Mixpanel do
+describe Mixpanel::Tracker do
 
   it 'should send a request to the track api with the default consumer' do
     WebMock.reset!
     stub_request(:any, 'https://api.mixpanel.com/track').to_return({ :body => "1" })
     stub_request(:any, 'https://api.mixpanel.com/engage').to_return({ :body => "1" })
-    mixpanel = Mixpanel.new('TEST TOKEN')
+    mixpanel = Mixpanel::Tracker.new('TEST TOKEN')
 
     mixpanel.track('TEST ID', 'TEST EVENT', { 'Circumstances' => 'During test' })
 
@@ -32,7 +32,7 @@ describe Mixpanel do
 
   it 'should call a consumer block if one is given' do
     messages = []
-    mixpanel = Mixpanel.new('TEST TOKEN') do |type, message|
+    mixpanel = Mixpanel::Tracker.new('TEST TOKEN') do |type, message|
       messages << [ type, JSON.load(message) ]
     end
     mixpanel.track('ID', 'Event')
