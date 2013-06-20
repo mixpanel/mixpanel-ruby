@@ -64,15 +64,5 @@ module Mixpanel
 
       @sink.call(:event, message.to_json)
     end
-
-    # Creates a distinct_id alias.
-    # Events with an alias will be considered
-    # Multiple aliases can map to the same real_id,
-    # the real_id should never be used as an alias.
-    def alias(alias_id, real_id)
-      track(real_id, '$create_alias', {
-          'alias' => alias_id
-      })
-    end
   end
 end
