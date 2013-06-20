@@ -17,13 +17,39 @@ module Mixpanel
   #        http.ca_file = '/etc/ssl/certs/ca-certificates.crt'
   #        http.verify_mode = OpenSSL::SSL::VERIFY_PEER
   #    end
+  #
+  # \Mixpanel Consumer and BufferedConsumer will call your block
+  # to configure their connections
   def self.config_http(&block)
     @@init_http = block
   end
 
-  # Simple, unbuffered, synchronous consumer. Every call
-  # to send_profile_update or send_event will send a blocking
-  # POST to the mixpanel sevice.
+  # A Consumer recieves messages from a Mixpanel::Tracker, and
+  # sends them elsewhere- probably to Mixpanel's analytics services,
+  # but can also enqueue them for later processing, log them to a
+  # file, or do whatever else you might find useful.
+  #
+  # You can provide your own consumer to your Mixpanel::Trackers,
+  # either by passing in an argument with a #send method when you construct
+  # the tracker, or just passing a block to Mixpanel::Tracker.new
+  #
+  #    tracker = Mixpanel::Tracker.new(MY_TOKEN) do |type, message|
+  #        # type will be one of :event or :profile_update
+  #        @kestrel.set(ANALYTICS_QUEUE, [ type, message ].to_json)
+  #    end
+  #
+  # You can also instantiate the library consumers yourself, and use
+  # them wherever you would like. For example, the working that
+  # consumes the above queue might work like this:
+  #
+  #     mixpanel = Mixpanel::Consumer
+  #     while true
+  #         message_json = @kestrel.get(ANALYTICS_QUEUE)
+  #         mixpanel.send(*JSON.load(message_json))
+  #     end
+  #
+  # Mixpanel::Consumer is the default consumer. It sends each message,
+  # as the message is recieved, directly to Mixpanel.
   class Consumer
     def initialize(events_endpoint=nil, update_endpoint=nil)
       @events_endpoint = events_endpoint || 'https://api.mixpanel.com/track'
@@ -57,12 +83,26 @@ module Mixpanel
     end
   end
 
-  # Buffers messages in memory, and sends messages as a batch.
-  # This can improve performance, but calls to #send may
-  # still block if the buffer is full.
-  # If you use this consumer, you should call #flush when
-  # your application exits or the messages remaining in the
-  # buffer will not be sent.
+  # BufferedConsumer buffers messages in memory, and sends messages as
+  # a batch.  This can improve performance, but calls to #send may
+  # still block if the buffer is full.  If you use this consumer, you
+  # should call #flush when your application exits or the messages
+  # remaining in the buffer will not be sent.
+  #
+  # To use a BufferedConsumer directly with a Mixpanel::Tracker,
+  # instantiate your Tracker like this
+  #
+  #    buffered_consumer = Mixpanel::BufferedConsumer.new
+  #    begin
+  #        buffered_tracker = Mixpanel::Tracker.new(YOUR_TOKEN) do |type, message|
+  #            buffered_consumer.send(type, message)
+  #        end
+  #        # Do some tracking here
+  #        ...
+  #    ensure
+  #        buffered_consumer.flush
+  #    end
+  #
   class BufferedConsumer
     MAX_LENGTH = 50
 
@@ -75,6 +115,9 @@ module Mixpanel
       }
     end
 
+    # Stores a message for Mixpanel in memory. When the buffer
+    # hits a maximum length, the consumer will flush automatically.
+    # Flushes are synchronous when they occur.
     def send(type, message)
       type = type.to_sym
       @buffers[type] << message
@@ -83,6 +126,9 @@ module Mixpanel
       end
     end
 
+    # Pushes all remaining messages in the buffer to Mixpanel.
+    # You should call #flush before your application exits or
+    # messages may not be sent.
     def flush
       @buffers.keys.each { |k| flush_type(k) }
     end

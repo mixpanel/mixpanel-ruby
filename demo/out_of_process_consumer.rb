@@ -25,7 +25,7 @@ Mixpanel.config_http do |http|
   http.verify_mode = OpenSSL::SSL::VERIFY_PEER
 end
 
-class ThreadedExample
+class OutOfProcessExample
   class << self
     def run(token, distinct_id)
       open('|-', 'w+') do |subprocess|
@@ -48,12 +48,15 @@ class ThreadedExample
           # like this may end up in queue consumers or in a separate
           # thread.
           mixpanel_consumer = Mixpanel::BufferedConsumer.new
-          $stdin.each_line do |line|
-            message = JSON.load(line)
-            type, content = message
-            mixpanel_consumer.send(type, content)
+          begin
+            $stdin.each_line do |line|
+              message = JSON.load(line)
+              type, content = message
+              mixpanel_consumer.send(type, content)
+            end
+          ensure
+            mixpanel_consumer.flush
           end
-          mixpanel_consumer.flush
         end
       end
     end # run
@@ -64,5 +67,5 @@ if __FILE__ == $0
   # Replace this with the token from your project settings
   DEMO_TOKEN = '072f77c15bd04a5d0044d3d76ced7fea'
   run_id = SecureRandom.base64
-  ThreadedExample.run(DEMO_TOKEN, run_id)
+  OutOfProcessExample.run(DEMO_TOKEN, run_id)
 end
