@@ -27,18 +27,5 @@ describe Mixpanel::Events do
         }
     }]])
   end
-
-  it 'should send a well formed alias message' do
-    @events.alias('TEST ALIAS', 'TEST ID')
-    @log.should eq([[ :event, {
-        'event' => '$create_alias',
-        'properties' => {
-            'alias' => 'TEST ALIAS',
-            'distinct_id' => 'TEST ID',
-            'token' => 'TEST TOKEN',
-            'time' => 76695784
-        }
-    }]])
-  end
 end
 
