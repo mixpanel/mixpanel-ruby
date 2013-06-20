@@ -1,6 +1,8 @@
+require File.join(File.dirname(__FILE__), 'lib/mixpanel-ruby/version.rb')
+
 spec = Gem::Specification.new do |spec|
   spec.name = 'mixpanel-ruby'
-  spec.version = '0.0.1'
+  spec.version = Mixpanel::VERSION
   spec.require_paths = ['lib']
   spec.summary = 'Official Mixpanel tracking library for ruby'
   spec.description = 'The official Mixpanel tracking library for ruby'
