@@ -51,7 +51,9 @@ module Mixpanel
       properties = {
           'distinct_id' => distinct_id,
           'token' => @token,
-          'time' => Time.now.to_i
+          'time' => Time.now.to_i,
+          'mp_lib' => 'ruby',
+          '$lib_version' => Mixpanel::VERSION
       }.merge(properties)
       if ip
         properties['ip'] = ip

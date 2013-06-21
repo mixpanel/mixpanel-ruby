@@ -45,7 +45,6 @@ module Mixpanel
       @people = People.new(token, &block)
     end
 
-
     # Creates a distinct_id alias. \Events and updates with an alias
     # will be considered by mixpanel to have the same source, and
     # refer to the same profile.
