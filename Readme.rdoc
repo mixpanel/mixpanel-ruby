@@ -1,0 +1,33 @@
+= mixpanel-ruby: The official Mixpanel Ruby library
+
+mixpanel-ruby is a library for tracking events and sending \Mixpanel profile
+updates to \Mixpanel from your ruby applications. It's straightforward to
+get started sending your first events and updates:
+
+== Installation
+
+    gem install mixpanel-ruby
+
+== Getting Started
+
+    require 'mixpanel-ruby'
+    
+    tracker = Mixpanel::Tracker.new(YOUR_TOKEN)
+    
+    # Track an event on behalf of user "User1"
+    tracker.track('User1', 'A Mixpanel Event')
+    
+    # Send an update to User1's profile
+    tracker.people.set('User1', {
+        '$first_name' => 'David',
+        '$last_name' => 'Bowie',
+        'Best Album' => 'The Rise and Fall of Ziggy Stardust and the Spiders from Mars'
+    })
+
+The primary class you will use to track events is Mixpanel::Tracker. An instance of
+Mixpanel::Tracker is enough to send events directly to \Mixpanel, and get you integrated
+right away.
+
+
+
+
