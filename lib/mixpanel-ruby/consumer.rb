@@ -51,6 +51,11 @@ module Mixpanel
   # Mixpanel::Consumer is the default consumer. It sends each message,
   # as the message is recieved, directly to Mixpanel.
   class Consumer
+
+    # Create a Mixpanel::Consumer. If you provide endpoint arguments,
+    # they will be used instead of the default Mixpanel endpoints.
+    # This can be useful for proxying, debugging, or if you prefer
+    # not to use SSL for your events.
     def initialize(events_endpoint=nil, update_endpoint=nil)
       @events_endpoint = events_endpoint || 'https://api.mixpanel.com/track'
       @update_endpoint = update_endpoint || 'https://api.mixpanel.com/engage'
@@ -58,6 +63,10 @@ module Mixpanel
 
     # Send the given string message to Mixpanel. Type should be
     # one of :event or :profile_update, which will determine the endpoint.
+    #
+    # Mixpanel::Consumer#send sends messages to Mixpanel immediately on
+    # each call. To reduce the overall bandwidth you use when communicating
+    # with Mixpanel, you can also use Mixpanel::BufferedConsumer
     def send(type, message)
       type = type.to_sym
       endpoint = {
@@ -106,6 +115,15 @@ module Mixpanel
   class BufferedConsumer
     MAX_LENGTH = 50
 
+    # Create a Mixpanel::BufferedConsumer. If you provide endpoint arguments,
+    # they will be used instead of the default Mixpanel endpoints.
+    # This can be useful for proxying, debugging, or if you prefer
+    # not to use SSL for your events.
+    #
+    # You can also change the preferred buffer size before the
+    # consumer automatically sends its buffered events. The Mixpanel
+    # endpoints have a limit of 50 events per HTTP request, but
+    # you can lower the limit if your individual events are very large.
     def initialize(events_endpoint=nil, update_endpoint=nil, max_buffer_length=MAX_LENGTH)
       @max_length = [ max_buffer_length, MAX_LENGTH ].min
       @consumer = Consumer.new(events_endpoint, update_endpoint)

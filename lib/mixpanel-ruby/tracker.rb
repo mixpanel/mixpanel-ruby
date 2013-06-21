@@ -13,6 +13,9 @@ module Mixpanel
   #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
   #     tracker.people.set(a_distinct_id, { properties })
   #
+  # You can find your project token in the settings dialog for your
+  # project, inside of the Mixpanel web application.
+  #
   # Mixpanel::Tracker is a subclass of Mixpanel::Events, and exposes
   # an instance of Mixpanel::People as Tracker#people
   class Tracker < Events
@@ -45,11 +48,12 @@ module Mixpanel
       @people = People.new(token, &block)
     end
 
-    # Notes that an event has occurred, along with a distinct_id
-    # representing the source of that event (for example, a user id),
-    # an event name describing the event and a set of properties
-    # describing that event. Properties are provided as a Hash with
-    # string keys and strings, numbers or booleans as values.
+    # A call to #track is a report that an event has occurred.  #track
+    # takes a distinct_id representing the source of that event (for
+    # example, a user id), an event name describing the event, and a
+    # set of properties describing that event. Properties are provided
+    # as a Hash with string keys and strings, numbers or booleans as
+    # values.
     #
     #     tracker = Mixpanel::Tracker.new
     #

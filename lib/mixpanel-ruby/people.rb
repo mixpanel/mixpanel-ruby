@@ -10,7 +10,7 @@ module Mixpanel
   # to instantiate this class directly- to send
   # profile updates, use Mixpanel::Tracker#people
   #
-  #     tracker = Mixpanel::Tracker.new
+  #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
   #     tracker.people.set(...) # Or .append(..), or track_charge(...) etc.
   class People
 
@@ -42,7 +42,7 @@ module Mixpanel
     #        'Sign-Up Date' => DateTime.now
     #    });
     #
-    # If you provide an ip argument, Mixpanel will use that
+    # If you provide an ip argument, \Mixpanel will use that
     # ip address for geolocation (rather than the ip of your server)
     def set(distinct_id, properties, ip=nil)
       properties = fix_property_dates(properties)
@@ -83,7 +83,7 @@ module Mixpanel
     end
 
     # Changes the value of properties by a numeric amount.  Takes a
-    # hash with string keys and numeric properties.  Mixpanel will add
+    # hash with string keys and numeric properties. \Mixpanel will add
     # the given amount to whatever value is currently assigned to the
     # property. If no property exists with a given name, the value
     # will be added to zero.
@@ -167,7 +167,7 @@ module Mixpanel
     end
 
     # Records a payment to you to a profile. Charges recorded with
-    # #track_charge will appear in the Mixpanel revenue report.
+    # #track_charge will appear in the \Mixpanel revenue report.
     #
     #    tracker = Mixpanel::Tracker.new
     #
@@ -185,12 +185,12 @@ module Mixpanel
       append(distinct_id, { '$transactions' => charge_properties }, ip)
     end
 
-    # Clear all charges from a Mixpanel people profile
+    # Clear all charges from a \Mixpanel people profile
     def clear_charges(distinct_id)
       unset(distinct_id, '$transactions')
     end
 
-    # Permanently delete a profile from Mixpanel people analytics
+    # Permanently delete a profile from \Mixpanel people analytics
     def delete_user(distinct_id)
       update({
           '$distinct_id' => distinct_id,
@@ -198,12 +198,13 @@ module Mixpanel
       })
     end
 
-    # Send a generic update to Mixpanel people analytics.
-    # Caller is responsible for formatting the update, as
-    # documented in the Mixpanel HTTP specification. This
+    # Send a generic update to \Mixpanel people analytics.
+    # Caller is responsible for formatting the update message, as
+    # documented in the \Mixpanel HTTP specification, and passing
+    # the message as a dict to #update. This
     # method might be useful if you want to use very new
     # or experimental features of people analytics from Ruby
-    # The Mixpanel HTTP tracking API is documented at
+    # The \Mixpanel HTTP tracking API is documented at
     # http://joe.dev.mixpanel.org/help/reference/http
     def update(message)
       message = {
