@@ -45,6 +45,29 @@ module Mixpanel
       @people = People.new(token, &block)
     end
 
+    # Notes that an event has occurred, along with a distinct_id
+    # representing the source of that event (for example, a user id),
+    # an event name describing the event and a set of properties
+    # describing that event. Properties are provided as a Hash with
+    # string keys and strings, numbers or booleans as values.
+    #
+    #     tracker = Mixpanel::Tracker.new
+    #
+    #     # Track that user "12345"'s credit card was declined
+    #     tracker.track("12345", "Credit Card Declined")
+    #
+    #     # Properties describe the circumstances of the event,
+    #     # or aspects of the source or user associated with the event
+    #     tracker.track("12345", "Welcome Email Sent", {
+    #         'Email Template' => 'Pretty Pink Welcome',
+    #         'User Sign-up Cohort' => 'July 2013'
+    #     })
+    def track(distinct_id, event, properties={}, ip=nil)
+      # This is here strictly to allow rdoc to include the relevant
+      # documentation
+      super
+    end
+
     # Creates a distinct_id alias. \Events and updates with an alias
     # will be considered by mixpanel to have the same source, and
     # refer to the same profile.

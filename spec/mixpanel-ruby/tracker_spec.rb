@@ -39,6 +39,8 @@ describe Mixpanel::Tracker do
         'properties' => {
             'Circumstances' => 'During test',
             'distinct_id' => 'TEST ID',
+            'mp_lib' => 'ruby',
+            '$lib_version' => Mixpanel::VERSION,
             'token' => 'TEST TOKEN',
             'time' => 76695784
         }
@@ -59,6 +61,8 @@ describe Mixpanel::Tracker do
           { 'event' => 'Event',
             'properties' => {
               'distinct_id' => 'ID',
+              'mp_lib' => 'ruby',
+              '$lib_version' => Mixpanel::VERSION,
               'token' => 'TEST TOKEN',
               'time' => 76695784
             }

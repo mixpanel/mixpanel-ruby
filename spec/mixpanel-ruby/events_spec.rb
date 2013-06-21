@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'mixpanel-ruby/events.rb'
+require 'mixpanel-ruby/version.rb'
 require 'time'
 
 describe Mixpanel::Events do
@@ -22,6 +23,8 @@ describe Mixpanel::Events do
         'properties' => {
             'Circumstances' => 'During a test',
             'distinct_id' => 'TEST ID',
+            'mp_lib' => 'ruby',
+            '$lib_version' => Mixpanel::VERSION,
             'token' => 'TEST TOKEN',
             'time' => 76695784
         }
