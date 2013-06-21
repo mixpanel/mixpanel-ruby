@@ -9,21 +9,14 @@ describe Mixpanel::Tracker do
     Time.stub!(:now).and_return(@time_now)
   end
 
-  it 'should send a well formed alias message' do
-    log = []
-    mixpanel = Mixpanel::Tracker.new('TEST TOKEN') do |type, message|
-      log << [ type, JSON.load(message) ]
-    end
+  it 'should send an alias message to mixpanel no matter what the consumer is' do
+    WebMock.reset!
+    stub_request(:any, 'https://api.mixpanel.com/track').to_return({ :body => "1" })
+    mixpanel = Mixpanel::Tracker.new('TEST TOKEN') {|*args| }
     mixpanel.alias('TEST ALIAS', 'TEST ID')
-    log.should eq([[ :event, {
-        'event' => '$create_alias',
-        'properties' => {
-            'alias' => 'TEST ALIAS',
-            'distinct_id' => 'TEST ID',
-            'token' => 'TEST TOKEN',
-            'time' => 76695784
-        }
-    }]])
+
+    WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
+      with(:body => { :data => 'eyJldmVudCI6IiRjcmVhdGVfYWxpYXMiLCJwcm9wZXJ0aWVzIjp7ImRpc3RpbmN0X2lkIjoiVEVTVCBJRCIsInRva2VuIjoiVEVTVCBUT0tFTiJ9fQ==' })
   end
 
   it 'should send a request to the track api with the default consumer' do

@@ -41,6 +41,7 @@ module Mixpanel
     # and Mixpanel::BufferedConsumer#send
     def initialize(token, &block)
       super(token, &block)
+      @token = token
       @people = People.new(token, &block)
     end
 
@@ -52,10 +53,19 @@ module Mixpanel
     # Multiple aliases can map to the same real_id, once a real_id is
     # used to track events or send updates, it should never be used as
     # an alias itself.
-    def alias(alias_id, real_id)
-      track(real_id, '$create_alias', {
-          'alias' => alias_id
-      })
+    #
+    # Alias requests are always sent synchronously, directly to
+    # the \Mixpanel service, regardless of how the tracker is configured.
+    def alias(alias_id, real_id, events_endpoint=nil)
+      consumer = Mixpanel::Consumer.new(events_endpoint)
+      message = {
+        'event' => '$create_alias',
+        'properties' => {
+          'distinct_id' => real_id,
+          'token' => @token,
+        }
+      }.to_json
+      consumer.send(:event, message)
     end
   end
 end
