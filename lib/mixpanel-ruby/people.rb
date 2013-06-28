@@ -179,7 +179,7 @@ module Mixpanel
     #        '$time' => DateTime.parse("Jan 2 2013")
     #    })
     #
-    def track_charge(distinct_id, amount, properties, ip=nil)
+    def track_charge(distinct_id, amount, properties={}, ip=nil)
       properties = fix_property_dates(properties)
       charge_properties = properties.merge({ '$amount' => amount })
       append(distinct_id, { '$transactions' => charge_properties }, ip)
