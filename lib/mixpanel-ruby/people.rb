@@ -205,7 +205,7 @@ module Mixpanel
     # method might be useful if you want to use very new
     # or experimental features of people analytics from Ruby
     # The \Mixpanel HTTP tracking API is documented at
-    # http://joe.dev.mixpanel.org/help/reference/http
+    # https://mixpanel.com/help/reference/http
     def update(message)
       message = {
           '$token' => @token,
