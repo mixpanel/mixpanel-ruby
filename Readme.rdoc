@@ -28,6 +28,11 @@ The primary class you will use to track events is Mixpanel::Tracker. An instance
 Mixpanel::Tracker is enough to send events directly to \Mixpanel, and get you integrated
 right away.
 
+== Additional Information 
 
+For more information please visit:
 
+* Our Ruby API Integration page[https://mixpanel.com/help/reference/ruby#introduction]
+* The usage demo[https://github.com/mixpanel/mixpanel-ruby/tree/master/demo]
+* The docuemntation[http://mixpanel.github.io/mixpanel-ruby/]
 
