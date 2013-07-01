@@ -154,7 +154,7 @@ module Mixpanel
       update(message)
     end
 
-    # Removes a property and it's value from a profile.
+    # Removes a property and its value from a profile.
     #
     #    tracker = Mixpanel::Tracker.new
     #    tracker.people.unset("12345", "Overdue Since")
