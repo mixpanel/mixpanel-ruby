@@ -28,7 +28,7 @@ The primary class you will use to track events is Mixpanel::Tracker. An instance
 Mixpanel::Tracker is enough to send events directly to \Mixpanel, and get you integrated
 right away.
 
-== Additional Information 
+== Additional Information
 
 For more information please visit:
 
