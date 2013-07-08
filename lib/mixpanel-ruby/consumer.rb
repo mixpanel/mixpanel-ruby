@@ -34,7 +34,7 @@ module Mixpanel
   # the tracker, or just passing a block to Mixpanel::Tracker.new
   #
   #    tracker = Mixpanel::Tracker.new(MY_TOKEN) do |type, message|
-  #        # type will be one of :event or :profile_update
+  #        # type will be one of :event, :profile_update or :import
   #        @kestrel.set(ANALYTICS_QUEUE, [ type, message ].to_json)
   #    end
   #
@@ -56,13 +56,14 @@ module Mixpanel
     # they will be used instead of the default Mixpanel endpoints.
     # This can be useful for proxying, debugging, or if you prefer
     # not to use SSL for your events.
-    def initialize(events_endpoint=nil, update_endpoint=nil)
+    def initialize(events_endpoint=nil, update_endpoint=nil, import_endpoint=nil)
       @events_endpoint = events_endpoint || 'https://api.mixpanel.com/track'
       @update_endpoint = update_endpoint || 'https://api.mixpanel.com/engage'
+      @import_endpoint = import_endpoint || 'https://api.mixpanel.com/import'
     end
 
     # Send the given string message to Mixpanel. Type should be
-    # one of :event or :profile_update, which will determine the endpoint.
+    # one of :event, :profile_update or :import, which will determine the endpoint.
     #
     # Mixpanel::Consumer#send sends messages to Mixpanel immediately on
     # each call. To reduce the overall bandwidth you use when communicating
@@ -72,7 +73,9 @@ module Mixpanel
       endpoint = {
         :event => @events_endpoint,
         :profile_update => @update_endpoint,
+        :import => @import_endpoint
       }[ type ]
+      api_key = message.delete("api_key")
       data = Base64.strict_encode64(message)
       uri = URI(endpoint)
 
@@ -80,8 +83,10 @@ module Mixpanel
       client.use_ssl = true
       Mixpanel.with_http(client)
 
+      form_data = {"data" => data}
+      form_data = form_data.merge!("api_key" => api_key) if api_key
       request = Net::HTTP::Post.new(uri.request_uri)
-      request.set_form_data({"data" => data })
+      request.set_form_data(form_data)
       response = client.request(request)
 
       if response.code == '200' and response.body == '1'
@@ -124,12 +129,13 @@ module Mixpanel
     # consumer automatically sends its buffered events. The Mixpanel
     # endpoints have a limit of 50 events per HTTP request, but
     # you can lower the limit if your individual events are very large.
-    def initialize(events_endpoint=nil, update_endpoint=nil, max_buffer_length=MAX_LENGTH)
+    def initialize(events_endpoint=nil, update_endpoint=nil, import_endpoint=nil, max_buffer_length=MAX_LENGTH)
       @max_length = [ max_buffer_length, MAX_LENGTH ].min
-      @consumer = Consumer.new(events_endpoint, update_endpoint)
+      @consumer = Consumer.new(events_endpoint, update_endpoint, import_endpoint)
       @buffers = {
         :event => [],
         :profile_update => [],
+        :import => []
       }
     end
 

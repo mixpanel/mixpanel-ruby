@@ -42,9 +42,10 @@ module Mixpanel
     # If a block is provided, it is passed a type (one of :event or :profile_update)
     # and a string message. This same format is accepted by Mixpanel::Consumer#send
     # and Mixpanel::BufferedConsumer#send
-    def initialize(token, &block)
+    def initialize(token, api_key=nil, &block)
       super(token, &block)
       @token = token
+      @api_key = api_key
       @people = People.new(token, &block)
     end
 
@@ -67,6 +68,33 @@ module Mixpanel
     #         'User Sign-up Cohort' => 'July 2013'
     #     })
     def track(distinct_id, event, properties={}, ip=nil)
+      # This is here strictly to allow rdoc to include the relevant
+      # documentation
+      super
+    end
+
+    # A call to #import is to import an event occurred in the past. #import
+    # takes a distinct_id representing the source of that event (for
+    # example, a user id), an event name describing the event, and a
+    # set of properties describing that event. Properties are provided
+    # as a Hash with string keys and strings, numbers or booleans as
+    # values.
+    #
+    #     tracker = Mixpanel::Tracker.new
+    #
+    #     # Import event that user "12345"'s credit card was declined
+    #     tracker.import("12345", "Credit Card Declined", {
+    #       'time' => 1310111365
+    #     })
+    #
+    #     # Properties describe the circumstances of the event,
+    #     # or aspects of the source or user associated with the event
+    #     tracker.import("12345", "Welcome Email Sent", {
+    #         'Email Template' => 'Pretty Pink Welcome',
+    #         'User Sign-up Cohort' => 'July 2013',
+    #         'time' => 1310111365
+    #     })
+    def import(distinct_id, event, properties={}, ip=nil)
       # This is here strictly to allow rdoc to include the relevant
       # documentation
       super

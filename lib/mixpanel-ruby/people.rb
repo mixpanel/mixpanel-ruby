@@ -20,8 +20,9 @@ module Mixpanel
     #     tracker = Mixpanel::Tracker.new(...)
     #     tracker.people # An instance of Mixpanel::People
     #
-    def initialize(token, &block)
+    def initialize(token, api_key=nil, &block)
       @token = token
+      @api_key = api_key
       if block
         @sink = block
       else
