@@ -34,5 +34,5 @@ For more information please visit:
 
 * Our Ruby API Integration page[https://mixpanel.com/help/reference/ruby#introduction]
 * The usage demo[https://github.com/mixpanel/mixpanel-ruby/tree/master/demo]
-* The docuemntation[http://mixpanel.github.io/mixpanel-ruby/]
+* The documentation[http://mixpanel.github.io/mixpanel-ruby/]
 
