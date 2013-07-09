@@ -95,6 +95,7 @@ module Mixpanel
     #    });
     #
     def increment(distinct_id, properties, ip=nil)
+      properties = { properties => 1 } unless properties.respond_to?(:each)
       properties = fix_property_dates(properties)
       message = {
           '$distinct_id' => distinct_id,
