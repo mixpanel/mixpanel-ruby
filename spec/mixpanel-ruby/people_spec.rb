@@ -58,6 +58,18 @@ describe Mixpanel::People do
     }]])
   end
 
+  it 'should send an engage/add message with a value of 1' do
+    @people.plus_one("TEST ID", 'Albums Released')
+    @log.should eq([[ :profile_update, {
+        '$token' => 'TEST TOKEN',
+        '$distinct_id' => 'TEST ID',
+        '$time' => 76695784000,
+        '$add' => {
+            'Albums Released' => 1
+        }
+    }]])
+  end
+
   it 'should send a well formed engage/append message' do
     @people.append("TEST ID", { 'Albums' => 'Diamond Dogs' })
     @log.should eq([[ :profile_update, {
