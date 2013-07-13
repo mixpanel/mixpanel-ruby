@@ -208,11 +208,16 @@ module Mixpanel
     # The \Mixpanel HTTP tracking API is documented at
     # https://mixpanel.com/help/reference/http
     def update(message)
-      message = {
-          '$token' => @token,
-          '$time' =>  ((Time.now.to_f) * 1000.0).to_i
+      data = {
+        '$token' => @token,
+        '$time' =>  ((Time.now.to_f) * 1000.0).to_i
       }.merge(message)
-      @sink.call(:profile_update, message.to_json)
+
+      message = {
+        'data' => data.to_json
+      }
+
+      @sink.call(:profile_update, message)
     end
 
     private

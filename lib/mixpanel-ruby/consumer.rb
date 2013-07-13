@@ -75,8 +75,9 @@ module Mixpanel
         :profile_update => @update_endpoint,
         :import => @import_endpoint
       }[ type ]
-      api_key = message.delete("api_key")
-      data = Base64.strict_encode64(message)
+
+      api_key = message["api_key"]
+      data = Base64.strict_encode64(message["data"])
       uri = URI(endpoint)
 
       client = Net::HTTP.new(uri.host, uri.port)
@@ -161,7 +162,13 @@ module Mixpanel
 
     def flush_type(type)
       @buffers[type].each_slice(@max_length) do |chunk|
-        message = "[ #{chunk.join(',')} ]"
+        data = chunk.map {|message| message["data"]}.join(',')
+
+        message = {
+          "data" => "[ #{data} ]",
+          "api_key" => chunk.last["api_key"]
+        }
+
         @consumer.send(type, message)
       end
       @buffers[type] = []

@@ -118,7 +118,7 @@ module Mixpanel
           'distinct_id' => real_id,
           'token' => @token,
         }
-      }.to_json
+      }
       consumer.send(:event, message)
     end
   end

@@ -60,12 +60,16 @@ module Mixpanel
         properties['ip'] = ip
       end
 
-      message = {
-          'event' => event,
-          'properties' => properties
+      data = {
+        'event' => event,
+        'properties' => properties
       }
 
-      @sink.call(:event, message.to_json)
+      message = {
+        'data' => data.to_json
+      }
+
+      @sink.call(:event, message)
     end
 
     # Imports an event that has occurred in the past, along with a distinct_id
@@ -87,23 +91,27 @@ module Mixpanel
     #     })
     def import(distinct_id, event, properties={}, ip=nil)
       properties = {
-          'distinct_id' => distinct_id,
-          'token' => @token,
-          'time' => Time.now.to_i,
-          'mp_lib' => 'ruby',
-          '$lib_version' => Mixpanel::VERSION
+        'distinct_id' => distinct_id,
+        'token' => @token,
+        'time' => Time.now.to_i,
+        'mp_lib' => 'ruby',
+        '$lib_version' => Mixpanel::VERSION
       }.merge(properties)
       if ip
         properties['ip'] = ip
       end
 
-      message = {
-          'event' => event,
-          'properties' => properties,
-          'api_key' => @api_key
+      data = {
+        'event' => event,
+        'properties' => properties
       }
 
-      @sink.call(:import, message.to_json)
+      message = {
+        'data' => data.to_json,
+        'api_key' => @api_key
+      }
+
+      @sink.call(:import, message)
     end
   end
 end
