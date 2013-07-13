@@ -116,7 +116,7 @@ module Mixpanel
         'event' => '$create_alias',
         'properties' => {
           'distinct_id' => real_id,
-          'token' => @token,
+          'token' => @token
         }
       }
       consumer.send(:event, message)
