@@ -42,7 +42,7 @@ describe Mixpanel::Tracker do
             'mp_lib' => 'ruby',
             '$lib_version' => Mixpanel::VERSION,
             'token' => 'TEST TOKEN',
-            'time' => 76695784
+            'time' => @time_now.to_i
         }
     })
   end
@@ -64,21 +64,21 @@ describe Mixpanel::Tracker do
               'mp_lib' => 'ruby',
               '$lib_version' => Mixpanel::VERSION,
               'token' => 'TEST TOKEN',
-              'time' => 76695784
+              'time' => @time_now.to_i
             }
           }
         ],
         [ :profile_update,
           { '$token' => 'TEST TOKEN',
             '$distinct_id' => 'ID',
-            '$time' => 76695784000,
+            '$time' => @time_now.to_i * 1000,
             '$set' => { 'k' => 'v' }
           }
         ],
         [ :profile_update,
           { '$token' => 'TEST TOKEN',
             '$distinct_id' => 'ID',
-            '$time' => 76695784000,
+            '$time' => @time_now.to_i * 1000,
             '$append' => { 'k' => 'v' }
           }
         ]
