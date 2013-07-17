@@ -72,6 +72,33 @@ module Mixpanel
       super
     end
 
+    # A call to #import is to import an event occurred in the past. #import
+    # takes a distinct_id representing the source of that event (for
+    # example, a user id), an event name describing the event, and a
+    # set of properties describing that event. Properties are provided
+    # as a Hash with string keys and strings, numbers or booleans as
+    # values.
+    #
+    #     tracker = Mixpanel::Tracker.new
+    #
+    #     # Import event that user "12345"'s credit card was declined
+    #     tracker.import("12345", "Credit Card Declined", {
+    #       'time' => 1310111365
+    #     })
+    #
+    #     # Properties describe the circumstances of the event,
+    #     # or aspects of the source or user associated with the event
+    #     tracker.import("12345", "Welcome Email Sent", {
+    #         'Email Template' => 'Pretty Pink Welcome',
+    #         'User Sign-up Cohort' => 'July 2013',
+    #         'time' => 1310111365
+    #     })
+    def import(distinct_id, event, properties={}, ip=nil)
+      # This is here strictly to allow rdoc to include the relevant
+      # documentation
+      super
+    end
+
     # Creates a distinct_id alias. \Events and updates with an alias
     # will be considered by mixpanel to have the same source, and
     # refer to the same profile.
@@ -84,13 +111,20 @@ module Mixpanel
     # the \Mixpanel service, regardless of how the tracker is configured.
     def alias(alias_id, real_id, events_endpoint=nil)
       consumer = Mixpanel::Consumer.new(events_endpoint)
-      message = {
+
+      data = {
         'event' => '$create_alias',
         'properties' => {
           'distinct_id' => real_id,
-          'token' => @token,
+          'alias' => alias_id,
+          'token' => @token
         }
-      }.to_json
+      }
+
+      message = {
+        'data' => data.to_json
+      }
+
       consumer.send(:event, message)
     end
   end

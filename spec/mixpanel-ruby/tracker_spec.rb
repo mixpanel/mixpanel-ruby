@@ -16,7 +16,7 @@ describe Mixpanel::Tracker do
     mixpanel.alias('TEST ALIAS', 'TEST ID')
 
     WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
-      with(:body => { :data => 'eyJldmVudCI6IiRjcmVhdGVfYWxpYXMiLCJwcm9wZXJ0aWVzIjp7ImRpc3RpbmN0X2lkIjoiVEVTVCBJRCIsInRva2VuIjoiVEVTVCBUT0tFTiJ9fQ==' })
+      with(:body => { :data => 'eyJldmVudCI6IiRjcmVhdGVfYWxpYXMiLCJwcm9wZXJ0aWVzIjp7ImRpc3RpbmN0X2lkIjoiVEVTVCBJRCIsImFsaWFzIjoiVEVTVCBBTElBUyIsInRva2VuIjoiVEVTVCBUT0tFTiJ9fQ==' })
   end
 
   it 'should send a request to the track api with the default consumer' do
@@ -42,7 +42,7 @@ describe Mixpanel::Tracker do
             'mp_lib' => 'ruby',
             '$lib_version' => Mixpanel::VERSION,
             'token' => 'TEST TOKEN',
-            'time' => 76695784
+            'time' => @time_now.to_i
         }
     })
   end
@@ -50,7 +50,7 @@ describe Mixpanel::Tracker do
   it 'should call a consumer block if one is given' do
     messages = []
     mixpanel = Mixpanel::Tracker.new('TEST TOKEN') do |type, message|
-      messages << [ type, JSON.load(message) ]
+      messages << [ type, JSON.load(message['data']) ]
     end
     mixpanel.track('ID', 'Event')
     mixpanel.people.set('ID', { 'k' => 'v' })
@@ -64,21 +64,21 @@ describe Mixpanel::Tracker do
               'mp_lib' => 'ruby',
               '$lib_version' => Mixpanel::VERSION,
               'token' => 'TEST TOKEN',
-              'time' => 76695784
+              'time' => @time_now.to_i
             }
           }
         ],
         [ :profile_update,
           { '$token' => 'TEST TOKEN',
             '$distinct_id' => 'ID',
-            '$time' => 76695784000,
+            '$time' => @time_now.to_i * 1000,
             '$set' => { 'k' => 'v' }
           }
         ],
         [ :profile_update,
           { '$token' => 'TEST TOKEN',
             '$distinct_id' => 'ID',
-            '$time' => 76695784000,
+            '$time' => @time_now.to_i * 1000,
             '$append' => { 'k' => 'v' }
           }
         ]
