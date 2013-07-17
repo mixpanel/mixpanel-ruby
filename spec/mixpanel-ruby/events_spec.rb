@@ -10,7 +10,7 @@ describe Mixpanel::Events do
 
     @log = []
     @events = Mixpanel::Events.new('TEST TOKEN') do |type, message|
-      @log << [ type, JSON.load(message) ]
+      @log << [ type, JSON.load(message['data']), message['api_key'] ]
     end
   end
 
@@ -28,7 +28,24 @@ describe Mixpanel::Events do
             'token' => 'TEST TOKEN',
             'time' => @time_now.to_i
         }
-    }]])
+    }, nil]])
+  end
+
+  it 'should send a well formed import/ message' do
+    @events.import('API_KEY', 'TEST ID', 'Test Event', {
+        'Circumstances' => 'During a test'
+    })
+    @log.should eq([[ :import, {
+        'event' => 'Test Event',
+        'properties' => {
+            'Circumstances' => 'During a test',
+            'distinct_id' => 'TEST ID',
+            'mp_lib' => 'ruby',
+            '$lib_version' => Mixpanel::VERSION,
+            'token' => 'TEST TOKEN',
+            'time' => @time_now.to_i
+        }
+    }, 'API_KEY']])
   end
 end
 

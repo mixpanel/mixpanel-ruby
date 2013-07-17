@@ -10,7 +10,7 @@ describe Mixpanel::People do
 
     @log = []
     @people = Mixpanel::People.new('TEST TOKEN') do |type, message|
-      @log << [ type, JSON.load(message) ]
+      @log << [ type, JSON.load(message['data']) ]
     end
   end
 

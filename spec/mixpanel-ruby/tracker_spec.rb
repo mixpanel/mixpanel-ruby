@@ -16,7 +16,7 @@ describe Mixpanel::Tracker do
     mixpanel.alias('TEST ALIAS', 'TEST ID')
 
     WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
-      with(:body => { :data => 'eyJldmVudCI6IiRjcmVhdGVfYWxpYXMiLCJwcm9wZXJ0aWVzIjp7ImRpc3RpbmN0X2lkIjoiVEVTVCBJRCIsInRva2VuIjoiVEVTVCBUT0tFTiJ9fQ==' })
+      with(:body => { :data => 'eyJldmVudCI6IiRjcmVhdGVfYWxpYXMiLCJwcm9wZXJ0aWVzIjp7ImRpc3RpbmN0X2lkIjoiVEVTVCBJRCIsImFsaWFzIjoiVEVTVCBBTElBUyIsInRva2VuIjoiVEVTVCBUT0tFTiJ9fQ==' })
   end
 
   it 'should send a request to the track api with the default consumer' do
@@ -50,7 +50,7 @@ describe Mixpanel::Tracker do
   it 'should call a consumer block if one is given' do
     messages = []
     mixpanel = Mixpanel::Tracker.new('TEST TOKEN') do |type, message|
-      messages << [ type, JSON.load(message) ]
+      messages << [ type, JSON.load(message['data']) ]
     end
     mixpanel.track('ID', 'Event')
     mixpanel.people.set('ID', { 'k' => 'v' })
