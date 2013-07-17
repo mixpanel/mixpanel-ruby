@@ -112,13 +112,20 @@ module Mixpanel
     # the \Mixpanel service, regardless of how the tracker is configured.
     def alias(alias_id, real_id, events_endpoint=nil)
       consumer = Mixpanel::Consumer.new(events_endpoint)
-      message = {
+
+      data = {
         'event' => '$create_alias',
         'properties' => {
           'distinct_id' => real_id,
+          'alias' => alias_id,
           'token' => @token
         }
       }
+
+      message = {
+        'data' => data.to_json
+      }
+
       consumer.send(:event, message)
     end
   end
