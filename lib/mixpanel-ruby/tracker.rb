@@ -42,10 +42,9 @@ module Mixpanel
     # If a block is provided, it is passed a type (one of :event or :profile_update)
     # and a string message. This same format is accepted by Mixpanel::Consumer#send
     # and Mixpanel::BufferedConsumer#send
-    def initialize(token, api_key=nil, &block)
+    def initialize(token, &block)
       super(token, &block)
       @token = token
-      @api_key = api_key
       @people = People.new(token, &block)
     end
 

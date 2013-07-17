@@ -20,9 +20,9 @@ module Mixpanel
     #     # tracker has all of the methods of Mixpanel::Events
     #     tracker = Mixpanel::Tracker.new(...)
     #
-    def initialize(token, api_key=nil, &block)
+    def initialize(token, &block)
       @token = token
-      @api_key = api_key
+
       if block
         @sink = block
       else
@@ -89,7 +89,7 @@ module Mixpanel
     #         'Email Template' => 'Pretty Pink Welcome',
     #         'User Sign-up Cohort' => 'July 2013'
     #     })
-    def import(distinct_id, event, properties={}, ip=nil)
+    def import(api_key, distinct_id, event, properties={}, ip=nil)
       properties = {
         'distinct_id' => distinct_id,
         'token' => @token,
@@ -108,7 +108,7 @@ module Mixpanel
 
       message = {
         'data' => data.to_json,
-        'api_key' => @api_key
+        'api_key' => api_key
       }
 
       @sink.call(:import, message)
