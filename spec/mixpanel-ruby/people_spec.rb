@@ -10,7 +10,7 @@ describe Mixpanel::People do
 
     @log = []
     @people = Mixpanel::People.new('TEST TOKEN') do |type, message|
-      @log << [ type, JSON.load(message) ]
+      @log << [ type, JSON.load(message['data']) ]
     end
   end
 
@@ -22,7 +22,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
-        '$time' => 76695784000,
+        '$time' => @time_now.to_i * 1000,
         '$set' => {
             '$firstname' => 'David',
             '$lastname' => 'Bowie'
@@ -38,7 +38,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
-        '$time' => 76695784000,
+        '$time' => @time_now.to_i * 1000,
         '$set_once' => {
             '$firstname' => 'David',
             '$lastname' => 'Bowie'
@@ -51,7 +51,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
-        '$time' => 76695784000,
+        '$time' => @time_now.to_i * 1000,
         '$add' => {
             'Albums Released' => 10
         }
@@ -75,7 +75,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
-        '$time' => 76695784000,
+        '$time' => @time_now.to_i * 1000,
         '$append' => {
             'Albums' => 'Diamond Dogs'
         }
@@ -87,7 +87,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
-        '$time' => 76695784000,
+        '$time' => @time_now.to_i * 1000,
         '$union' => {
             'Albums' => 'Diamond Dogs'
         }
@@ -99,7 +99,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
-        '$time' => 76695784000,
+        '$time' => @time_now.to_i * 1000,
         '$unset' => [ 'Albums' ]
     }]])
   end
@@ -112,7 +112,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
-        '$time' => 76695784000,
+        '$time' => @time_now.to_i * 1000,
         '$append' => {
             '$transactions' => {
                 '$time' => '1999-12-24T14:02:53',
@@ -128,7 +128,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
-        '$time' => 76695784000,
+        '$time' => @time_now.to_i * 1000,
         '$unset' => [ '$transactions' ]
     }]])
   end
@@ -138,7 +138,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
-        '$time' => 76695784000,
+        '$time' => @time_now.to_i * 1000,
         '$delete' => ''
     }]])
   end

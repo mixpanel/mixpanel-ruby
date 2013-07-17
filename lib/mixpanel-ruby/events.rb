@@ -22,6 +22,7 @@ module Mixpanel
     #
     def initialize(token, &block)
       @token = token
+
       if block
         @sink = block
       else
@@ -59,12 +60,58 @@ module Mixpanel
         properties['ip'] = ip
       end
 
-      message = {
-          'event' => event,
-          'properties' => properties
+      data = {
+        'event' => event,
+        'properties' => properties
       }
 
-      @sink.call(:event, message.to_json)
+      message = {
+        'data' => data.to_json
+      }
+
+      @sink.call(:event, message)
+    end
+
+    # Imports an event that has occurred in the past, along with a distinct_id
+    # representing the source of that event (for example, a user id),
+    # an event name describing the event and a set of properties
+    # describing that event. Properties are provided as a Hash with
+    # string keys and strings, numbers or booleans as values.
+    #
+    #     tracker = Mixpanel::Tracker.new
+    #
+    #     # Track that user "12345"'s credit card was declined
+    #     tracker.import("API_KEY", "12345", "Credit Card Declined")
+    #
+    #     # Properties describe the circumstances of the event,
+    #     # or aspects of the source or user associated with the event
+    #     tracker.import("API_KEY", "12345", "Welcome Email Sent", {
+    #         'Email Template' => 'Pretty Pink Welcome',
+    #         'User Sign-up Cohort' => 'July 2013'
+    #     })
+    def import(api_key, distinct_id, event, properties={}, ip=nil)
+      properties = {
+        'distinct_id' => distinct_id,
+        'token' => @token,
+        'time' => Time.now.to_i,
+        'mp_lib' => 'ruby',
+        '$lib_version' => Mixpanel::VERSION
+      }.merge(properties)
+      if ip
+        properties['ip'] = ip
+      end
+
+      data = {
+        'event' => event,
+        'properties' => properties
+      }
+
+      message = {
+        'data' => data.to_json,
+        'api_key' => api_key
+      }
+
+      @sink.call(:import, message)
     end
   end
 end

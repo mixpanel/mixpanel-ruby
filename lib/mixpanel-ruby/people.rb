@@ -22,6 +22,7 @@ module Mixpanel
     #
     def initialize(token, &block)
       @token = token
+
       if block
         @sink = block
       else
@@ -44,12 +45,12 @@ module Mixpanel
     #
     # If you provide an ip argument, \Mixpanel will use that
     # ip address for geolocation (rather than the ip of your server)
-    def set(distinct_id, properties, ip=nil)
+    def set(distinct_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
       message = {
           '$distinct_id' => distinct_id,
           '$set' => properties,
-      }
+      }.merge(optional_params)
 
       if ip
         message['$ip'] = ip
@@ -68,12 +69,12 @@ module Mixpanel
     #        'First Login Date': DateTime.now
     #    });
     #
-    def set_once(distinct_id, properties, ip=nil)
+    def set_once(distinct_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
       message = {
           '$distinct_id' => distinct_id,
           '$set_once' => properties,
-      }
+      }.merge(optional_params)
 
       if ip
         message['$ip'] = ip
@@ -94,12 +95,12 @@ module Mixpanel
     #        'Coins Earned' => -7, # Use a negative number to subtract
     #    });
     #
-    def increment(distinct_id, properties, ip=nil)
+    def increment(distinct_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
       message = {
           '$distinct_id' => distinct_id,
           '$add' => properties,
-      }
+      }.merge(optional_params)
 
       if ip
         message['$ip'] = ip
@@ -129,12 +130,12 @@ module Mixpanel
     #        'Alter Ego Names' => 'Ziggy Stardust'
     #    });
     #
-    def append(distinct_id, properties, ip=nil)
+    def append(distinct_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
       message = {
           '$distinct_id' => distinct_id,
           '$append' => properties,
-      }
+      }.merge(optional_params)
 
       if ip
         message['$ip'] = ip
@@ -151,12 +152,12 @@ module Mixpanel
     #        'Levels Completed' => 'Suffragette City'
     #    });
     #
-    def union(distinct_id, properties, ip=nil)
+    def union(distinct_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
       message = {
           '$distinct_id' => distinct_id,
           '$union' => properties,
-      }
+      }.merge(optional_params)
 
       if ip
         message['$ip'] = ip
@@ -190,10 +191,10 @@ module Mixpanel
     #        '$time' => DateTime.parse("Jan 2 2013")
     #    })
     #
-    def track_charge(distinct_id, amount, properties={}, ip=nil)
+    def track_charge(distinct_id, amount, properties={}, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
       charge_properties = properties.merge({ '$amount' => amount })
-      append(distinct_id, { '$transactions' => charge_properties }, ip)
+      append(distinct_id, { '$transactions' => charge_properties }, ip, optional_params)
     end
 
     # Clear all charges from a \Mixpanel people profile
@@ -218,11 +219,16 @@ module Mixpanel
     # The \Mixpanel HTTP tracking API is documented at
     # https://mixpanel.com/help/reference/http
     def update(message)
-      message = {
-          '$token' => @token,
-          '$time' =>  ((Time.now.to_f) * 1000.0).to_i
+      data = {
+        '$token' => @token,
+        '$time' =>  ((Time.now.to_f) * 1000.0).to_i
       }.merge(message)
-      @sink.call(:profile_update, message.to_json)
+
+      message = {
+        'data' => data.to_json
+      }
+
+      @sink.call(:profile_update, message)
     end
 
     private
