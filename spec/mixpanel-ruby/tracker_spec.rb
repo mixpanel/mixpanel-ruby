@@ -50,14 +50,15 @@ describe Mixpanel::Tracker do
   it 'should call a consumer block if one is given' do
     messages = []
     mixpanel = Mixpanel::Tracker.new('TEST TOKEN') do |type, message|
-      messages << [ type, JSON.load(message['data']) ]
+      messages << [ type, JSON.load(message) ]
     end
     mixpanel.track('ID', 'Event')
+    mixpanel.import('API_KEY', 'ID', 'Import')
     mixpanel.people.set('ID', { 'k' => 'v' })
     mixpanel.people.append('ID', { 'k' => 'v' })
 
-    messages.should eq([
-        [ :event,
+    expect = [
+        [ :event, 'data' =>
           { 'event' => 'Event',
             'properties' => {
               'distinct_id' => 'ID',
@@ -68,20 +69,37 @@ describe Mixpanel::Tracker do
             }
           }
         ],
-        [ :profile_update,
+        [ :import, {
+            'data' => {
+              'event' => 'Import',
+              'properties' => {
+                'distinct_id' => 'ID',
+                'mp_lib' => 'ruby',
+                '$lib_version' => Mixpanel::VERSION,
+                'token' => 'TEST TOKEN',
+                'time' => @time_now.to_i
+              }
+            },
+            'api_key' => 'API_KEY',
+          }
+        ],
+        [ :profile_update, 'data' =>
           { '$token' => 'TEST TOKEN',
             '$distinct_id' => 'ID',
             '$time' => @time_now.to_i * 1000,
             '$set' => { 'k' => 'v' }
           }
         ],
-        [ :profile_update,
+        [ :profile_update, 'data' =>
           { '$token' => 'TEST TOKEN',
             '$distinct_id' => 'ID',
             '$time' => @time_now.to_i * 1000,
             '$append' => { 'k' => 'v' }
           }
         ]
-    ])
+    ]
+    expect.zip(messages).each do |expect, found|
+      expect.should eq(found)
+    end
   end
 end

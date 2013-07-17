@@ -22,7 +22,6 @@ module Mixpanel
     #
     def initialize(token, &block)
       @token = token
-
       if block
         @sink = block
       else
@@ -66,10 +65,10 @@ module Mixpanel
       }
 
       message = {
-        'data' => data.to_json
+        'data' => data
       }
 
-      @sink.call(:event, message)
+      @sink.call(:event, message.to_json)
     end
 
     # Imports an event that has occurred in the past, along with a distinct_id
@@ -107,11 +106,11 @@ module Mixpanel
       }
 
       message = {
-        'data' => data.to_json,
+        'data' => data,
         'api_key' => api_key
       }
 
-      @sink.call(:import, message)
+      @sink.call(:import, message.to_json)
     end
   end
 end

@@ -88,12 +88,12 @@ module Mixpanel
     #
     #     # Properties describe the circumstances of the event,
     #     # or aspects of the source or user associated with the event
-    #     tracker.import("12345", "Welcome Email Sent", {
+    #     tracker.import("API_KEY", "12345", "Welcome Email Sent", {
     #         'Email Template' => 'Pretty Pink Welcome',
     #         'User Sign-up Cohort' => 'July 2013',
     #         'time' => 1310111365
     #     })
-    def import(distinct_id, event, properties={}, ip=nil)
+    def import(api_key, distinct_id, event, properties={}, ip=nil)
       # This is here strictly to allow rdoc to include the relevant
       # documentation
       super
@@ -111,7 +111,6 @@ module Mixpanel
     # the \Mixpanel service, regardless of how the tracker is configured.
     def alias(alias_id, real_id, events_endpoint=nil)
       consumer = Mixpanel::Consumer.new(events_endpoint)
-
       data = {
         'event' => '$create_alias',
         'properties' => {
@@ -122,10 +121,10 @@ module Mixpanel
       }
 
       message = {
-        'data' => data.to_json
+        'data' => data
       }
 
-      consumer.send(:event, message)
+      consumer.send(:event, message.to_json)
     end
   end
 end

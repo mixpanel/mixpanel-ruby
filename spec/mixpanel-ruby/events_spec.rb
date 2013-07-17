@@ -10,7 +10,7 @@ describe Mixpanel::Events do
 
     @log = []
     @events = Mixpanel::Events.new('TEST TOKEN') do |type, message|
-      @log << [ type, JSON.load(message['data']), message['api_key'] ]
+      @log << [ type, JSON.load(message) ]
     end
   end
 
@@ -18,7 +18,7 @@ describe Mixpanel::Events do
     @events.track('TEST ID', 'Test Event', {
         'Circumstances' => 'During a test'
     })
-    @log.should eq([[ :event, {
+    @log.should eq([[ :event, 'data' => {
         'event' => 'Test Event',
         'properties' => {
             'Circumstances' => 'During a test',
@@ -28,7 +28,7 @@ describe Mixpanel::Events do
             'token' => 'TEST TOKEN',
             'time' => @time_now.to_i
         }
-    }, nil]])
+    }]])
   end
 
   it 'should send a well formed import/ message' do
@@ -36,16 +36,19 @@ describe Mixpanel::Events do
         'Circumstances' => 'During a test'
     })
     @log.should eq([[ :import, {
-        'event' => 'Test Event',
-        'properties' => {
-            'Circumstances' => 'During a test',
-            'distinct_id' => 'TEST ID',
-            'mp_lib' => 'ruby',
-            '$lib_version' => Mixpanel::VERSION,
-            'token' => 'TEST TOKEN',
-            'time' => @time_now.to_i
+        'api_key' => 'API_KEY',
+        'data' => {
+            'event' => 'Test Event',
+            'properties' => {
+                'Circumstances' => 'During a test',
+                'distinct_id' => 'TEST ID',
+                'mp_lib' => 'ruby',
+                '$lib_version' => Mixpanel::VERSION,
+                'token' => 'TEST TOKEN',
+                'time' => @time_now.to_i
+            }
         }
-    }, 'API_KEY']])
+    } ]])
   end
 end
 

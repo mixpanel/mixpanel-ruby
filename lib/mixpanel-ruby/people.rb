@@ -225,10 +225,10 @@ module Mixpanel
       }.merge(message)
 
       message = {
-        'data' => data.to_json
+        'data' => data
       }
 
-      @sink.call(:profile_update, message)
+      @sink.call(:profile_update, message.to_json)
     end
 
     private

@@ -76,16 +76,17 @@ module Mixpanel
         :import => @import_endpoint
       }[ type ]
 
-      api_key = message["api_key"]
-      data = Base64.strict_encode64(message["data"])
+      decoded_message = JSON.load(message)
+      api_key = decoded_message["api_key"]
+      data = Base64.strict_encode64(decoded_message["data"].to_json)
       uri = URI(endpoint)
 
       client = Net::HTTP.new(uri.host, uri.port)
       client.use_ssl = true
       Mixpanel.with_http(client)
 
-      form_data = {"data" => data}
-      form_data = form_data.merge!("api_key" => api_key) if api_key
+      form_data = { "data" => data }
+      form_data.merge!("api_key" => api_key) if api_key
       request = Net::HTTP::Post.new(uri.request_uri)
       request.set_form_data(form_data)
       response = client.request(request)
@@ -136,18 +137,24 @@ module Mixpanel
       @buffers = {
         :event => [],
         :profile_update => [],
-        :import => []
       }
     end
 
     # Stores a message for Mixpanel in memory. When the buffer
     # hits a maximum length, the consumer will flush automatically.
     # Flushes are synchronous when they occur.
+    #
+    # Currently, only :event and :profile_update messages are buffered,
+    # :import messages will be send immediately on call.
     def send(type, message)
       type = type.to_sym
-      @buffers[type] << message
-      if @buffers[type].length >= @max_length
-        flush_type(type)
+      if @buffers.has_key? type
+        @buffers[type] << message
+        if @buffers[type].length >= @max_length
+          flush_type(type)
+        end
+      else
+        @consumer.send(type, message)
       end
     end
 
@@ -162,14 +169,8 @@ module Mixpanel
 
     def flush_type(type)
       @buffers[type].each_slice(@max_length) do |chunk|
-        data = chunk.map {|message| message["data"]}.join(',')
-
-        message = {
-          "data" => "[ #{data} ]",
-          "api_key" => chunk.last["api_key"]
-        }
-
-        @consumer.send(type, message)
+        data = chunk.map {|message| JSON.load(message)['data'] }
+        @consumer.send(type, {'data' => data}.to_json)
       end
       @buffers[type] = []
     end
