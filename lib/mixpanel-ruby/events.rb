@@ -81,11 +81,11 @@ module Mixpanel
     #     tracker = Mixpanel::Tracker.new
     #
     #     # Track that user "12345"'s credit card was declined
-    #     tracker.import("12345", "Credit Card Declined")
+    #     tracker.import("API_KEY", "12345", "Credit Card Declined")
     #
     #     # Properties describe the circumstances of the event,
     #     # or aspects of the source or user associated with the event
-    #     tracker.import("12345", "Welcome Email Sent", {
+    #     tracker.import("API_KEY", "12345", "Welcome Email Sent", {
     #         'Email Template' => 'Pretty Pink Welcome',
     #         'User Sign-up Cohort' => 'July 2013'
     #     })
