@@ -83,13 +83,13 @@ describe Mixpanel::People do
   end
 
   it 'should send a well formed engage/union message' do
-    @people.union("TEST ID", { 'Albums' => 'Diamond Dogs' })
+    @people.union("TEST ID", { 'Albums' => ['Diamond Dogs'] })
     @log.should eq([[ :profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
         '$time' => @time_now.to_i * 1000,
         '$union' => {
-            'Albums' => 'Diamond Dogs'
+            'Albums' => ['Diamond Dogs']
         }
     }]])
   end

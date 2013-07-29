@@ -144,12 +144,15 @@ module Mixpanel
       update(message)
     end
 
-    # Appends a value to the end of list-valued properties,
-    # only if the given value is not already present in the list.
+    # Set union on list valued properties.
+    # Associates a list containing all elements of a given list,
+    # and all elements currently in a list associated with the given
+    # property. After a union, every element in the list associated
+    # with a property will be unique.
     #
     #    tracker = Mixpanel::Tracker.new
     #    tracker.people.union("12345", {
-    #        'Levels Completed' => 'Suffragette City'
+    #        'Levels Completed' => ['Suffragette City']
     #    });
     #
     def union(distinct_id, properties, ip=nil, optional_params={})
