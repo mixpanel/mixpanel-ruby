@@ -38,7 +38,10 @@ For more information please visit:
 
 == Changes
 
-=== 1.0.0 (Proposed)
+=== 1.0.0
 * tracker#import added
 * Change to internal tracking message format. Messages written
   by earlier versions of the library will not work with 1.0.0 consumer classes.
+* alias bugfixed
+* Fixes to tests to allow for different timezones
+* Support for optional/experimental people api properties in people calls
