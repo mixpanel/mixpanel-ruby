@@ -65,7 +65,7 @@ module Mixpanel
     # without changing an original value.
     #
     #    tracker = Mixpanel::Tracker.new
-    #    tracker.people.set("12345", {
+    #    tracker.people.set_once("12345", {
     #        'First Login Date': DateTime.now
     #    });
     #
