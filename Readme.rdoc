@@ -38,6 +38,11 @@ For more information please visit:
 
 == Changes
 
+=== 1.0.1
+* Compatibility with earlier versions of ruby. Library development will continue
+  to target 1.9, so later versions may not be compatible with Ruby 1.8, but we
+  love patches!
+
 === 1.0.0
 * tracker#import added
 * Change to internal tracking message format. Messages written
