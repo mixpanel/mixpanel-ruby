@@ -29,6 +29,13 @@ describe Mixpanel::Consumer do
     WebMock.should have_requested(:post, 'https://api.mixpanel.com/import').
       with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'api_key' => 'API_KEY' })
   end
+
+  it 'should encode long messages without newlines' do
+    stub_request(:any, 'https://api.mixpanel.com/track').to_return({ :body => "1" })
+    @consumer.send(:event, { 'data' => 'BASE64-ENCODED VERSION OF BIN. THIS METHOD COMPLIES WITH RFC 2045. LINE FEEDS ARE ADDED TO EVERY 60 ENCODED CHARACTORS. IN RUBY 1.8 WE NEED TO JUST CALL ENCODE64 AND REMOVE THE LINE FEEDS, IN RUBY 1.9 WE CALL STRIC_ENCODED64 METHOD INSTEAD' }.to_json)
+    WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
+      with(:body => { 'data' => 'IkJBU0U2NC1FTkNPREVEIFZFUlNJT04gT0YgQklOLiBUSElTIE1FVEhPRCBDT01QTElFUyBXSVRIIFJGQyAyMDQ1LiBMSU5FIEZFRURTIEFSRSBBRERFRCBUTyBFVkVSWSA2MCBFTkNPREVEIENIQVJBQ1RPUlMuIElOIFJVQlkgMS44IFdFIE5FRUQgVE8gSlVTVCBDQUxMIEVOQ09ERTY0IEFORCBSRU1PVkUgVEhFIExJTkUgRkVFRFMsIElOIFJVQlkgMS45IFdFIENBTEwgU1RSSUNfRU5DT0RFRDY0IE1FVEhPRCBJTlNURUFEIg==' })
+  end
 end
 
 describe Mixpanel::BufferedConsumer do

@@ -78,12 +78,7 @@ module Mixpanel
 
       decoded_message = JSON.load(message)
       api_key = decoded_message["api_key"]
-      
-      data = if RUBY_VERSION < "1.9"
-               Base64.encode64(decoded_message["data"].to_json).gsub("\n", '')
-             else
-               Base64.strict_encode64(decoded_message["data"].to_json) 
-             end
+      data = Base64.encode64(decoded_message["data"].to_json).gsub("\n", '')
 
       uri = URI(endpoint)
 
