@@ -78,7 +78,13 @@ module Mixpanel
 
       decoded_message = JSON.load(message)
       api_key = decoded_message["api_key"]
-      data = Base64.strict_encode64(decoded_message["data"].to_json)
+      
+      data = if RUBY_VERSION < "1.9"
+               Base64.encode64(decoded_message["data"].to_json).gsub("\n", '')
+             else
+               Base64.strict_encode64(decoded_message["data"].to_json) 
+             end
+
       uri = URI(endpoint)
 
       client = Net::HTTP.new(uri.host, uri.port)
