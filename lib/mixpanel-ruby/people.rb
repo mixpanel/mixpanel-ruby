@@ -116,8 +116,8 @@ module Mixpanel
     #    tracker = Mixpanel::Tracker.new
     #    tracker.people.plus_one("12345", "Albums Released")
     #
-    def plus_one(distinct_id, property_name, ip=nil)
-      increment(distinct_id, { property_name => 1 }, ip)
+    def plus_one(distinct_id, property_name, ip=nil, optional_params={})
+      increment(distinct_id, { property_name => 1 }, ip, optional_params)
     end
 
     # Appends a values to the end of list-valued properties.
@@ -174,11 +174,17 @@ module Mixpanel
     #    tracker = Mixpanel::Tracker.new
     #    tracker.people.unset("12345", "Overdue Since")
     #
-    def unset(distinct_id, property)
-      update({
+    def unset(distinct_id, property, ip=nil, optional_params={})
+      message = {
           '$distinct_id' => distinct_id,
           '$unset' => [ property ]
-      })
+      }.merge(optional_params)
+
+      if ip
+        message['$ip'] = ip
+      end
+
+      update(message)
     end
 
     # Records a payment to you to a profile. Charges recorded with
@@ -201,8 +207,8 @@ module Mixpanel
     end
 
     # Clear all charges from a \Mixpanel people profile
-    def clear_charges(distinct_id)
-      unset(distinct_id, '$transactions')
+    def clear_charges(distinct_id, ip=nil, optional_params={})
+      unset(distinct_id, '$transactions', ip, optional_params)
     end
 
     # Permanently delete a profile from \Mixpanel people analytics
