@@ -36,6 +36,11 @@ describe Mixpanel::Consumer do
     WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
       with(:body => { 'data' => 'IkJBU0U2NC1FTkNPREVEIFZFUlNJT04gT0YgQklOLiBUSElTIE1FVEhPRCBDT01QTElFUyBXSVRIIFJGQyAyMDQ1LiBMSU5FIEZFRURTIEFSRSBBRERFRCBUTyBFVkVSWSA2MCBFTkNPREVEIENIQVJBQ1RPUlMuIElOIFJVQlkgMS44IFdFIE5FRUQgVE8gSlVTVCBDQUxMIEVOQ09ERTY0IEFORCBSRU1PVkUgVEhFIExJTkUgRkVFRFMsIElOIFJVQlkgMS45IFdFIENBTEwgU1RSSUNfRU5DT0RFRDY0IE1FVEhPRCBJTlNURUFEIg==' })
   end
+
+  it 'should provide thorough information in case mixpanel fails' do
+    stub_request(:any, 'https://api.mixpanel.com/track').to_return({ :status => 401, :body => "nutcakes" })
+    expect { @consumer.send(:event, {'data' => 'TEST EVENT MESSAGE'}.to_json) }.to raise_exception('Could not write to Mixpanel, server responded with 401 returning: \'nutcakes\'') 
+  end
 end
 
 describe Mixpanel::BufferedConsumer do
