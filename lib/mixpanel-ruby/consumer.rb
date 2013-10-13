@@ -95,7 +95,7 @@ module Mixpanel
       if response.code == '200' and response.body == '1'
         return true
       else
-        raise ConnectionError.new('Could not write to Mixpanel')
+        raise ConnectionError.new("Could not write to Mixpanel, server responded with #{response.code} returning: '#{response.body}'")
       end
     end
   end
