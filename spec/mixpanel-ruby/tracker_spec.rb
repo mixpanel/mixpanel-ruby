@@ -11,18 +11,18 @@ describe Mixpanel::Tracker do
 
   it 'should send an alias message to mixpanel no matter what the consumer is' do
     WebMock.reset!
-    stub_request(:any, 'https://api.mixpanel.com/track').to_return({ :body => "1" })
+    stub_request(:any, 'https://api.mixpanel.com/track').to_return({ :body => '{"status": 1, "error": null}' })
     mixpanel = Mixpanel::Tracker.new('TEST TOKEN') {|*args| }
     mixpanel.alias('TEST ALIAS', 'TEST ID')
 
     WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
-      with(:body => { :data => 'eyJldmVudCI6IiRjcmVhdGVfYWxpYXMiLCJwcm9wZXJ0aWVzIjp7ImRpc3RpbmN0X2lkIjoiVEVTVCBJRCIsImFsaWFzIjoiVEVTVCBBTElBUyIsInRva2VuIjoiVEVTVCBUT0tFTiJ9fQ==' })
+      with(:body => { :data => 'eyJldmVudCI6IiRjcmVhdGVfYWxpYXMiLCJwcm9wZXJ0aWVzIjp7ImRpc3RpbmN0X2lkIjoiVEVTVCBJRCIsImFsaWFzIjoiVEVTVCBBTElBUyIsInRva2VuIjoiVEVTVCBUT0tFTiJ9fQ==', 'verbose' => '1' })
   end
 
   it 'should send a request to the track api with the default consumer' do
     WebMock.reset!
-    stub_request(:any, 'https://api.mixpanel.com/track').to_return({ :body => "1" })
-    stub_request(:any, 'https://api.mixpanel.com/engage').to_return({ :body => "1" })
+    stub_request(:any, 'https://api.mixpanel.com/track').to_return({ :body => '{"status": 1, "error": null}' })
+    stub_request(:any, 'https://api.mixpanel.com/engage').to_return({ :body => '{"status": 1, "error": null}' })
     mixpanel = Mixpanel::Tracker.new('TEST TOKEN')
 
     mixpanel.track('TEST ID', 'TEST EVENT', { 'Circumstances' => 'During test' })
@@ -31,7 +31,7 @@ describe Mixpanel::Tracker do
     WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
       with { |req| body = req.body }
 
-    message_urlencoded = body[/^data=(.*)$/, 1]
+    message_urlencoded = body[/^data=(.*?)(?:&|$)/, 1]
     message_json = Base64.strict_decode64(URI.unescape(message_urlencoded))
     message = JSON.load(message_json)
     message.should eq({

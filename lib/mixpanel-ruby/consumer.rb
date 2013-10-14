@@ -1,5 +1,6 @@
 require 'base64'
 require 'net/https'
+require 'json'
 
 module Mixpanel
   class ConnectionError < IOError
@@ -86,13 +87,19 @@ module Mixpanel
       client.use_ssl = true
       Mixpanel.with_http(client)
 
-      form_data = { "data" => data }
+      form_data = { "data" => data, "verbose" => 1 }
       form_data.merge!("api_key" => api_key) if api_key
       request = Net::HTTP::Post.new(uri.request_uri)
       request.set_form_data(form_data)
       response = client.request(request)
 
-      if response.code == '200' and response.body == '1'
+      succeeded = false
+      if response.code == '200'
+        result = JSON.load(response.body) rescue {}
+        succeeded = result['status'] == 1
+      end
+
+      if succeeded
         return true
       else
         raise ConnectionError.new("Could not write to Mixpanel, server responded with #{response.code} returning: '#{response.body}'")
