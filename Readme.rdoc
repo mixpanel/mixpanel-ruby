@@ -38,6 +38,10 @@ For more information please visit:
 
 == Changes
 
+== 1.2.0
+* All objects with a "strftime" method will be formatted as dates in
+  people updates.
+
 == 1.1.0
 * The default consumer now sends requests (and expects responses) in
   verbose, JSON mode, which may improve error reporting.
