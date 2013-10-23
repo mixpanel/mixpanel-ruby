@@ -6,7 +6,7 @@ require 'time'
 describe Mixpanel::Events do
   before(:each) do
     @time_now = Time.parse('Jun 6 1972, 16:23:04')
-    Time.stub!(:now).and_return(@time_now)
+    Time.stub(:now).and_return(@time_now)
 
     @log = []
     @events = Mixpanel::Events.new('TEST TOKEN') do |type, message|

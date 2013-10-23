@@ -1,12 +1,10 @@
 require 'spec_helper'
-require 'date'
-require 'json'
-require 'mixpanel-ruby/people.rb'
+require 'mixpanel-ruby/people'
 
 describe Mixpanel::People do
   before(:each) do
     @time_now = Time.parse('Jun 6 1972, 16:23:04')
-    Time.stub!(:now).and_return(@time_now)
+    Time.stub(:now).and_return(@time_now)
 
     @log = []
     @people = Mixpanel::People.new('TEST TOKEN') do |type, message|
@@ -63,7 +61,7 @@ describe Mixpanel::People do
     @log.should eq([[ :profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
-        '$time' => 76695784000,
+        '$time' => @time_now.to_i * 1000,
         '$add' => {
             'Albums Released' => 1
         }
