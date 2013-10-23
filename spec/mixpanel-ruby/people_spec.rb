@@ -28,6 +28,20 @@ describe Mixpanel::People do
     }]])
   end
 
+  it 'should properly cast dates' do
+    @people.set("TEST ID", {
+        'created_at' => DateTime.new(2013, 1, 2, 3, 4, 5)
+    })
+    @log.should eq([[ :profile_update, 'data' => {
+        '$token' => 'TEST TOKEN',
+        '$distinct_id' => 'TEST ID',
+        '$time' => @time_now.to_i * 1000,
+        '$set' => {
+            'created_at' => '2013-01-02T03:04:05'
+        }
+    }]])
+  end
+
   it 'should send a well formed engage/set_once message' do
     @people.set_once("TEST ID", {
         '$firstname' => 'David',
