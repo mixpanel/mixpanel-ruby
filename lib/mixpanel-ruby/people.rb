@@ -244,26 +244,8 @@ module Mixpanel
 
     def fix_property_dates(h)
       h.inject({}) do |ret,(k,v)|
-        ret[k] = PeopleDate.asPeopleDate(v)
+        ret[k] = v.respond_to?(:strftime) ? v.strftime('%Y-%m-%dT%H:%M:%S') : v
         ret
-      end
-    end
-
-    class PeopleDate
-      def initialize(date)
-        @date = date
-      end
-
-      def to_json(*a)
-        @date.strftime('%Y-%m-%dT%H:%M:%S').to_json(*a)
-      end
-
-      def self.asPeopleDate(thing)
-        if thing.is_a?(Date)
-          PeopleDate.new(thing)
-        else
-          thing
-        end
       end
     end
   end
