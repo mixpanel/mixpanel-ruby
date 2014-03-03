@@ -1,6 +1,7 @@
 require 'base64'
 require 'net/https'
 require 'json'
+require 'mixpanel-ruby/adapter/net_http'
 
 module Mixpanel
   class ConnectionError < IOError
@@ -10,10 +11,13 @@ module Mixpanel
 
   # Ruby's default SSL does not verify the server certificate.
   # To verify a certificate, or install a proxy, pass a block
-  # to Mixpanel::use_ssl that configures the Net::HTTP object.
+  # to Mixpanel.config_http that configures the Net::HTTP object.
+  # Note: when using the Faraday adapter, the block will receive
+  # the Faraday::Connection object. Please refer to the Faraday
+  # documentation for configuration examples.
   # For example, if running in Ubuntu Linux, you can run
   #
-  #    Mixpanel::use_ssl do |http|
+  #    Mixpanel.config_http do |http|
   #        http.ca_path = '/etc/ssl/certs'
   #        http.ca_file = '/etc/ssl/certs/ca-certificates.crt'
   #        http.verify_mode = OpenSSL::SSL::VERIFY_PEER
@@ -81,20 +85,13 @@ module Mixpanel
       api_key = decoded_message["api_key"]
       data = Base64.encode64(decoded_message["data"].to_json).gsub("\n", '')
 
-      uri = URI(endpoint)
-
-      client = Net::HTTP.new(uri.host, uri.port)
-      client.use_ssl = true
-      Mixpanel.with_http(client)
-
       form_data = { "data" => data, "verbose" => 1 }
       form_data.merge!("api_key" => api_key) if api_key
-      request = Net::HTTP::Post.new(uri.request_uri)
-      request.set_form_data(form_data)
-      response = client.request(request)
+
+      response = Mixpanel.adapter.request(endpoint, form_data)
 
       succeeded = false
-      if response.code == '200'
+      if response.code.to_i == 200
         result = JSON.load(response.body) rescue {}
         succeeded = result['status'] == 1
       end
@@ -182,6 +179,14 @@ module Mixpanel
       end
       @buffers[type] = []
     end
+  end
+
+  def self.adapter
+    @@adapter ||= Adapter::NetHttp
+  end
+
+  def self.adapter=(adapter)
+    @@adapter = adapter
   end
 
   private

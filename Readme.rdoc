@@ -24,6 +24,14 @@ get started sending your first events and updates:
         'Best Album' => 'The Rise and Fall of Ziggy Stardust and the Spiders from Mars'
     })
 
+== Configuration
+
+You can change the default HTTP adapter (Net::HTTP) to Faraday:
+
+     require 'mixpanel-ruby/adapter/faraday'
+     Mixpanel.adapter = Mixpanel::Adapter::Faraday
+
+
 The primary class you will use to track events is Mixpanel::Tracker. An instance of
 Mixpanel::Tracker is enough to send events directly to \Mixpanel, and get you integrated
 right away.
