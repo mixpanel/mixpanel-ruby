@@ -1,8 +1,7 @@
 = mixpanel-ruby: The official Mixpanel Ruby library
 
 mixpanel-ruby is a library for tracking events and sending \Mixpanel profile
-updates to \Mixpanel from your ruby applications. It's straightforward to
-get started sending your first events and updates:
+updates to \Mixpanel from your ruby applications.
 
 == Installation
 
@@ -23,14 +22,6 @@ get started sending your first events and updates:
         '$last_name' => 'Bowie',
         'Best Album' => 'The Rise and Fall of Ziggy Stardust and the Spiders from Mars'
     })
-
-== Configuration
-
-You can change the default HTTP adapter (Net::HTTP) to Faraday:
-
-     require 'mixpanel-ruby/adapter/faraday'
-     Mixpanel.adapter = Mixpanel::Adapter::Faraday
-
 
 The primary class you will use to track events is Mixpanel::Tracker. An instance of
 Mixpanel::Tracker is enough to send events directly to \Mixpanel, and get you integrated

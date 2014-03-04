@@ -2,7 +2,6 @@ require 'spec_helper'
 require 'webmock'
 require 'base64'
 require 'mixpanel-ruby/consumer'
-require 'mixpanel-ruby/adapter/faraday'
 
 describe Mixpanel::Consumer do
   before { WebMock.reset! }
@@ -42,13 +41,28 @@ describe Mixpanel::Consumer do
     end
   end
 
-  context 'Net::HTTP' do
-    before { Mixpanel.adapter = Mixpanel::Adapter::NetHttp }
+  context 'raw consumer' do
     it_behaves_like 'consumer'
   end
 
-  context 'Faraday' do
-    before { Mixpanel.adapter = Mixpanel::Adapter::Faraday }
+  context 'custom request consumer' do
+    subject do
+      ret = Mixpanel::Consumer.new
+      class << ret
+        attr_reader :called
+        def request(*args)
+          @called = true
+          super(*args)
+        end
+      end
+
+      ret
+    end
+
+    after(:each) do
+      subject.called.should be_true
+    end
+
     it_behaves_like 'consumer'
   end
 
@@ -56,42 +70,66 @@ end
 
 describe Mixpanel::BufferedConsumer do
   let(:max_length) { 10 }
-  subject { Mixpanel::BufferedConsumer.new(nil, nil, nil, max_length) }
   before { WebMock.reset! }
 
-  it 'should not send a request for a single message until flush is called' do
-    stub_request(:any, 'https://api.mixpanel.com/track').to_return({ :body => '{"status": 1, "error": null}' })
-    subject.send(:event, {'data' => 'TEST EVENT 1'}.to_json)
-    WebMock.should have_not_requested(:post, 'https://api.mixpanel.com/track')
+  context 'Default BufferedConsumer' do
+    subject { Mixpanel::BufferedConsumer.new(nil, nil, nil, max_length) }
 
-    subject.flush()
-    WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
-      with(:body => {'data' => 'WyJURVNUIEVWRU5UIDEiXQ==', 'verbose' => '1' })
-  end
+    it 'should not send a request for a single message until flush is called' do
+      stub_request(:any, 'https://api.mixpanel.com/track').to_return({ :body => '{"status": 1, "error": null}' })
+      subject.send(:event, {'data' => 'TEST EVENT 1'}.to_json)
+      WebMock.should have_not_requested(:post, 'https://api.mixpanel.com/track')
 
-  it 'should send one message when max_length events are tracked' do
-    stub_request(:any, 'https://api.mixpanel.com/track').to_return({ :body => '{"status": 1, "error": null}' })
-
-    max_length.times do |i|
-      subject.send(:event, {'data' => "x #{i}"}.to_json)
+      subject.flush()
+      WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
+        with(:body => {'data' => 'WyJURVNUIEVWRU5UIDEiXQ==', 'verbose' => '1' })
     end
 
-    WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
-      with(:body => {'data' => 'WyJ4IDAiLCJ4IDEiLCJ4IDIiLCJ4IDMiLCJ4IDQiLCJ4IDUiLCJ4IDYiLCJ4IDciLCJ4IDgiLCJ4IDkiXQ==', 'verbose' => '1' })
+    it 'should send one message when max_length events are tracked' do
+      stub_request(:any, 'https://api.mixpanel.com/track').to_return({ :body => '{"status": 1, "error": null}' })
+
+      max_length.times do |i|
+        subject.send(:event, {'data' => "x #{i}"}.to_json)
+      end
+
+      WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
+        with(:body => {'data' => 'WyJ4IDAiLCJ4IDEiLCJ4IDIiLCJ4IDMiLCJ4IDQiLCJ4IDUiLCJ4IDYiLCJ4IDciLCJ4IDgiLCJ4IDkiXQ==', 'verbose' => '1' })
+    end
+
+    it 'should send one message per api key on import' do
+      stub_request(:any, 'https://api.mixpanel.com/import').to_return({ :body => '{"status": 1, "error": null}' })
+      subject.send(:import, {'data' => 'TEST EVENT 1', 'api_key' => 'KEY 1'}.to_json)
+      subject.send(:import, {'data' => 'TEST EVENT 1', 'api_key' => 'KEY 2'}.to_json)
+      subject.send(:import, {'data' => 'TEST EVENT 2', 'api_key' => 'KEY 1'}.to_json)
+      subject.send(:import, {'data' => 'TEST EVENT 2', 'api_key' => 'KEY 2'}.to_json)
+      subject.flush
+
+      WebMock.should have_requested(:post, 'https://api.mixpanel.com/import').
+        with(:body => {'data' => 'IlRFU1QgRVZFTlQgMSI=', 'api_key' => 'KEY 1', 'verbose' => '1' })
+
+      WebMock.should have_requested(:post, 'https://api.mixpanel.com/import').
+        with(:body => {'data' => 'IlRFU1QgRVZFTlQgMSI=', 'api_key' => 'KEY 2', 'verbose' => '1' })
+    end
   end
 
-  it 'should send one message per api key on import' do
-    stub_request(:any, 'https://api.mixpanel.com/import').to_return({ :body => '{"status": 1, "error": null}' })
-    subject.send(:import, {'data' => 'TEST EVENT 1', 'api_key' => 'KEY 1'}.to_json)
-    subject.send(:import, {'data' => 'TEST EVENT 1', 'api_key' => 'KEY 2'}.to_json)
-    subject.send(:import, {'data' => 'TEST EVENT 2', 'api_key' => 'KEY 1'}.to_json)
-    subject.send(:import, {'data' => 'TEST EVENT 2', 'api_key' => 'KEY 2'}.to_json)
-    subject.flush
+  context 'BufferedConsumer with block' do
+    let(:messages_seen) { [] }
+    subject do
+      Mixpanel::BufferedConsumer.new(nil, nil, nil, 3) do |type, message|
+        messages_seen << [type, message]
+      end
+    end
 
-    WebMock.should have_requested(:post, 'https://api.mixpanel.com/import').
-      with(:body => {'data' => 'IlRFU1QgRVZFTlQgMSI=', 'api_key' => 'KEY 1', 'verbose' => '1' })
+    it 'should call block instead of making default requests on flush' do
+      3.times do |i|
+        subject.send(:event, {'data' => "x #{i}"}.to_json)
+      end
 
-    WebMock.should have_requested(:post, 'https://api.mixpanel.com/import').
-      with(:body => {'data' => 'IlRFU1QgRVZFTlQgMSI=', 'api_key' => 'KEY 2', 'verbose' => '1' })
+      expect(messages_seen).to match_array(
+        [[:event, "{\"data\":[\"x 0\",\"x 1\",\"x 2\"]}"]]
+      )
+    end
+
   end
+
 end

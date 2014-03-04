@@ -1,7 +1,6 @@
 require 'base64'
 require 'net/https'
 require 'json'
-require 'mixpanel-ruby/adapter/net_http'
 
 module Mixpanel
   class ConnectionError < IOError
@@ -9,6 +8,10 @@ module Mixpanel
 
   @@init_http = nil
 
+  # This method exists for backwards compatibility. The preferred
+  # way to customize or configure the HTTP library of a consumer
+  # is to override Consumer#request.
+  #
   # Ruby's default SSL does not verify the server certificate.
   # To verify a certificate, or install a proxy, pass a block
   # to Mixpanel.config_http that configures the Net::HTTP object.
@@ -88,19 +91,37 @@ module Mixpanel
       form_data = { "data" => data, "verbose" => 1 }
       form_data.merge!("api_key" => api_key) if api_key
 
-      response = Mixpanel.adapter.request(endpoint, form_data)
+      response_code, response_body = request(endpoint, form_data)
 
-      succeeded = false
-      if response.code.to_i == 200
-        result = JSON.load(response.body) rescue {}
+      succeeded = nil
+      if response_code.to_i == 200
+        result = JSON.load(response_body) rescue {}
         succeeded = result['status'] == 1
       end
 
-      if succeeded
-        return true
-      else
-        raise ConnectionError.new("Could not write to Mixpanel, server responded with #{response.code} returning: '#{response.body}'")
+      if not succeeded
+        raise ConnectionError.new("Could not write to Mixpanel, server responded with #{response_code} returning: '#{response_body}'")
       end
+    end
+
+    # Request takes an endpoint HTTP or HTTPS url, and a Hash of data
+    # to post to that url. It should return a pair of
+    #
+    # [ response code, response body ]
+    #
+    # as the result of the response. Response code should be nil if
+    # the request never recieves a response for some reason.
+    def request(endpoint, form_data)
+      uri = URI(endpoint)
+      request = Net::HTTP::Post.new(uri.request_uri)
+      request.set_form_data(form_data)
+
+      client = Net::HTTP.new(uri.host, uri.port)
+      client.use_ssl = true
+      Mixpanel.with_http(client)
+
+      response = client.request(request)
+      [ response.code, response.body ]
     end
   end
 
@@ -136,9 +157,22 @@ module Mixpanel
     # consumer automatically sends its buffered events. The Mixpanel
     # endpoints have a limit of 50 events per HTTP request, but
     # you can lower the limit if your individual events are very large.
-    def initialize(events_endpoint=nil, update_endpoint=nil, import_endpoint=nil, max_buffer_length=MAX_LENGTH)
+    #
+    # By default, BufferedConsumer will use a standard Mixpanel
+    # consumer to send the events once the buffer is full (or on calls
+    # to #flush), but you can override this behavior by passing a
+    # block to the constructor, in the same way you might pass a block
+    # to the Mixpanel::Tracker constructor. If a block is passed to
+    # the constructor, the *_endpoint constructor arguments are
+    # ignored.
+    def initialize(events_endpoint=nil, update_endpoint=nil, import_endpoint=nil, max_buffer_length=MAX_LENGTH, &block)
       @max_length = [ max_buffer_length, MAX_LENGTH ].min
-      @consumer = Consumer.new(events_endpoint, update_endpoint, import_endpoint)
+      if block
+        @sink = block
+      else
+        consumer = Consumer.new(events_endpoint, update_endpoint, import_endpoint)
+        @sink = consumer.method(:send)
+      end
       @buffers = {
         :event => [],
         :profile_update => [],
@@ -159,7 +193,7 @@ module Mixpanel
           flush_type(type)
         end
       else
-        @consumer.send(type, message)
+        @sink.call(type, message)
       end
     end
 
@@ -175,18 +209,10 @@ module Mixpanel
     def flush_type(type)
       @buffers[type].each_slice(@max_length) do |chunk|
         data = chunk.map {|message| JSON.load(message)['data'] }
-        @consumer.send(type, {'data' => data}.to_json)
+        @sink.call(type, {'data' => data}.to_json)
       end
       @buffers[type] = []
     end
-  end
-
-  def self.adapter
-    @@adapter ||= Adapter::NetHttp
-  end
-
-  def self.adapter=(adapter)
-    @@adapter = adapter
   end
 
   private
