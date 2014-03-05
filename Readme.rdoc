@@ -37,6 +37,9 @@ For more information please visit:
 
 == Changes
 
+== 1.3.0
+* Added Consumer#request method, demo with Faraday integration
+
 == 1.2.0
 * All objects with a "strftime" method will be formatted as dates in
   people updates.
