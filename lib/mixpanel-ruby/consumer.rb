@@ -88,7 +88,7 @@ module Mixpanel
       api_key = decoded_message["api_key"]
       data = Base64.encode64(decoded_message["data"].to_json).gsub("\n", '')
 
-      form_data = { "data" => data, "verbose" => 1 }
+      form_data = {"data" => data, "verbose" => 1}
       form_data.merge!("api_key" => api_key) if api_key
 
       response_code, response_body = request(endpoint, form_data)

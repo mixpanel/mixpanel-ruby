@@ -6,12 +6,12 @@ module Mixpanel
   # To track an event, call
   #
   #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
-  #     Mixpanel::Tracker.track(a_distinct_id, an_event_name, { properties })
+  #     Mixpanel::Tracker.track(a_distinct_id, an_event_name, {properties})
   #
   # To send people updates, call
   #
   #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
-  #     tracker.people.set(a_distinct_id, { properties })
+  #     tracker.people.set(a_distinct_id, {properties})
   #
   # You can find your project token in the settings dialog for your
   # project, inside of the Mixpanel web application.

@@ -111,13 +111,13 @@ module Mixpanel
 
     # Convenience method- increases the value of a numeric property
     # by one. Calling #plus_one(distinct_id, property_name) is the same as calling
-    # #increment(distinct_id, { property_name => 1 })
+    # #increment(distinct_id, {property_name => 1})
     #
     #    tracker = Mixpanel::Tracker.new
     #    tracker.people.plus_one("12345", "Albums Released")
     #
     def plus_one(distinct_id, property_name, ip=nil, optional_params={})
-      increment(distinct_id, { property_name => 1 }, ip, optional_params)
+      increment(distinct_id, {property_name => 1}, ip, optional_params)
     end
 
     # Appends a values to the end of list-valued properties.
@@ -202,8 +202,8 @@ module Mixpanel
     #
     def track_charge(distinct_id, amount, properties={}, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
-      charge_properties = properties.merge({ '$amount' => amount })
-      append(distinct_id, { '$transactions' => charge_properties }, ip, optional_params)
+      charge_properties = properties.merge({'$amount' => amount})
+      append(distinct_id, {'$transactions' => charge_properties}, ip, optional_params)
     end
 
     # Clear all charges from a \Mixpanel people profile

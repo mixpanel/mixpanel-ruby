@@ -11,21 +11,21 @@ describe Mixpanel::Tracker do
 
   it 'should send an alias message to mixpanel no matter what the consumer is' do
     WebMock.reset!
-    stub_request(:any, 'https://api.mixpanel.com/track').to_return({ :body => '{"status": 1, "error": null}' })
+    stub_request(:any, 'https://api.mixpanel.com/track').to_return({:body => '{"status": 1, "error": null}'})
     mixpanel = Mixpanel::Tracker.new('TEST TOKEN') {|*args| }
     mixpanel.alias('TEST ALIAS', 'TEST ID')
 
     WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
-      with(:body => { :data => 'eyJldmVudCI6IiRjcmVhdGVfYWxpYXMiLCJwcm9wZXJ0aWVzIjp7ImRpc3RpbmN0X2lkIjoiVEVTVCBJRCIsImFsaWFzIjoiVEVTVCBBTElBUyIsInRva2VuIjoiVEVTVCBUT0tFTiJ9fQ==', 'verbose' => '1' })
+      with(:body => {:data => 'eyJldmVudCI6IiRjcmVhdGVfYWxpYXMiLCJwcm9wZXJ0aWVzIjp7ImRpc3RpbmN0X2lkIjoiVEVTVCBJRCIsImFsaWFzIjoiVEVTVCBBTElBUyIsInRva2VuIjoiVEVTVCBUT0tFTiJ9fQ==', 'verbose' => '1'})
   end
 
   it 'should send a request to the track api with the default consumer' do
     WebMock.reset!
-    stub_request(:any, 'https://api.mixpanel.com/track').to_return({ :body => '{"status": 1, "error": null}' })
-    stub_request(:any, 'https://api.mixpanel.com/engage').to_return({ :body => '{"status": 1, "error": null}' })
+    stub_request(:any, 'https://api.mixpanel.com/track').to_return({:body => '{"status": 1, "error": null}'})
+    stub_request(:any, 'https://api.mixpanel.com/engage').to_return({:body => '{"status": 1, "error": null}'})
     mixpanel = Mixpanel::Tracker.new('TEST TOKEN')
 
-    mixpanel.track('TEST ID', 'TEST EVENT', { 'Circumstances' => 'During test' })
+    mixpanel.track('TEST ID', 'TEST EVENT', {'Circumstances' => 'During test'})
 
     body = nil
     WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
@@ -54,8 +54,8 @@ describe Mixpanel::Tracker do
     end
     mixpanel.track('ID', 'Event')
     mixpanel.import('API_KEY', 'ID', 'Import')
-    mixpanel.people.set('ID', { 'k' => 'v' })
-    mixpanel.people.append('ID', { 'k' => 'v' })
+    mixpanel.people.set('ID', {'k' => 'v'})
+    mixpanel.people.append('ID', {'k' => 'v'})
 
     expect = [
         [ :event, 'data' =>
@@ -87,14 +87,14 @@ describe Mixpanel::Tracker do
           { '$token' => 'TEST TOKEN',
             '$distinct_id' => 'ID',
             '$time' => @time_now.to_i * 1000,
-            '$set' => { 'k' => 'v' }
+            '$set' => {'k' => 'v'}
           }
         ],
         [ :profile_update, 'data' =>
           { '$token' => 'TEST TOKEN',
             '$distinct_id' => 'ID',
             '$time' => @time_now.to_i * 1000,
-            '$append' => { 'k' => 'v' }
+            '$append' => {'k' => 'v'}
           }
         ]
     ]
