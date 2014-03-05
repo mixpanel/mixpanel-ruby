@@ -1,8 +1,7 @@
 = mixpanel-ruby: The official Mixpanel Ruby library
 
 mixpanel-ruby is a library for tracking events and sending \Mixpanel profile
-updates to \Mixpanel from your ruby applications. It's straightforward to
-get started sending your first events and updates:
+updates to \Mixpanel from your ruby applications.
 
 == Installation
 

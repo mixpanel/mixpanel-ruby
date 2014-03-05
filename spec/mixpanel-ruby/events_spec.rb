@@ -10,7 +10,7 @@ describe Mixpanel::Events do
 
     @log = []
     @events = Mixpanel::Events.new('TEST TOKEN') do |type, message|
-      @log << [ type, JSON.load(message) ]
+      @log << [type, JSON.load(message)]
     end
   end
 
@@ -18,7 +18,7 @@ describe Mixpanel::Events do
     @events.track('TEST ID', 'Test Event', {
         'Circumstances' => 'During a test'
     })
-    @log.should eq([[ :event, 'data' => {
+    @log.should eq([[:event, 'data' => {
         'event' => 'Test Event',
         'properties' => {
             'Circumstances' => 'During a test',
@@ -35,7 +35,7 @@ describe Mixpanel::Events do
     @events.import('API_KEY', 'TEST ID', 'Test Event', {
         'Circumstances' => 'During a test'
     })
-    @log.should eq([[ :import, {
+    @log.should eq([[:import, {
         'api_key' => 'API_KEY',
         'data' => {
             'event' => 'Test Event',

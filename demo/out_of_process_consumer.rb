@@ -39,7 +39,7 @@ class OutOfProcessExample
 
           100.times do |i|
             event = 'Tick'
-            mixpanel_tracker.track(distinct_id, event, { 'Tick Number' => i })
+            mixpanel_tracker.track(distinct_id, event, {'Tick Number' => i})
             puts "tick #{i}"
           end
 
