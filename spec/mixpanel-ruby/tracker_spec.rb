@@ -50,7 +50,7 @@ describe Mixpanel::Tracker do
   it 'should call a consumer block if one is given' do
     messages = []
     mixpanel = Mixpanel::Tracker.new('TEST TOKEN') do |type, message|
-      messages << [ type, JSON.load(message) ]
+      messages << [type, JSON.load(message)]
     end
     mixpanel.track('ID', 'Event')
     mixpanel.import('API_KEY', 'ID', 'Import')

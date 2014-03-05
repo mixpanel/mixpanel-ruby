@@ -43,7 +43,7 @@ module Mixpanel
   #
   #    tracker = Mixpanel::Tracker.new(MY_TOKEN) do |type, message|
   #        # type will be one of :event, :profile_update or :import
-  #        @kestrel.set(ANALYTICS_QUEUE, [ type, message ].to_json)
+  #        @kestrel.set(ANALYTICS_QUEUE, [type, message].to_json)
   #    end
   #
   # You can also instantiate the library consumers yourself, and use
@@ -82,7 +82,7 @@ module Mixpanel
         :event => @events_endpoint,
         :profile_update => @update_endpoint,
         :import => @import_endpoint
-      }[ type ]
+      }[type]
 
       decoded_message = JSON.load(message)
       api_key = decoded_message["api_key"]
@@ -107,7 +107,7 @@ module Mixpanel
     # Request takes an endpoint HTTP or HTTPS url, and a Hash of data
     # to post to that url. It should return a pair of
     #
-    # [ response code, response body ]
+    # [response code, response body]
     #
     # as the result of the response. Response code should be nil if
     # the request never recieves a response for some reason.
@@ -121,7 +121,7 @@ module Mixpanel
       Mixpanel.with_http(client)
 
       response = client.request(request)
-      [ response.code, response.body ]
+      [response.code, response.body]
     end
   end
 
@@ -166,7 +166,7 @@ module Mixpanel
     # the constructor, the *_endpoint constructor arguments are
     # ignored.
     def initialize(events_endpoint=nil, update_endpoint=nil, import_endpoint=nil, max_buffer_length=MAX_LENGTH, &block)
-      @max_length = [ max_buffer_length, MAX_LENGTH ].min
+      @max_length = [max_buffer_length, MAX_LENGTH].min
       if block
         @sink = block
       else

@@ -10,7 +10,7 @@ class FaradayConsumer < Mixpanel::Consumer
   def request(endpoint, form_data)
     conn = ::Faraday.new(endpoint)
     response = conn.post(nil, form_data)
-    [ response.status, response.body ]
+    [response.status, response.body]
   end
 end
 

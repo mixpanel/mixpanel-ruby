@@ -177,7 +177,7 @@ module Mixpanel
     def unset(distinct_id, property, ip=nil, optional_params={})
       message = {
           '$distinct_id' => distinct_id,
-          '$unset' => [ property ]
+          '$unset' => [property]
       }.merge(optional_params)
 
       if ip
