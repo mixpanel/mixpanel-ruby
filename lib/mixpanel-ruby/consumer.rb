@@ -99,7 +99,7 @@ module Mixpanel
         succeeded = result['status'] == 1
       end
 
-      if not succeeded
+      if ! succeeded
         raise ConnectionError.new("Could not write to Mixpanel, server responded with #{response_code} returning: '#{response_body}'")
       end
     end
