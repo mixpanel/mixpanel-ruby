@@ -37,11 +37,10 @@ For more information please visit:
 
 The official Mixpanel gem is built with simplicity and broad applicability in
 mind, but there are also third party Ruby libraries that can work with the library
-to provide useful features in common situations. One in particular is MetaEvents,
-at [https://github.com/swiftype/meta_events], which provides support for client-side tracking
-in Rails applications, super-properties-like persistent properties, and a documentation
-language for your events.
-
+to provide useful features in common situations. One in particular is
+MetaEvents[https://github.com/swiftype/meta_events], a third party gem 
+which provides support for client-side tracking in Rails applications,
+super-properties-like persistent properties, and a DSL for defining your events.
 
 == Changes
 
