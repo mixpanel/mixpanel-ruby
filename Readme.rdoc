@@ -35,6 +35,14 @@ For more information please visit:
 * The usage demo[https://github.com/mixpanel/mixpanel-ruby/tree/master/demo]
 * The documentation[http://mixpanel.github.io/mixpanel-ruby/]
 
+The official Mixpanel gem is built with simplicity and broad applicability in
+mind, but there are also third party Ruby libraries that can work with the library
+to provide useful features in common situations. One in particular is MetaEvents,
+at [https://github.com/swiftype/meta_events], which provides support for client-side tracking
+in Rails applications, super-properties-like persistent properties, and a documentation
+language for your events.
+
+
 == Changes
 
 == 1.3.0
