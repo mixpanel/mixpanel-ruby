@@ -15,9 +15,6 @@ module Mixpanel
   # Ruby's default SSL does not verify the server certificate.
   # To verify a certificate, or install a proxy, pass a block
   # to Mixpanel.config_http that configures the Net::HTTP object.
-  # Note: when using the Faraday adapter, the block will receive
-  # the Faraday::Connection object. Please refer to the Faraday
-  # documentation for configuration examples.
   # For example, if running in Ubuntu Linux, you can run
   #
   #    Mixpanel.config_http do |http|
