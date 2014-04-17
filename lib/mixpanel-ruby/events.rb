@@ -47,7 +47,7 @@ module Mixpanel
     #         'Email Template' => 'Pretty Pink Welcome',
     #         'User Sign-up Cohort' => 'July 2013'
     #     })
-    def track(distinct_id, event, properties={}, ip=nil)
+    def track(distinct_id, event, properties={}, ip=nil, as_pixel=nil)
       properties = {
           'distinct_id' => distinct_id,
           'token' => @token,
@@ -68,7 +68,7 @@ module Mixpanel
         'data' => data
       }
 
-      @sink.call(:event, message.to_json)
+      @sink.call(:event, message.to_json, as_pixel)
     end
 
     # Imports an event that has occurred in the past, along with a distinct_id

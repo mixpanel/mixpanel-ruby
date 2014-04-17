@@ -73,7 +73,7 @@ module Mixpanel
     # Mixpanel::Consumer#send sends messages to Mixpanel immediately on
     # each call. To reduce the overall bandwidth you use when communicating
     # with Mixpanel, you can also use Mixpanel::BufferedConsumer
-    def send(type, message)
+    def send(type, message, as_pixel = false)
       type = type.to_sym
       endpoint = {
         :event => @events_endpoint,
@@ -87,6 +87,11 @@ module Mixpanel
 
       form_data = {"data" => data, "verbose" => 1}
       form_data.merge!("api_key" => api_key) if api_key
+
+      if as_pixel
+        form_data.merge!("img" => 1)
+        return generate_tracking_url(endpoint, form_data)
+      end
 
       response_code, response_body = request(endpoint, form_data)
 
@@ -107,7 +112,7 @@ module Mixpanel
     # [response code, response body]
     #
     # as the result of the response. Response code should be nil if
-    # the request never recieves a response for some reason.
+    # the request never receives a response for some reason.
     def request(endpoint, form_data)
       uri = URI(endpoint)
       request = Net::HTTP::Post.new(uri.request_uri)
@@ -119,6 +124,20 @@ module Mixpanel
 
       response = client.request(request)
       [response.code, response.body]
+    end
+
+
+
+    # Generate_tracking_url takes an endpoint HTTP or HTTPS url, and a Hash of data
+    # to post to that url. It should return a string for the tracking url:
+    #
+    # pixel_tracking_url
+
+    def generate_tracking_url(endpoint, form_data)
+      uri = URI(endpoint)
+      request = Net::HTTP::Get.new(uri.request_uri)
+      request.set_form_data(form_data)
+      "#{endpoint}?#{request.body}"
     end
   end
 
