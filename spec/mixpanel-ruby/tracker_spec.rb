@@ -47,6 +47,31 @@ describe Mixpanel::Tracker do
     })
   end
 
+  it 'should return a tracking uri if asked' do
+    mixpanel = Mixpanel::Tracker.new('TEST TOKEN')
+
+    a = mixpanel.track('TEST ID', 'TEST EVENT', {'Circumstances' => 'During test'}, nil, true)
+    a.should eq "https://api.mixpanel.com/track?data=eyJldmVudCI6IlRFU1QgRVZFTlQiLCJwcm9wZXJ0aWVzIjp7ImRpc3RpbmN0X2lkIjoiVEVTVCBJRCIsInRva2VuIjoiVEVTVCBUT0tFTiIsInRpbWUiOjc2NzIwOTg0LCJtcF9saWIiOiJydWJ5IiwiJGxpYl92ZXJzaW9uIjoiMS40LjAiLCJDaXJjdW1zdGFuY2VzIjoiRHVyaW5nIHRlc3QifX0%3D&verbose=1&img=1"
+  end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   it 'should call a consumer block if one is given' do
     messages = []
     mixpanel = Mixpanel::Tracker.new('TEST TOKEN') do |type, message|
