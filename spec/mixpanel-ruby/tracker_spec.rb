@@ -47,11 +47,16 @@ describe Mixpanel::Tracker do
     })
   end
 
-  it 'should return a tracking uri if asked' do
+  it 'should return a tracking uri if asked and not execute any requests' do
     mixpanel = Mixpanel::Tracker.new('TEST TOKEN')
+    stub_request(:any, 'https://api.mixpanel.com/track').to_return({:body => '{"status": 1, "error": null}'})
+
 
     a = mixpanel.track('TEST ID', 'TEST EVENT', {'Circumstances' => 'During test'}, nil, true)
     a.should eq "https://api.mixpanel.com/track?data=eyJldmVudCI6IlRFU1QgRVZFTlQiLCJwcm9wZXJ0aWVzIjp7ImRpc3RpbmN0X2lkIjoiVEVTVCBJRCIsInRva2VuIjoiVEVTVCBUT0tFTiIsInRpbWUiOjc2NzIwOTg0LCJtcF9saWIiOiJydWJ5IiwiJGxpYl92ZXJzaW9uIjoiMS40LjAiLCJDaXJjdW1zdGFuY2VzIjoiRHVyaW5nIHRlc3QifX0%3D&verbose=1&img=1"
+
+    WebMock.should_not have_requested(:post, 'https://api.mixpanel.com/track')
+    WebMock.should_not have_requested(:get, 'https://api.mixpanel.com/track')
   end
 
 
