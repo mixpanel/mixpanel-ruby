@@ -169,15 +169,21 @@ module Mixpanel
       update(message)
     end
 
-    # Removes a property and its value from a profile.
+    # Removes properties and their values from a profile.
     #
     #    tracker = Mixpanel::Tracker.new
+    #
+    #    # removes a single property and its value from a profile
     #    tracker.people.unset("12345", "Overdue Since")
     #
-    def unset(distinct_id, property, ip=nil, optional_params={})
+    #    # removes multiple properties and their values from a profile
+    #    tracker.people.unset("12345", ["Overdue Since", "Paid Date"])
+    #
+    def unset(distinct_id, properties, ip=nil, optional_params={})
+      properties = [properties] unless properties.is_a?(Array)
       message = {
           '$distinct_id' => distinct_id,
-          '$unset' => [property]
+          '$unset' => properties
       }.merge(optional_params)
 
       if ip
