@@ -116,6 +116,16 @@ describe Mixpanel::People do
     }]])
   end
 
+  it 'should send a well formed unset message with multiple properties' do
+    @people.unset('TEST ID', ['Albums', 'Vinyls'])
+    @log.should eq([[:profile_update, 'data' => {
+        '$token' => 'TEST TOKEN',
+        '$distinct_id' => 'TEST ID',
+        '$time' => @time_now.to_i * 1000,
+        '$unset' => ['Albums', 'Vinyls']
+    }]])
+  end
+
   it 'should send an engage/append with the right $transaction stuff' do
     @people.track_charge("TEST ID", 25.42, {
         '$time' => DateTime.new(1999,12,24,14, 02, 53),
