@@ -44,6 +44,9 @@ super-properties-like persistent properties, and a DSL for defining your events.
 
 == Changes
 
+== 1.4.0
+* Allow unset to unset multiple properties
+
 == 1.3.0
 * Added Consumer#request method, demo with Faraday integration
 
