@@ -82,7 +82,7 @@ module Mixpanel
     #     tracker = Mixpanel::Tracker.new
     #
     #     # Import event that user "12345"'s credit card was declined
-    #     tracker.import("12345", "Credit Card Declined", {
+    #     tracker.import("API_KEY", "12345", "Credit Card Declined", {
     #       'time' => 1310111365
     #     })
     #
