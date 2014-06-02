@@ -99,6 +99,14 @@ module Mixpanel
       super
     end
 
+    # A call to export events from Mixpanel.
+    def export(secret_key, from_date, to_date, events=[], bucket=nil)
+      # This is here strictly to allow rdoc to include the relevant
+      # documentation
+      super
+    end
+
+
     # Creates a distinct_id alias. \Events and updates with an alias
     # will be considered by mixpanel to have the same source, and
     # refer to the same profile.
