@@ -112,5 +112,27 @@ module Mixpanel
 
       @sink.call(:import, message.to_json)
     end
+
+    # Exports events from Mixpanel
+    def export(secret_key, from_date = Time.now - 7*24*60*60, to_date = Time.now, events, bucket)
+      message = {
+        'api_key' => @token,
+        'from_date' => from_date.strftime("%Y-%m-%d"),
+        'to_date' => to_date.strftime("%Y-%m-%d"),
+        'event' => events.to_json,
+        'expire' => (Time.now + 10*60).to_i
+      }
+
+      message.merge(:bucket => bucket) if bucket
+
+      args = message.keys.sort.map{ |key| "#{key}=#{message[key]}" }.join('')
+      message = message.merge(:sig => Digest::MD5.hexdigest(args + secret_key))
+      response_code, response_body = @sink.call(:export, message)
+
+      if response_code == "200"
+        return response_code, response_body.split("\n").map{ |row| JSON.parse(row)}
+      end
+      return response_code, response_body
+    end
   end
 end

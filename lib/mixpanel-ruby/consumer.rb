@@ -61,10 +61,11 @@ module Mixpanel
     # they will be used instead of the default Mixpanel endpoints.
     # This can be useful for proxying, debugging, or if you prefer
     # not to use SSL for your events.
-    def initialize(events_endpoint=nil, update_endpoint=nil, import_endpoint=nil)
+    def initialize(events_endpoint=nil, update_endpoint=nil, import_endpoint=nil, export_endpoint=nil)
       @events_endpoint = events_endpoint || 'https://api.mixpanel.com/track'
       @update_endpoint = update_endpoint || 'https://api.mixpanel.com/engage'
       @import_endpoint = import_endpoint || 'https://api.mixpanel.com/import'
+      @export_endpoint = export_endpoint || 'https://data.mixpanel.com/api/2.0/export'
     end
 
     # Send the given string message to Mixpanel. Type should be
@@ -78,8 +79,11 @@ module Mixpanel
       endpoint = {
         :event => @events_endpoint,
         :profile_update => @update_endpoint,
-        :import => @import_endpoint
+        :import => @import_endpoint,
+        :export => @export_endpoint
       }[type]
+
+      return get_request(endpoint, message) if type == :export
 
       decoded_message = JSON.load(message)
       api_key = decoded_message["api_key"]
@@ -120,6 +124,20 @@ module Mixpanel
       response = client.request(request)
       [response.code, response.body]
     end
+
+    def get_request(endpoint, query_params)
+      url = endpoint + "?" + query_params.map {|k,v| CGI.escape(k.to_s)+'='+CGI.escape(v.to_s) }.join("&")
+      uri = URI(url)
+      request = Net::HTTP::Get.new(uri.request_uri)
+puts "Request: #{url}"
+      client = Net::HTTP.new(uri.host, uri.port)
+      client.use_ssl = true
+      Mixpanel.with_http(client)
+
+      response = client.request(request)
+      [response.code, response.body]
+    end
+
   end
 
   # BufferedConsumer buffers messages in memory, and sends messages as
