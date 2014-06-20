@@ -6,7 +6,7 @@ require 'uri'
 describe Mixpanel::Tracker do
   before(:each) do
     @time_now = Time.parse('Jun 6 1972, 16:23:04')
-    Time.stub(:now).and_return(@time_now)
+    allow(Time).to receive(:now).and_return(@time_now)
   end
 
   it 'should send an alias message to mixpanel no matter what the consumer is' do
@@ -15,7 +15,7 @@ describe Mixpanel::Tracker do
     mixpanel = Mixpanel::Tracker.new('TEST TOKEN') {|*args| }
     mixpanel.alias('TEST ALIAS', 'TEST ID')
 
-    WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
+    expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/track').
       with(:body => {:data => 'eyJldmVudCI6IiRjcmVhdGVfYWxpYXMiLCJwcm9wZXJ0aWVzIjp7ImRpc3RpbmN0X2lkIjoiVEVTVCBJRCIsImFsaWFzIjoiVEVTVCBBTElBUyIsInRva2VuIjoiVEVTVCBUT0tFTiJ9fQ==', 'verbose' => '1'})
   end
 
@@ -28,13 +28,13 @@ describe Mixpanel::Tracker do
     mixpanel.track('TEST ID', 'TEST EVENT', {'Circumstances' => 'During test'})
 
     body = nil
-    WebMock.should have_requested(:post, 'https://api.mixpanel.com/track').
+    expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/track').
       with { |req| body = req.body }
 
     message_urlencoded = body[/^data=(.*?)(?:&|$)/, 1]
     message_json = Base64.strict_decode64(URI.unescape(message_urlencoded))
     message = JSON.load(message_json)
-    message.should eq({
+    expect(message).to eq({
         'event' => 'TEST EVENT',
         'properties' => {
             'Circumstances' => 'During test',
@@ -99,7 +99,7 @@ describe Mixpanel::Tracker do
         ]
     ]
     expect.zip(messages).each do |expect, found|
-      expect.should eq(found)
+      expect(expect).to eq(found)
     end
   end
 end
