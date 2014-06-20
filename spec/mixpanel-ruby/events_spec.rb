@@ -6,7 +6,7 @@ require 'time'
 describe Mixpanel::Events do
   before(:each) do
     @time_now = Time.parse('Jun 6 1972, 16:23:04')
-    Time.stub(:now).and_return(@time_now)
+    allow(Time).to receive(:now).and_return(@time_now)
 
     @log = []
     @events = Mixpanel::Events.new('TEST TOKEN') do |type, message|
@@ -18,7 +18,7 @@ describe Mixpanel::Events do
     @events.track('TEST ID', 'Test Event', {
         'Circumstances' => 'During a test'
     })
-    @log.should eq([[:event, 'data' => {
+    expect(@log).to eq([[:event, 'data' => {
         'event' => 'Test Event',
         'properties' => {
             'Circumstances' => 'During a test',
@@ -35,7 +35,7 @@ describe Mixpanel::Events do
     @events.import('API_KEY', 'TEST ID', 'Test Event', {
         'Circumstances' => 'During a test'
     })
-    @log.should eq([[:import, {
+    expect(@log).to eq([[:import, {
         'api_key' => 'API_KEY',
         'data' => {
             'event' => 'Test Event',
