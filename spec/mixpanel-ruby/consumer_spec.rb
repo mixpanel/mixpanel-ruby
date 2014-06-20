@@ -60,7 +60,7 @@ describe Mixpanel::Consumer do
     end
 
     after(:each) do
-      subject.called.should be_true
+      subject.called.should be_truthy
     end
 
     it_behaves_like 'consumer'
