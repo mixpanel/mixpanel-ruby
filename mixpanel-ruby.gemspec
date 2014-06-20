@@ -12,6 +12,6 @@ spec = Gem::Specification.new do |spec|
   spec.homepage = 'https://mixpanel.com/help/reference/ruby'
 
   spec.add_development_dependency('rake')
-  spec.add_development_dependency('rspec')
+  spec.add_development_dependency('rspec', '2.13.0')
   spec.add_development_dependency('webmock')
 end
