@@ -1,3 +1,6 @@
+# We haven't integrated Travis-ci into our own Github repo,
+# but this file is here as a convenience (and probably future
+# integration on the official Github)
 language: ruby
 rvm:
   - 2.1.0
