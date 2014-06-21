@@ -1,3 +1,5 @@
+{<img src="https://travis-ci.org/mixpanel/mixpanel-ruby.svg?branch=master" alt="Build Status" />}[https://travis-ci.org/mixpanel/mixpanel-ruby]
+
 = mixpanel-ruby: The official Mixpanel Ruby library
 
 mixpanel-ruby is a library for tracking events and sending \Mixpanel profile
@@ -38,7 +40,7 @@ For more information please visit:
 The official Mixpanel gem is built with simplicity and broad applicability in
 mind, but there are also third party Ruby libraries that can work with the library
 to provide useful features in common situations. One in particular is
-MetaEvents[https://github.com/swiftype/meta_events], a third party gem 
+MetaEvents[https://github.com/swiftype/meta_events], a third party gem
 which provides support for client-side tracking in Rails applications,
 super-properties-like persistent properties, and a DSL for defining your events.
 
