@@ -50,5 +50,11 @@ describe Mixpanel::Events do
         }
     } ]])
   end
+
+  it 'should raise error on #track if token is passed in the properties' do
+    expect{ @events.track('TEST ID', 'TEST EVENT',{
+      'token' => 'ANY VALUE'
+    }) }.to raise_error
+  end
 end
 
