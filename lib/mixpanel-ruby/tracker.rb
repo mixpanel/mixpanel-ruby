@@ -109,8 +109,12 @@ module Mixpanel
     #
     # Alias requests are always sent synchronously, directly to
     # the \Mixpanel service, regardless of how the tracker is configured.
-    def alias(alias_id, real_id, events_endpoint=nil)
-      consumer = Mixpanel::Consumer.new(events_endpoint)
+    # If a BufferedConsumer is passed in it will call 
+    # send on that buffer. Make sure to flush after it is done
+    def alias(alias_id, real_id, events_endpoint=nil, consumer=nil)
+      if not consumer.is_a? Mixpanel::BufferedConsumer 
+        consumer = Mixpanel::Consumer.new(events_endpoint)
+      end
       data = {
         'event' => '$create_alias',
         'properties' => {
