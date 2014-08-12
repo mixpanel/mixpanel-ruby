@@ -55,11 +55,11 @@ module Mixpanel
     #        tracker.people.set("1234", {
     #        'company' => 'Acme',
     #        'plan' => 'Premium',
-    #        'Sign-Up Date' => DateTime.now
-    #    },nil,{},buffered_consumer = Mixpanel::BufferedConsumer.new);
+    #        'Sign-Up Date' => DateTime.now},
+    #         nil,{},buffered_consumer);
     #    buffered_consumer.flush
     def set(distinct_id, properties, ip=nil, optional_params={}, consumer=nil)
-      @sink = consumer if consumer.is_a? Mixpanel::BufferedConsumer 
+      @sink = consumer.method(:send) if consumer.is_a? Mixpanel::BufferedConsumer 
       properties = fix_property_dates(properties)
       message = {
           '$distinct_id' => distinct_id,
@@ -86,7 +86,7 @@ module Mixpanel
     # If a BufferedConsumer is passed in it will call 
     # send on that buffer. Make sure to flush after it is done
     def set_once(distinct_id, properties, ip=nil, optional_params={}, consumer=nil)
-      @sink = consumer if consumer.is_a? Mixpanel::BufferedConsumer 
+      @sink = consumer.method(:send) if consumer.is_a? Mixpanel::BufferedConsumer 
       properties = fix_property_dates(properties)
       message = {
           '$distinct_id' => distinct_id,
@@ -251,21 +251,17 @@ module Mixpanel
     # The \Mixpanel HTTP tracking API is documented at
     # https://mixpanel.com/help/reference/http
     def update(message)
-    data = {
-      '$token' => @token,
-      '$time' =>  ((Time.now.to_f) * 1000.0).to_i
-    }.merge(message)
+      data = {
+        '$token' => @token,
+        '$time' =>  ((Time.now.to_f) * 1000.0).to_i
+      }.merge(message)
 
-    message = {
-      'data' => data
-    }
+      message = {
+        'data' => data
+      }
 
-    if @sink.is_a? Mixpanel::BufferedConsumer 
-      @sink.send(:profile_update, message.to_json)
-    else  
       @sink.call(:profile_update, message.to_json)
     end
-  end
 
     private
 

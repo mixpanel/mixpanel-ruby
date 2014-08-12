@@ -111,10 +111,8 @@ module Mixpanel
     # the \Mixpanel service, regardless of how the tracker is configured.
     # If a BufferedConsumer is passed in it will call 
     # send on that buffer. Make sure to flush after it is done
-    def alias(alias_id, real_id, events_endpoint=nil, consumer=nil)
-      if not consumer.is_a? Mixpanel::BufferedConsumer 
-        consumer = Mixpanel::Consumer.new(events_endpoint)
-      end
+    def alias(alias_id, real_id, events_endpoint=nil, consumer=nil) 
+      consumer ||= Mixpanel::Consumer.new(events_endpoint)
       data = {
         'event' => '$create_alias',
         'properties' => {
