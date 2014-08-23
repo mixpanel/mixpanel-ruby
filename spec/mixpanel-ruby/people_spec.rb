@@ -37,7 +37,7 @@ describe Mixpanel::People do
         '$distinct_id' => 'TEST ID',
         '$time' => @time_now.to_i * 1000,
         '$set' => {
-            'created_at' => '2013-01-02T03:04:05'
+            'created_at' => '2013-01-02T03:04:05+00:00'
         }
     }]])
   end
@@ -128,7 +128,7 @@ describe Mixpanel::People do
 
   it 'should send an engage/append with the right $transaction stuff' do
     @people.track_charge("TEST ID", 25.42, {
-        '$time' => DateTime.new(1999,12,24,14, 02, 53),
+        '$time' => DateTime.new(1999,12,24,14, 02, 53, '+9'),
         'SKU' => '1234567'
     })
     expect(@log).to eq([[:profile_update, 'data' => {
@@ -137,7 +137,7 @@ describe Mixpanel::People do
         '$time' => @time_now.to_i * 1000,
         '$append' => {
             '$transactions' => {
-                '$time' => '1999-12-24T14:02:53',
+                '$time' => '1999-12-24T14:02:53+09:00',
                 'SKU' => '1234567',
                 '$amount' => 25.42
             }
