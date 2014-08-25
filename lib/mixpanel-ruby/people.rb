@@ -250,7 +250,8 @@ module Mixpanel
 
     def fix_property_dates(h)
       h.inject({}) do |ret,(k,v)|
-        ret[k] = v.respond_to?(:strftime) ? v.strftime('%Y-%m-%dT%H:%M:%S%:z') : v
+        v = v.respond_to?(:new_offset) ? v.new_offset('0') : v
+        ret[k] = v.respond_to?(:strftime) ? v.strftime('%Y-%m-%dT%H:%M:%S') : v
         ret
       end
     end
