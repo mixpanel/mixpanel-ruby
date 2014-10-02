@@ -178,4 +178,26 @@ describe Mixpanel::People do
         '$delete' => ''
     }]])
   end
+
+  it 'should send a well formed engage/delete message with blank optional_params' do
+    @people.delete_user("TEST ID", {})
+    expect(@log).to eq([[:profile_update, 'data' => {
+        '$token' => 'TEST TOKEN',
+        '$distinct_id' => 'TEST ID',
+        '$time' => @time_now.to_i * 1000,
+        '$delete' => ''
+    }]])
+  end
+
+  it 'should send a well formed engage/delete message with ignore_alias true' do
+    @people.delete_user("TEST ID", {"$ignore_alias"=>true})
+    expect(@log).to eq([[:profile_update, 'data' => {
+        '$token' => 'TEST TOKEN',
+        '$distinct_id' => 'TEST ID',
+        '$time' => @time_now.to_i * 1000,
+        '$delete' => '',
+        "$ignore_alias"=>true
+    }]])
+  end
+
 end
