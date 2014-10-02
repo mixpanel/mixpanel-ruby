@@ -218,11 +218,13 @@ module Mixpanel
     end
 
     # Permanently delete a profile from \Mixpanel people analytics
-    def delete_user(distinct_id)
+    # To delete a user and ignore alias pass into optional params
+    #   {"$ignore_alias"=>true}
+    def delete_user(distinct_id, optional_params={})
       update({
           '$distinct_id' => distinct_id,
           '$delete' => ''
-      })
+      }.merge(optional_params))
     end
 
     # Send a generic update to \Mixpanel people analytics.
