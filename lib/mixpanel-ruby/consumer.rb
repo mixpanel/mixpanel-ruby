@@ -35,7 +35,7 @@ module Mixpanel
   # file, or do whatever else you might find useful.
   #
   # You can provide your own consumer to your Mixpanel::Trackers,
-  # either by passing in an argument with a #send method when you construct
+  # either by passing in an argument with a #send! method when you construct
   # the tracker, or just passing a block to Mixpanel::Tracker.new
   #
   #    tracker = Mixpanel::Tracker.new(MY_TOKEN) do |type, message|
@@ -50,7 +50,7 @@ module Mixpanel
   #     mixpanel = Mixpanel::Consumer
   #     while true
   #         message_json = @kestrel.get(ANALYTICS_QUEUE)
-  #         mixpanel.send(*JSON.load(message_json))
+  #         mixpanel.send!(*JSON.load(message_json))
   #     end
   #
   # Mixpanel::Consumer is the default consumer. It sends each message,
@@ -70,10 +70,10 @@ module Mixpanel
     # Send the given string message to Mixpanel. Type should be
     # one of :event, :profile_update or :import, which will determine the endpoint.
     #
-    # Mixpanel::Consumer#send sends messages to Mixpanel immediately on
+    # Mixpanel::Consumer#send! sends messages to Mixpanel immediately on
     # each call. To reduce the overall bandwidth you use when communicating
     # with Mixpanel, you can also use Mixpanel::BufferedConsumer
-    def send(type, message)
+    def send!(type, message)
       type = type.to_sym
       endpoint = {
         :event => @events_endpoint,
@@ -123,7 +123,7 @@ module Mixpanel
   end
 
   # BufferedConsumer buffers messages in memory, and sends messages as
-  # a batch.  This can improve performance, but calls to #send may
+  # a batch.  This can improve performance, but calls to #send! may
   # still block if the buffer is full.  If you use this consumer, you
   # should call #flush when your application exits or the messages
   # remaining in the buffer will not be sent.
@@ -134,7 +134,7 @@ module Mixpanel
   #    buffered_consumer = Mixpanel::BufferedConsumer.new
   #    begin
   #        buffered_tracker = Mixpanel::Tracker.new(YOUR_TOKEN) do |type, message|
-  #            buffered_consumer.send(type, message)
+  #            buffered_consumer.send!(type, message)
   #        end
   #        # Do some tracking here
   #        ...
@@ -168,7 +168,7 @@ module Mixpanel
         @sink = block
       else
         consumer = Consumer.new(events_endpoint, update_endpoint, import_endpoint)
-        @sink = consumer.method(:send)
+        @sink = consumer.method(:send!)
       end
       @buffers = {
         :event => [],
@@ -182,7 +182,7 @@ module Mixpanel
     #
     # Currently, only :event and :profile_update messages are buffered,
     # :import messages will be send immediately on call.
-    def send(type, message)
+    def send!(type, message)
       type = type.to_sym
       if @buffers.has_key? type
         @buffers[type] << message

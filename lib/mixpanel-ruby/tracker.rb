@@ -40,8 +40,8 @@ module Mixpanel
     #    end
     #
     # If a block is provided, it is passed a type (one of :event or :profile_update)
-    # and a string message. This same format is accepted by Mixpanel::Consumer#send
-    # and Mixpanel::BufferedConsumer#send
+    # and a string message. This same format is accepted by Mixpanel::Consumer#send!
+    # and Mixpanel::BufferedConsumer#send!
     def initialize(token, &block)
       super(token, &block)
       @token = token
@@ -124,7 +124,7 @@ module Mixpanel
         'data' => data
       }
 
-      consumer.send(:event, message.to_json)
+      consumer.send!(:event, message.to_json)
     end
   end
 end
