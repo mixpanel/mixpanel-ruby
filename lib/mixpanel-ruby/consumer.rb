@@ -5,6 +5,9 @@ require 'json'
 module Mixpanel
   class ConnectionError < IOError
   end
+  
+  class ServerError < IOError
+  end
 
   @@init_http = nil
 
@@ -88,7 +91,11 @@ module Mixpanel
       form_data = {"data" => data, "verbose" => 1}
       form_data.merge!("api_key" => api_key) if api_key
 
-      response_code, response_body = request(endpoint, form_data)
+      begin
+        response_code, response_body = request(endpoint, form_data)
+      rescue Exception e
+        raise ConnectionError.new("Could not connect to Mixpanel, with error \"#{e.message}\".")
+      end
 
       succeeded = nil
       if response_code.to_i == 200
@@ -97,7 +104,7 @@ module Mixpanel
       end
 
       if ! succeeded
-        raise ConnectionError.new("Could not write to Mixpanel, server responded with #{response_code} returning: '#{response_body}'")
+        raise ServerError.new("Could not write to Mixpanel, server responded with #{response_code} returning: '#{response_body}'")
       end
     end
 
