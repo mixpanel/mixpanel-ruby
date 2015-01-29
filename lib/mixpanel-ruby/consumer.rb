@@ -3,10 +3,13 @@ require 'net/https'
 require 'json'
 
 module Mixpanel
-  class ConnectionError < IOError
+  class MixpanelError < Error
   end
   
-  class ServerError < IOError
+  class ConnectionError < MixpanelError
+  end
+  
+  class ServerError < MixpanelError
   end
 
   @@init_http = nil
