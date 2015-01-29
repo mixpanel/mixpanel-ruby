@@ -93,7 +93,7 @@ module Mixpanel
 
       begin
         response_code, response_body = request(endpoint, form_data)
-      rescue Exception e
+      rescue Exception => e
         raise ConnectionError.new("Could not connect to Mixpanel, with error \"#{e.message}\".")
       end
 
