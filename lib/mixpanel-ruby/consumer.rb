@@ -3,7 +3,7 @@ require 'net/https'
 require 'json'
 
 module Mixpanel
-  class MixpanelError < Error
+  class MixpanelError < Exception
   end
   
   class ConnectionError < MixpanelError
