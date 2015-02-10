@@ -115,6 +115,11 @@ module Mixpanel
 
       client = Net::HTTP.new(uri.host, uri.port)
       client.use_ssl = true
+      client.open_timeout = 2
+      client.continue_timeout = 10
+      client.read_timeout = 10
+      client.ssl_timeout = 2
+
       Mixpanel.with_http(client)
 
       response = client.request(request)
