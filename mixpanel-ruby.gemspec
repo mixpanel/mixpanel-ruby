@@ -12,6 +12,8 @@ spec = Gem::Specification.new do |spec|
   spec.homepage = 'https://mixpanel.com/help/reference/ruby'
   spec.license = 'Apache License 2.0'
 
+  spec.required_ruby_version = '>= 2.0.0'
+
   spec.add_development_dependency 'rake'
   spec.add_development_dependency 'rspec', '~> 3.0.0'
   spec.add_development_dependency 'webmock', '~> 1.18.0'
