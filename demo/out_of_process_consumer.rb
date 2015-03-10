@@ -52,7 +52,7 @@ class OutOfProcessExample
             $stdin.each_line do |line|
               message = JSON.load(line)
               type, content = message
-              mixpanel_consumer.send(type, content)
+              mixpanel_consumer.send!(type, content)
             end
           ensure
             mixpanel_consumer.flush

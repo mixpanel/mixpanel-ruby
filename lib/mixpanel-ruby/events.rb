@@ -26,7 +26,7 @@ module Mixpanel
         @sink = block
       else
         consumer = Consumer.new
-        @sink = consumer.method(:send)
+        @sink = consumer.method(:send!)
       end
     end
 

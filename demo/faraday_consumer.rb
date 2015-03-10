@@ -20,7 +20,7 @@ if __FILE__ == $0
   faraday_consumer = FaradayConsumer.new
 
   faraday_tracker = Mixpanel::Tracker.new(DEMO_TOKEN) do |type, message|
-    faraday_consumer.send(type, message)
+    faraday_consumer.send!(type, message)
   end
   faraday_tracker.track('ID', 'Event tracked through Faraday')
 
@@ -28,11 +28,11 @@ if __FILE__ == $0
   # consumer.
 
   buffered_faraday_consumer = Mixpanel::BufferedConsumer.new do |type, message|
-    faraday_consumer.send(type, message)
+    faraday_consumer.send!(type, message)
   end
 
   buffered_faraday_tracker = Mixpanel::Tracker.new(DEMO_TOKEN) do |type, message|
-    buffered_faraday_consumer.send(type, message)
+    buffered_faraday_consumer.send!(type, message)
   end
 
   buffered_faraday_tracker.track('ID', 'Event tracked (buffered) through faraday')
