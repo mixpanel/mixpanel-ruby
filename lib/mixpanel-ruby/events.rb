@@ -65,7 +65,14 @@ module Mixpanel
 
       message = {'data' => data}
 
-      @sink.call(:event, message.to_json)
+      ret = true
+      begin
+        @sink.call(:event, message.to_json)
+      rescue MixpanelError
+        ret = false
+      end
+
+      ret
     end
 
     # Imports an event that has occurred in the past, along with a distinct_id
@@ -105,7 +112,14 @@ module Mixpanel
         'api_key' => api_key,
       }
 
-      @sink.call(:import, message.to_json)
+      ret = true
+      begin
+        @sink.call(:import, message.to_json)
+      rescue MixpanelError
+        ret = false
+      end
+
+      ret
     end
   end
 end

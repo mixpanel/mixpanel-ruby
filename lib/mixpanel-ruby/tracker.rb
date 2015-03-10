@@ -122,7 +122,14 @@ module Mixpanel
 
       message = {'data' => data}
 
-      consumer.send!(:event, message.to_json)
+      ret = true
+      begin
+        consumer.send!(:event, message.to_json)
+      rescue MixpanelError
+        ret = false
+      end
+
+      ret
     end
   end
 end

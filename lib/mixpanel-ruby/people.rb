@@ -225,7 +225,14 @@ module Mixpanel
 
       message = {'data' => data}
 
-      @sink.call(:profile_update, message.to_json)
+      ret = true
+      begin
+        @sink.call(:profile_update, message.to_json)
+      rescue MixpanelError
+        ret = false
+      end
+
+      ret
     end
 
     private
