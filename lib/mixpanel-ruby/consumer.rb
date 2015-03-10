@@ -209,6 +209,12 @@ module Mixpanel
       end
     end
 
+    # Deprecated: please use send! instead
+    def send(type, message)
+        warn '[DEPRECATION] send has been deprecated, please use send! instead' 
+        send!(type, message)
+    end
+
     # Pushes all remaining messages in the buffer to Mixpanel.
     # You should call #flush before your application exits or
     # messages may not be sent.
