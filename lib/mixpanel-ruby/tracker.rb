@@ -116,13 +116,11 @@ module Mixpanel
         'properties' => {
           'distinct_id' => real_id,
           'alias' => alias_id,
-          'token' => @token
+          'token' => @token,
         }
       }
 
-      message = {
-        'data' => data
-      }
+      message = {'data' => data}
 
       consumer.send!(:event, message.to_json)
     end

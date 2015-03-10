@@ -84,7 +84,7 @@ module Mixpanel
       endpoint = {
         :event => @events_endpoint,
         :profile_update => @update_endpoint,
-        :import => @import_endpoint
+        :import => @import_endpoint,
       }[type]
 
       decoded_message = JSON.load(message)
@@ -106,7 +106,7 @@ module Mixpanel
         succeeded = result['status'] == 1
       end
 
-      if ! succeeded
+      if !succeeded
         raise ServerError.new("Could not write to Mixpanel, server responded with #{response_code} returning: '#{response_body}'")
       end
     end
@@ -135,6 +135,7 @@ module Mixpanel
       response = client.request(request)
       [response.code, response.body]
     end
+
   end
 
   # BufferedConsumer buffers messages in memory, and sends messages as
@@ -179,16 +180,17 @@ module Mixpanel
     # ignored.
     def initialize(events_endpoint=nil, update_endpoint=nil, import_endpoint=nil, max_buffer_length=MAX_LENGTH, &block)
       @max_length = [max_buffer_length, MAX_LENGTH].min
+      @buffers = {
+        :event => [],
+        :profile_update => [],
+      }
+
       if block
         @sink = block
       else
         consumer = Consumer.new(events_endpoint, update_endpoint, import_endpoint)
         @sink = consumer.method(:send!)
       end
-      @buffers = {
-        :event => [],
-        :profile_update => [],
-      }
     end
 
     # Stores a message for Mixpanel in memory. When the buffer
@@ -199,11 +201,10 @@ module Mixpanel
     # :import messages will be send immediately on call.
     def send!(type, message)
       type = type.to_sym
+
       if @buffers.has_key? type
         @buffers[type] << message
-        if @buffers[type].length >= @max_length
-          flush_type(type)
-        end
+        flush_type(type) if @buffers[type].length >= @max_length
       else
         @sink.call(type, message)
       end
@@ -234,6 +235,7 @@ module Mixpanel
   end
 
   private
+
   def self.with_http(http)
     if @@init_http
       @@init_http.call(http)

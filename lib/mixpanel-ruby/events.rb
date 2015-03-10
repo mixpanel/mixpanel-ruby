@@ -22,6 +22,7 @@ module Mixpanel
     #
     def initialize(token, &block)
       @token = token
+
       if block
         @sink = block
       else
@@ -49,24 +50,20 @@ module Mixpanel
     #     })
     def track(distinct_id, event, properties={}, ip=nil)
       properties = {
-          'distinct_id' => distinct_id,
-          'token' => @token,
-          'time' => Time.now.to_i,
-          'mp_lib' => 'ruby',
-          '$lib_version' => Mixpanel::VERSION
+        'distinct_id' => distinct_id,
+        'token' => @token,
+        'time' => Time.now.to_i,
+        'mp_lib' => 'ruby',
+        '$lib_version' => Mixpanel::VERSION,
       }.merge(properties)
-      if ip
-        properties['ip'] = ip
-      end
+      properties['ip'] = ip if ip
 
       data = {
         'event' => event,
-        'properties' => properties
+        'properties' => properties,
       }
 
-      message = {
-        'data' => data
-      }
+      message = {'data' => data}
 
       @sink.call(:event, message.to_json)
     end
@@ -94,20 +91,18 @@ module Mixpanel
         'token' => @token,
         'time' => Time.now.to_i,
         'mp_lib' => 'ruby',
-        '$lib_version' => Mixpanel::VERSION
+        '$lib_version' => Mixpanel::VERSION,
       }.merge(properties)
-      if ip
-        properties['ip'] = ip
-      end
+      properties['ip'] = ip if ip
 
       data = {
         'event' => event,
-        'properties' => properties
+        'properties' => properties,
       }
 
       message = {
         'data' => data,
-        'api_key' => api_key
+        'api_key' => api_key,
       }
 
       @sink.call(:import, message.to_json)

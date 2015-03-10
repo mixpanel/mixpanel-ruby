@@ -48,13 +48,10 @@ module Mixpanel
     def set(distinct_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
       message = {
-          '$distinct_id' => distinct_id,
-          '$set' => properties,
+        '$distinct_id' => distinct_id,
+        '$set' => properties,
       }.merge(optional_params)
-
-      if ip
-        message['$ip'] = ip
-      end
+      message['$ip'] = ip if ip
 
       update(message)
     end
@@ -72,13 +69,10 @@ module Mixpanel
     def set_once(distinct_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
       message = {
-          '$distinct_id' => distinct_id,
-          '$set_once' => properties,
+        '$distinct_id' => distinct_id,
+        '$set_once' => properties,
       }.merge(optional_params)
-
-      if ip
-        message['$ip'] = ip
-      end
+      message['$ip'] = ip if ip
 
       update(message)
     end
@@ -98,13 +92,10 @@ module Mixpanel
     def increment(distinct_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
       message = {
-          '$distinct_id' => distinct_id,
-          '$add' => properties,
+        '$distinct_id' => distinct_id,
+        '$add' => properties,
       }.merge(optional_params)
-
-      if ip
-        message['$ip'] = ip
-      end
+      message['$ip'] = ip if ip
 
       update(message)
     end
@@ -133,13 +124,10 @@ module Mixpanel
     def append(distinct_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
       message = {
-          '$distinct_id' => distinct_id,
-          '$append' => properties,
+        '$distinct_id' => distinct_id,
+        '$append' => properties,
       }.merge(optional_params)
-
-      if ip
-        message['$ip'] = ip
-      end
+      message['$ip'] = ip if ip
 
       update(message)
     end
@@ -158,13 +146,10 @@ module Mixpanel
     def union(distinct_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
       message = {
-          '$distinct_id' => distinct_id,
-          '$union' => properties,
+        '$distinct_id' => distinct_id,
+        '$union' => properties,
       }.merge(optional_params)
-
-      if ip
-        message['$ip'] = ip
-      end
+      message['$ip'] = ip if ip
 
       update(message)
     end
@@ -182,13 +167,10 @@ module Mixpanel
     def unset(distinct_id, properties, ip=nil, optional_params={})
       properties = [properties] unless properties.is_a?(Array)
       message = {
-          '$distinct_id' => distinct_id,
-          '$unset' => properties
+        '$distinct_id' => distinct_id,
+        '$unset' => properties,
       }.merge(optional_params)
-
-      if ip
-        message['$ip'] = ip
-      end
+      message['$ip'] = ip if ip
 
       update(message)
     end
@@ -222,8 +204,8 @@ module Mixpanel
     #   {"$ignore_alias"=>true}
     def delete_user(distinct_id, optional_params={})
       update({
-          '$distinct_id' => distinct_id,
-          '$delete' => ''
+        '$distinct_id' => distinct_id,
+        '$delete' => '',
       }.merge(optional_params))
     end
 
@@ -238,12 +220,10 @@ module Mixpanel
     def update(message)
       data = {
         '$token' => @token,
-        '$time' =>  ((Time.now.to_f) * 1000.0).to_i
+        '$time' =>  ((Time.now.to_f) * 1000.0).to_i,
       }.merge(message)
 
-      message = {
-        'data' => data
-      }
+      message = {'data' => data}
 
       @sink.call(:profile_update, message.to_json)
     end
