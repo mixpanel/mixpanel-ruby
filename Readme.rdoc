@@ -49,6 +49,13 @@ In particular, for Rails apps, the following projects are currently actively mai
 
 == Changes
 
+== 2.0.0
+* Raise mixpanel server and connection errors in Mixpanel::Consumer.
+* All public methods in Mixpanel::Event, Mixpanel::People, and subsequently Mixpanel::Tracker
+  rescue Mixpanel errors and return false in the case of an error, return true otherwise
+* Deprecate Mixpanel::Consumer#send, replace with Mixpanel::Consumer#send!
+* Require ruby version minimum of 2.0.0
+
 == 1.4.0
 * Allow unset to unset multiple properties
 
