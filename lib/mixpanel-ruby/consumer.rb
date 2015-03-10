@@ -111,6 +111,12 @@ module Mixpanel
       end
     end
 
+    # This method was deprecated in release 2.0.0, please use send! instead
+    def send(type, message)
+        warn '[DEPRECATION] send has been deprecated as of release 2.0.0, please use send! instead'
+        send!(type, message)
+    end
+
     # Request takes an endpoint HTTP or HTTPS url, and a Hash of data
     # to post to that url. It should return a pair of
     #
@@ -208,12 +214,6 @@ module Mixpanel
       else
         @sink.call(type, message)
       end
-    end
-
-    # Deprecated: please use send! instead
-    def send(type, message)
-        warn '[DEPRECATION] send has been deprecated, please use send! instead' 
-        send!(type, message)
     end
 
     # Pushes all remaining messages in the buffer to Mixpanel.
