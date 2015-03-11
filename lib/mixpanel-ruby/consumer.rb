@@ -3,7 +3,7 @@ require 'net/https'
 require 'json'
 
 module Mixpanel
-  class MixpanelError < Exception
+  class MixpanelError < StandardError
   end
   
   class ConnectionError < MixpanelError
@@ -96,8 +96,8 @@ module Mixpanel
 
       begin
         response_code, response_body = request(endpoint, form_data)
-      rescue Exception => e
-        raise ConnectionError.new("Could not connect to Mixpanel, with error \"#{e.message}\".")
+      rescue => e
+        raise ConnectionError.new("Could not connect to Mixpanel, with error \"#{e.message}\". Backtrace: \n#{e.backtrace.join("\n")}")
       end
 
       succeeded = nil
