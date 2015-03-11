@@ -41,6 +41,15 @@ describe Mixpanel::Consumer do
     end
   end
 
+  it 'should provide access to root error through incase connection error occurs' do
+    allow(subject).to receive_message_chain(:request) { raise KeyError }
+    begin
+      subject.send!(:import, {'data' => 'TEST EVENT MESSAGE', 'api_key' => 'API_KEY','verbose' => '1' }.to_json)
+    rescue => e
+      expect(e.cause).to be_a KeyError
+    end
+  end
+
   context 'raw consumer' do
     it_behaves_like 'consumer'
   end

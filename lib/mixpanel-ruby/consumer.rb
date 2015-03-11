@@ -97,7 +97,7 @@ module Mixpanel
       begin
         response_code, response_body = request(endpoint, form_data)
       rescue => e
-        raise ConnectionError.new("Could not connect to Mixpanel, with error \"#{e.message}\". Backtrace: \n#{e.backtrace.join("\n")}")
+        raise ConnectionError.new("Could not connect to Mixpanel, with error \"#{e.message}\".")
       end
 
       succeeded = nil
