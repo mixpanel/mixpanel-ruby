@@ -77,6 +77,8 @@
     
     <li ><a href="#method-i-flush">#flush</a>
     
+    <li ><a href="#method-i-send">#send</a>
+    
     <li ><a href="#method-i-send-21">#send!</a>
     
   </ul>
@@ -239,9 +241,43 @@ application exits or messages may not be sent.</p>
 
           
           <div class="method-source-code" id="flush-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 222</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 228</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">flush</span>
   <span class="ruby-ivar">@buffers</span>.<span class="ruby-identifier">keys</span>.<span class="ruby-identifier">each</span> { <span class="ruby-operator">|</span><span class="ruby-identifier">k</span><span class="ruby-operator">|</span> <span class="ruby-identifier">flush_type</span>(<span class="ruby-identifier">k</span>) }
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-send" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">send</span><span
+            class="method-args">(type, message)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>This method was deprecated in release 2.0.0, please use send! instead</p>
+          
+          
+
+          
+          <div class="method-source-code" id="send-source">
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 220</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">send</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
+    <span class="ruby-identifier">warn</span> <span class="ruby-string">&#39;[DEPRECATION] send has been deprecated as of release 2.0.0, please use send! instead&#39;</span>
+    <span class="ruby-identifier">send!</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
 <span class="ruby-keyword">end</span></pre>
           </div>
           
