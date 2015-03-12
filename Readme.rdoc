@@ -49,6 +49,9 @@ In particular, for Rails apps, the following projects are currently actively mai
 
 == Changes
 
+== 2.0.1
+* Add Deprecated version of Mixpanel::BufferedConsumer#send
+
 == 2.0.0
 * Raise mixpanel server and connection errors in Mixpanel::Consumer.
 * All public methods in Mixpanel::Event, Mixpanel::People, and subsequently Mixpanel::Tracker
