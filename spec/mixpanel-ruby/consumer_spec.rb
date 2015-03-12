@@ -39,6 +39,13 @@ describe Mixpanel::Consumer do
       stub_request(:any, 'https://api.mixpanel.com/track').to_return({:status => 401, :body => "nutcakes"})
       expect { subject.send!(:event, {'data' => 'TEST EVENT MESSAGE'}.to_json) }.to raise_exception('Could not write to Mixpanel, server responded with 401 returning: \'nutcakes\'')
     end
+
+    it 'should still respond to send' do
+      stub_request(:any, 'https://api.mixpanel.com/track').to_return({:body => '{"status": 1, "error": null}'})
+      subject.send(:event, {'data' => 'TEST EVENT MESSAGE'}.to_json)
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/track').
+        with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' })
+    end
   end
 
   context 'raw consumer' do
@@ -83,6 +90,12 @@ describe Mixpanel::BufferedConsumer do
       subject.flush()
       expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/track').
         with(:body => {'data' => 'WyJURVNUIEVWRU5UIDEiXQ==', 'verbose' => '1' })
+    end
+
+    it 'should still respond to send' do
+      stub_request(:any, 'https://api.mixpanel.com/track').to_return({:body => '{"status": 1, "error": null}'})
+      subject.send(:event, {'data' => 'TEST EVENT 1'}.to_json)
+      expect(WebMock).to have_not_requested(:post, 'https://api.mixpanel.com/track')
     end
 
     it 'should send one message when max_length events are tracked' do
