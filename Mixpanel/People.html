@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-8">
+
+<title>class Mixpanel::People - RDoc Documentation</title>
+
+<link href="../fonts.css" rel="stylesheet">
+<link href="../rdoc.css" rel="stylesheet">
+
+<script type="text/javascript">
+  var rdoc_rel_prefix = "../";
+</script>
+
+<script src="../js/jquery.js"></script>
+<script src="../js/navigation.js"></script>
+<script src="../js/search_index.js"></script>
+<script src="../js/search.js"></script>
+<script src="../js/searcher.js"></script>
+<script src="../js/darkfish.js"></script>
+
+
+<body id="top" role="document" class="class">
+<nav role="navigation">
+  <div id="project-navigation">
+    <div id="home-section" role="region" title="Quick navigation" class="nav-section">
+  <h2>
+    <a href="../index.html" rel="home">Home</a>
+  </h2>
+
+  <div id="table-of-contents-navigation">
+    <a href="../table_of_contents.html#pages">Pages</a>
+    <a href="../table_of_contents.html#classes">Classes</a>
+    <a href="../table_of_contents.html#methods">Methods</a>
+  </div>
+</div>
+
+    <div id="search-section" role="search" class="project-section initially-hidden">
+  <form action="#" method="get" accept-charset="utf-8">
+    <div id="search-field-wrapper">
+      <input id="search-field" role="combobox" aria-label="Search"
+             aria-autocomplete="list" aria-controls="search-results"
+             type="text" name="search" placeholder="Search" spellcheck="false"
+             title="Type to search, Up and Down to navigate, Enter to load">
+    </div>
+
+    <ul id="search-results" aria-label="Search Results"
+        aria-busy="false" aria-expanded="false"
+        aria-atomic="false" class="initially-hidden"></ul>
+  </form>
+</div>
+
+  </div>
+
+  
+
+  <div id="class-metadata">
+    
+    <div id="parent-class-section" class="nav-section">
+  <h3>Parent</h3>
+
+  
+  <p class="link">Object
+  
+</div>
+
+    
+    
+    <!-- Method Quickref -->
+<div id="method-list-section" class="nav-section">
+  <h3>Methods</h3>
+
+  <ul class="link-list" role="directory">
+    
+    <li ><a href="#method-c-new">::new</a>
+    
+    <li ><a href="#method-i-append">#append</a>
+    
+    <li ><a href="#method-i-clear_charges">#clear_charges</a>
+    
+    <li ><a href="#method-i-delete_user">#delete_user</a>
+    
+    <li ><a href="#method-i-increment">#increment</a>
+    
+    <li ><a href="#method-i-plus_one">#plus_one</a>
+    
+    <li ><a href="#method-i-set">#set</a>
+    
+    <li ><a href="#method-i-set_once">#set_once</a>
+    
+    <li ><a href="#method-i-track_charge">#track_charge</a>
+    
+    <li ><a href="#method-i-union">#union</a>
+    
+    <li ><a href="#method-i-unset">#unset</a>
+    
+    <li ><a href="#method-i-update">#update</a>
+    
+  </ul>
+</div>
+
+  </div>
+</nav>
+
+<main role="main" aria-labelledby="class-Mixpanel::People">
+  <h1 id="class-Mixpanel::People" class="class">
+    class Mixpanel::People
+  </h1>
+
+  <section class="description">
+    
+<p>Handles formatting Mixpanel profile updates and sending them to the
+consumer. You will rarely need to instantiate this class directly- to send
+profile updates, use <a
+href="Tracker.html#attribute-i-people">Mixpanel::Tracker#people</a></p>
+
+<pre>tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
+tracker.people.set(...) # Or .append(..), or track_charge(...) etc.</pre>
+
+  </section>
+
+  
+  
+  
+  <section id="5Buntitled-5D" class="documentation-section">
+    
+
+    
+
+    
+
+    
+
+    
+     <section id="public-class-5Buntitled-5D-method-details" class="method-section">
+       <header>
+         <h3>Public Class Methods</h3>
+       </header>
+
+    
+      <div id="method-c-new" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">new</span><span
+            class="method-args">(token, &block)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>You likely won&#39;t need to instantiate instances of <a
+href="People.html">Mixpanel::People</a> directly. The best way to get an
+instance of <a href="People.html">Mixpanel::People</a> is</p>
+
+<pre>tracker = Mixpanel::Tracker.new(...)
+tracker.people # An instance of Mixpanel::People</pre>
+          
+          
+
+          
+          <div class="method-source-code" id="new-source">
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 23</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">token</span>, <span class="ruby-operator">&amp;</span><span class="ruby-identifier">block</span>)
+  <span class="ruby-ivar">@token</span> = <span class="ruby-identifier">token</span>
+
+  <span class="ruby-keyword">if</span> <span class="ruby-identifier">block</span>
+    <span class="ruby-ivar">@sink</span> = <span class="ruby-identifier">block</span>
+  <span class="ruby-keyword">else</span>
+    <span class="ruby-identifier">consumer</span> = <span class="ruby-constant">Consumer</span>.<span class="ruby-identifier">new</span>
+    <span class="ruby-ivar">@sink</span> = <span class="ruby-identifier">consumer</span>.<span class="ruby-identifier">method</span>(<span class="ruby-value">:send!</span>)
+  <span class="ruby-keyword">end</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+    </section>
+  
+     <section id="public-instance-5Buntitled-5D-method-details" class="method-section">
+       <header>
+         <h3>Public Instance Methods</h3>
+       </header>
+
+    
+      <div id="method-i-append" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">append</span><span
+            class="method-args">(distinct_id, properties, ip=nil, optional_params={})</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Appends a values to the end of list-valued properties. If the given
+properties don&#39;t exist, a new list-valued property will be created.</p>
+
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>
+<span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">people</span>.<span class="ruby-identifier">append</span>(<span class="ruby-string">&quot;12345&quot;</span>, {
+    <span class="ruby-string">&#39;Login Dates&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-constant">DateTime</span>.<span class="ruby-identifier">now</span>,
+    <span class="ruby-string">&#39;Alter Ego Names&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-string">&#39;Ziggy Stardust&#39;</span>
+});
+</pre>
+          
+          
+
+          
+          <div class="method-source-code" id="append-source">
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 124</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">append</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">properties</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
+  <span class="ruby-identifier">properties</span> = <span class="ruby-identifier">fix_property_dates</span>(<span class="ruby-identifier">properties</span>)
+  <span class="ruby-identifier">message</span> = {
+    <span class="ruby-string">&#39;$distinct_id&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">distinct_id</span>,
+    <span class="ruby-string">&#39;$append&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">properties</span>,
+  }.<span class="ruby-identifier">merge</span>(<span class="ruby-identifier">optional_params</span>)
+  <span class="ruby-identifier">message</span>[<span class="ruby-string">&#39;$ip&#39;</span>] = <span class="ruby-identifier">ip</span> <span class="ruby-keyword">if</span> <span class="ruby-identifier">ip</span>
+
+  <span class="ruby-identifier">update</span>(<span class="ruby-identifier">message</span>)
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-clear_charges" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">clear_charges</span><span
+            class="method-args">(distinct_id, ip=nil, optional_params={})</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Clear all charges from a Mixpanel people profile</p>
+          
+          
+
+          
+          <div class="method-source-code" id="clear_charges-source">
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 198</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">clear_charges</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
+  <span class="ruby-identifier">unset</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-string">&#39;$transactions&#39;</span>, <span class="ruby-identifier">ip</span>, <span class="ruby-identifier">optional_params</span>)
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-delete_user" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">delete_user</span><span
+            class="method-args">(distinct_id, optional_params={})</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Permanently delete a profile from Mixpanel people analytics To delete a
+user and ignore alias pass into optional params</p>
+
+<pre class="ruby">{<span class="ruby-string">&quot;$ignore_alias&quot;</span>=<span class="ruby-operator">&gt;</span><span class="ruby-keyword">true</span>}
+</pre>
+          
+          
+
+          
+          <div class="method-source-code" id="delete_user-source">
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 205</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">delete_user</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">optional_params</span>={})
+  <span class="ruby-identifier">update</span>({
+    <span class="ruby-string">&#39;$distinct_id&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">distinct_id</span>,
+    <span class="ruby-string">&#39;$delete&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-string">&#39;&#39;</span>,
+  }.<span class="ruby-identifier">merge</span>(<span class="ruby-identifier">optional_params</span>))
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-increment" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">increment</span><span
+            class="method-args">(distinct_id, properties, ip=nil, optional_params={})</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Changes the value of properties by a numeric amount.  Takes a hash with
+string keys and numeric properties. Mixpanel will add the given amount to
+whatever value is currently assigned to the property. If no property exists
+with a given name, the value will be added to zero.</p>
+
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>
+<span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">people</span>.<span class="ruby-identifier">increment</span>(<span class="ruby-string">&quot;12345&quot;</span>, {
+    <span class="ruby-string">&#39;Coins Spent&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">7</span>,
+    <span class="ruby-string">&#39;Coins Earned&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">-7</span>, <span class="ruby-comment"># Use a negative number to subtract</span>
+});
+</pre>
+          
+          
+
+          
+          <div class="method-source-code" id="increment-source">
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 92</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">increment</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">properties</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
+  <span class="ruby-identifier">properties</span> = <span class="ruby-identifier">fix_property_dates</span>(<span class="ruby-identifier">properties</span>)
+  <span class="ruby-identifier">message</span> = {
+    <span class="ruby-string">&#39;$distinct_id&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">distinct_id</span>,
+    <span class="ruby-string">&#39;$add&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">properties</span>,
+  }.<span class="ruby-identifier">merge</span>(<span class="ruby-identifier">optional_params</span>)
+  <span class="ruby-identifier">message</span>[<span class="ruby-string">&#39;$ip&#39;</span>] = <span class="ruby-identifier">ip</span> <span class="ruby-keyword">if</span> <span class="ruby-identifier">ip</span>
+
+  <span class="ruby-identifier">update</span>(<span class="ruby-identifier">message</span>)
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-plus_one" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">plus_one</span><span
+            class="method-args">(distinct_id, property_name, ip=nil, optional_params={})</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Convenience method- increases the value of a numeric property by one.
+Calling <a href="People.html#method-i-plus_one">plus_one</a>(distinct_id,
+property_name) is the same as calling <a
+href="People.html#method-i-increment">increment</a>(distinct_id,
+{property_name =&gt; 1})</p>
+
+<pre>tracker = Mixpanel::Tracker.new
+tracker.people.plus_one(&quot;12345&quot;, &quot;Albums Released&quot;)</pre>
+          
+          
+
+          
+          <div class="method-source-code" id="plus_one-source">
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 110</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">plus_one</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">property_name</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
+  <span class="ruby-identifier">increment</span>(<span class="ruby-identifier">distinct_id</span>, {<span class="ruby-identifier">property_name</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">1</span>}, <span class="ruby-identifier">ip</span>, <span class="ruby-identifier">optional_params</span>)
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-set" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">set</span><span
+            class="method-args">(distinct_id, properties, ip=nil, optional_params={})</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Sets properties on a user record. Takes a Hash with string keys, and values
+that are strings, numbers, booleans, or DateTimes</p>
+
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>
+<span class="ruby-comment"># Sets properties on profile with id &quot;1234&quot;</span>
+<span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">people</span>.<span class="ruby-identifier">set</span>(<span class="ruby-string">&quot;1234&quot;</span>, {
+    <span class="ruby-string">&#39;company&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-string">&#39;Acme&#39;</span>,
+    <span class="ruby-string">&#39;plan&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-string">&#39;Premium&#39;</span>,
+    <span class="ruby-string">&#39;Sign-Up Date&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-constant">DateTime</span>.<span class="ruby-identifier">now</span>
+});
+</pre>
+
+<p>If you provide an ip argument, Mixpanel will use that ip address for
+geolocation (rather than the ip of your server)</p>
+          
+          
+
+          
+          <div class="method-source-code" id="set-source">
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 48</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">set</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">properties</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
+  <span class="ruby-identifier">properties</span> = <span class="ruby-identifier">fix_property_dates</span>(<span class="ruby-identifier">properties</span>)
+  <span class="ruby-identifier">message</span> = {
+    <span class="ruby-string">&#39;$distinct_id&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">distinct_id</span>,
+    <span class="ruby-string">&#39;$set&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">properties</span>,
+  }.<span class="ruby-identifier">merge</span>(<span class="ruby-identifier">optional_params</span>)
+  <span class="ruby-identifier">message</span>[<span class="ruby-string">&#39;$ip&#39;</span>] = <span class="ruby-identifier">ip</span> <span class="ruby-keyword">if</span> <span class="ruby-identifier">ip</span>
+
+  <span class="ruby-identifier">update</span>(<span class="ruby-identifier">message</span>)
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-set_once" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">set_once</span><span
+            class="method-args">(distinct_id, properties, ip=nil, optional_params={})</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p><a href="People.html#method-i-set_once">#set_once</a> works just like <a
+href="People.html#method-i-set">set</a>, but will only change the value of
+properties if they are not already present in the profile. That means you
+can call <a href="People.html#method-i-set_once">#set_once</a> many times
+without changing an original value.</p>
+
+<pre>tracker = Mixpanel::Tracker.new
+tracker.people.set_once(&quot;12345&quot;, {
+    &#39;First Login Date&#39;: DateTime.now
+});</pre>
+          
+          
+
+          
+          <div class="method-source-code" id="set_once-source">
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 69</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">set_once</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">properties</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
+  <span class="ruby-identifier">properties</span> = <span class="ruby-identifier">fix_property_dates</span>(<span class="ruby-identifier">properties</span>)
+  <span class="ruby-identifier">message</span> = {
+    <span class="ruby-string">&#39;$distinct_id&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">distinct_id</span>,
+    <span class="ruby-string">&#39;$set_once&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">properties</span>,
+  }.<span class="ruby-identifier">merge</span>(<span class="ruby-identifier">optional_params</span>)
+  <span class="ruby-identifier">message</span>[<span class="ruby-string">&#39;$ip&#39;</span>] = <span class="ruby-identifier">ip</span> <span class="ruby-keyword">if</span> <span class="ruby-identifier">ip</span>
+
+  <span class="ruby-identifier">update</span>(<span class="ruby-identifier">message</span>)
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-track_charge" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">track_charge</span><span
+            class="method-args">(distinct_id, amount, properties={}, ip=nil, optional_params={})</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Records a payment to you to a profile. Charges recorded with <a
+href="People.html#method-i-track_charge">track_charge</a> will appear in
+the Mixpanel revenue report.</p>
+
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>
+
+<span class="ruby-comment"># records a charge of $25.32 from user 12345</span>
+<span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">people</span>.<span class="ruby-identifier">track_charge</span>(<span class="ruby-string">&quot;12345&quot;</span>, <span class="ruby-value">25.32</span>)
+
+<span class="ruby-comment"># records a charge of $30.50 on the 2nd of January,</span>
+<span class="ruby-identifier">mixpanel</span>.<span class="ruby-identifier">people</span>.<span class="ruby-identifier">track_charge</span>(<span class="ruby-string">&quot;12345&quot;</span>, <span class="ruby-value">30.50</span>, {
+    <span class="ruby-string">&#39;$time&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-constant">DateTime</span>.<span class="ruby-identifier">parse</span>(<span class="ruby-string">&quot;Jan 2 2013&quot;</span>)
+})
+</pre>
+          
+          
+
+          
+          <div class="method-source-code" id="track_charge-source">
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 191</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">track_charge</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">amount</span>, <span class="ruby-identifier">properties</span>={}, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
+  <span class="ruby-identifier">properties</span> = <span class="ruby-identifier">fix_property_dates</span>(<span class="ruby-identifier">properties</span>)
+  <span class="ruby-identifier">charge_properties</span> = <span class="ruby-identifier">properties</span>.<span class="ruby-identifier">merge</span>({<span class="ruby-string">&#39;$amount&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">amount</span>})
+  <span class="ruby-identifier">append</span>(<span class="ruby-identifier">distinct_id</span>, {<span class="ruby-string">&#39;$transactions&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">charge_properties</span>}, <span class="ruby-identifier">ip</span>, <span class="ruby-identifier">optional_params</span>)
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-union" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">union</span><span
+            class="method-args">(distinct_id, properties, ip=nil, optional_params={})</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Set union on list valued properties. Associates a list containing all
+elements of a given list, and all elements currently in a list associated
+with the given property. After a union, every element in the list
+associated with a property will be unique.</p>
+
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>
+<span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">people</span>.<span class="ruby-identifier">union</span>(<span class="ruby-string">&quot;12345&quot;</span>, {
+    <span class="ruby-string">&#39;Levels Completed&#39;</span> =<span class="ruby-operator">&gt;</span> [<span class="ruby-string">&#39;Suffragette City&#39;</span>]
+});
+</pre>
+          
+          
+
+          
+          <div class="method-source-code" id="union-source">
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 146</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">union</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">properties</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
+  <span class="ruby-identifier">properties</span> = <span class="ruby-identifier">fix_property_dates</span>(<span class="ruby-identifier">properties</span>)
+  <span class="ruby-identifier">message</span> = {
+    <span class="ruby-string">&#39;$distinct_id&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">distinct_id</span>,
+    <span class="ruby-string">&#39;$union&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">properties</span>,
+  }.<span class="ruby-identifier">merge</span>(<span class="ruby-identifier">optional_params</span>)
+  <span class="ruby-identifier">message</span>[<span class="ruby-string">&#39;$ip&#39;</span>] = <span class="ruby-identifier">ip</span> <span class="ruby-keyword">if</span> <span class="ruby-identifier">ip</span>
+
+  <span class="ruby-identifier">update</span>(<span class="ruby-identifier">message</span>)
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-unset" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">unset</span><span
+            class="method-args">(distinct_id, properties, ip=nil, optional_params={})</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Removes properties and their values from a profile.</p>
+
+<pre>tracker = Mixpanel::Tracker.new
+
+# removes a single property and its value from a profile
+tracker.people.unset(&quot;12345&quot;, &quot;Overdue Since&quot;)
+
+# removes multiple properties and their values from a profile
+tracker.people.unset(&quot;12345&quot;, [&quot;Overdue Since&quot;, &quot;Paid Date&quot;])</pre>
+          
+          
+
+          
+          <div class="method-source-code" id="unset-source">
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 167</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">unset</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">properties</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
+  <span class="ruby-identifier">properties</span> = [<span class="ruby-identifier">properties</span>] <span class="ruby-keyword">unless</span> <span class="ruby-identifier">properties</span>.<span class="ruby-identifier">is_a?</span>(<span class="ruby-constant">Array</span>)
+  <span class="ruby-identifier">message</span> = {
+    <span class="ruby-string">&#39;$distinct_id&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">distinct_id</span>,
+    <span class="ruby-string">&#39;$unset&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">properties</span>,
+  }.<span class="ruby-identifier">merge</span>(<span class="ruby-identifier">optional_params</span>)
+  <span class="ruby-identifier">message</span>[<span class="ruby-string">&#39;$ip&#39;</span>] = <span class="ruby-identifier">ip</span> <span class="ruby-keyword">if</span> <span class="ruby-identifier">ip</span>
+
+  <span class="ruby-identifier">update</span>(<span class="ruby-identifier">message</span>)
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-update" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">update</span><span
+            class="method-args">(message)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Send a generic update to Mixpanel people analytics. Caller is responsible
+for formatting the update message, as documented in the Mixpanel HTTP
+specification, and passing the message as a dict to <a
+href="People.html#method-i-update">update</a>. This method might be useful
+if you want to use very new or experimental features of people analytics
+from Ruby The Mixpanel HTTP tracking API is documented at <a
+href="https://mixpanel.com/help/reference/http">mixpanel.com/help/reference/http</a></p>
+          
+          
+
+          
+          <div class="method-source-code" id="update-source">
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 220</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">update</span>(<span class="ruby-identifier">message</span>)
+  <span class="ruby-identifier">data</span> = {
+    <span class="ruby-string">&#39;$token&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@token</span>,
+    <span class="ruby-string">&#39;$time&#39;</span> =<span class="ruby-operator">&gt;</span>  ((<span class="ruby-constant">Time</span>.<span class="ruby-identifier">now</span>.<span class="ruby-identifier">to_f</span>) <span class="ruby-operator">*</span> <span class="ruby-value">1000.0</span>).<span class="ruby-identifier">to_i</span>,
+  }.<span class="ruby-identifier">merge</span>(<span class="ruby-identifier">message</span>)
+
+  <span class="ruby-identifier">message</span> = {<span class="ruby-string">&#39;data&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">data</span>}
+
+  <span class="ruby-identifier">ret</span> = <span class="ruby-keyword">true</span>
+  <span class="ruby-keyword">begin</span>
+    <span class="ruby-ivar">@sink</span>.<span class="ruby-identifier">call</span>(<span class="ruby-value">:profile_update</span>, <span class="ruby-identifier">message</span>.<span class="ruby-identifier">to_json</span>)
+  <span class="ruby-keyword">rescue</span> <span class="ruby-constant">MixpanelError</span>
+    <span class="ruby-identifier">ret</span> = <span class="ruby-keyword">false</span>
+  <span class="ruby-keyword">end</span>
+
+  <span class="ruby-identifier">ret</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+    </section>
+  
+  </section>
+</main>
+
+
+<footer id="validator-badges" role="contentinfo">
+  <p><a href="http://validator.w3.org/check/referer">Validate</a>
+  <p>Generated by <a href="http://rdoc.rubyforge.org">RDoc</a> 4.1.0.
+  <p>Based on <a href="http://deveiate.org/projects/Darkfish-Rdoc/">Darkfish</a> by <a href="http://deveiate.org">Michael Granger</a>.
+</footer>
+
