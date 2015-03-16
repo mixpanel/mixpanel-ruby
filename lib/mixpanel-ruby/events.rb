@@ -49,6 +49,7 @@ module Mixpanel
     #         'User Sign-up Cohort' => 'July 2013'
     #     })
     def track(distinct_id, event, properties={}, ip=nil)
+      raise ArgumentError, "Reserved property 'token' passed into properties. Use constructor instead!" if properties['token'] || properties[:token]
       properties = {
         'distinct_id' => distinct_id,
         'token' => @token,
