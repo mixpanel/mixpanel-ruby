@@ -79,7 +79,9 @@ module Mixpanel
     # representing the source of that event (for example, a user id),
     # an event name describing the event and a set of properties
     # describing that event. Properties are provided as a Hash with
-    # string keys and strings, numbers or booleans as values.
+    # string keys and strings, numbers or booleans as values.  By default,
+    # we pass the time of the method call as the time the event occured, if you
+    # wish to override this pass a timestamp in the properties hash.
     #
     #     tracker = Mixpanel::Tracker.new
     #
@@ -90,7 +92,8 @@ module Mixpanel
     #     # or aspects of the source or user associated with the event
     #     tracker.import("API_KEY", "12345", "Welcome Email Sent", {
     #         'Email Template' => 'Pretty Pink Welcome',
-    #         'User Sign-up Cohort' => 'July 2013'
+    #         'User Sign-up Cohort' => 'July 2013',
+    #         'time' => 1369353600,
     #     })
     def import(api_key, distinct_id, event, properties={}, ip=nil)
       properties = {

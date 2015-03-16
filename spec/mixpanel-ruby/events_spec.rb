@@ -50,5 +50,27 @@ describe Mixpanel::Events do
         }
     } ]])
   end
+
+  it 'should allow users to pass timestamp for import' do
+    older_time = Time.parse('Jun 6 1971, 16:23:04')
+    @events.import('API_KEY', 'TEST ID', 'Test Event', {
+        'Circumstances' => 'During a test',
+        'time' => older_time.to_i,
+    })
+    expect(@log).to eq([[:import, {
+        'api_key' => 'API_KEY',
+        'data' => {
+            'event' => 'Test Event',
+            'properties' => {
+                'Circumstances' => 'During a test',
+                'distinct_id' => 'TEST ID',
+                'mp_lib' => 'ruby',
+                '$lib_version' => Mixpanel::VERSION,
+                'token' => 'TEST TOKEN',
+                'time' => older_time.to_i,
+            }
+        }
+    } ]])
+  end
 end
 
