@@ -107,7 +107,8 @@ module Mixpanel
           succeeded = result['status'] == 1
         rescue JSON::JSONError
           {}
-        #  raise ServerError.new("Could not parse response, with error \"#{e.message}\".")
+        rescue => e
+          raise ServerError.new("Could not read 'status' key from response, with error \"#{e.message}\".")
         end
       end
 

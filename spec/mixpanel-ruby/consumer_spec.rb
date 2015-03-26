@@ -54,6 +54,13 @@ describe Mixpanel::Consumer do
         with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' })
     end
 
+    it 'should raise server error when response does not contain key status' do
+      # when verbose is disabled, 'verbose' => '1' is ignored, and the response is just 0 even on success
+      stub_request(:any, 'https://api.mixpanel.com/track').to_return({:status => 200, :body => '0'})
+      expect { subject.send!(:event, {'data' => 'TEST EVENT MESSAGE'}.to_json) }.to raise_exception(Mixpanel::ServerError, /Could not read 'status' key from response, with error/)
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/track').
+        with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' })
+    end
   end
 
   context 'raw consumer' do
