@@ -102,8 +102,13 @@ module Mixpanel
 
       succeeded = nil
       if response_code.to_i == 200
-        result = JSON.load(response_body) rescue {}
-        succeeded = result['status'] == 1
+        begin
+          result = JSON.load(response_body)
+          succeeded = result['status'] == 1
+        rescue JSON::JSONError
+          {}
+        #  raise ServerError.new("Could not parse response, with error \"#{e.message}\".")
+        end
       end
 
       if !succeeded

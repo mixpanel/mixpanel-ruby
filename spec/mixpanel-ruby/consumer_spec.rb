@@ -46,6 +46,14 @@ describe Mixpanel::Consumer do
       expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/track').
         with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' })
     end
+
+    it 'should raise server error due to a json error' do
+      stub_request(:any, 'https://api.mixpanel.com/track').to_return({:status => 200, :body => '{'})
+      expect { subject.send!(:event, {'data' => 'TEST EVENT MESSAGE'}.to_json) }.to raise_exception(Mixpanel::ServerError, /Could not write to Mixpanel, server responded with 200/)
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/track').
+        with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' })
+    end
+
   end
 
   context 'raw consumer' do
