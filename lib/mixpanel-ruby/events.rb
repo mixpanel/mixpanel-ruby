@@ -1,5 +1,6 @@
 require 'mixpanel-ruby/consumer'
 require 'time'
+require 'base64'
 
 module Mixpanel
 
@@ -48,7 +49,7 @@ module Mixpanel
     #         'Email Template' => 'Pretty Pink Welcome',
     #         'User Sign-up Cohort' => 'July 2013'
     #     })
-    def track(distinct_id, event, properties={}, ip=nil, as_pixel=nil)
+    def track(distinct_id, event, properties={}, ip=nil)
       properties = {
         'distinct_id' => distinct_id,
         'token' => @token,

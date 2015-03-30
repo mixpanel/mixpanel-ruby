@@ -138,5 +138,42 @@ module Mixpanel
 
       ret
     end
+
+    # A call to #generate_tracking_url will return a formatted url for
+    # pixle based tracking.  #generate_tracking_url takes a distinct_id
+    # representing the source of that event (for example, a user id),
+    # an event name describing the event, and a set of properties describing
+    # that event. Properties are provided as a Hash with string keys and
+    # strings, numbers or booleans as values. For more information please see:
+    # https://mixpanel.com/docs/api-documentation/pixel-based-event-tracking
+    #
+    #     tracker = Mixpanel::Tracker.new
+    #
+    #     # generate pixle tracking url in order to track that user
+    #     # "12345"'s credit card was declined
+    #     url = tracker.generate_tracking_url("12345", "Credit Card Declined", {
+    #       'time' => 1310111365
+    #     })
+    #
+    #     url == 'https://api.mixpanel.com/track/?data=[BASE_64_JSON_EVENT]&ip=1&img=1'
+    def generate_tracking_url(distinct_id, event, properties={}, endpoint=nil)
+      properties = {
+        'distinct_id' => distinct_id,
+        'token' => @token,
+        'time' => Time.now.to_i,
+        'mp_lib' => 'ruby',
+        '$lib_version' => Mixpanel::VERSION,
+      }.merge(properties)
+
+      raw_data = {
+        'event' => event,
+        'properties' => properties,
+      }
+
+      endpoint = endpoint || 'https://api.mixpanel.com/track'
+      data = Base64.encode(raw_data.to_json)
+
+      "#{endpoint}?data=#{data)}&ip=1&img=1"
+    end
   end
 end

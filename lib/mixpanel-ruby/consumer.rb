@@ -141,18 +141,6 @@ module Mixpanel
       response = client.request(request)
       [response.code, response.body]
     end
-
-    # Generate_tracking_url takes an endpoint HTTP or HTTPS url, and a Hash of data
-    # to post to that url. It should return a string for the tracking url:
-    #
-    # pixel_tracking_url
-
-    def generate_tracking_url(endpoint, form_data)
-      uri = URI(endpoint)
-      request = Net::HTTP::Get.new(uri.request_uri)
-      request.set_form_data(form_data)
-      "#{endpoint}?#{request.body}"
-    end
   end
 
   # BufferedConsumer buffers messages in memory, and sends messages as
