@@ -31,6 +31,25 @@ describe Mixpanel::Events do
     }]])
   end
 
+
+  it 'should return a well formed pixel tracking uri if asked' do
+    @events.track('TEST ID', 'Test Event', {
+        'Circumstances' => 'During a test'
+    }, nil, true)
+    @log.should eq([[:event, 'data' => {
+        'event' => 'Test Event',
+        'properties' => {
+            'Circumstances' => 'During a test',
+            'distinct_id' => 'TEST ID',
+            'mp_lib' => 'ruby',
+            '$lib_version' => Mixpanel::VERSION,
+            'token' => 'TEST TOKEN',
+            'time' => @time_now.to_i
+        }
+    }]])
+  end
+
+
   it 'should send a well formed import/ message' do
     @events.import('API_KEY', 'TEST ID', 'Test Event', {
         'Circumstances' => 'During a test'
@@ -51,4 +70,3 @@ describe Mixpanel::Events do
     } ]])
   end
 end
-

@@ -48,7 +48,7 @@ module Mixpanel
     #         'Email Template' => 'Pretty Pink Welcome',
     #         'User Sign-up Cohort' => 'July 2013'
     #     })
-    def track(distinct_id, event, properties={}, ip=nil)
+    def track(distinct_id, event, properties={}, ip=nil, as_pixel=nil)
       properties = {
         'distinct_id' => distinct_id,
         'token' => @token,

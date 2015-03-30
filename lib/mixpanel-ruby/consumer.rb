@@ -123,7 +123,7 @@ module Mixpanel
     # [response code, response body]
     #
     # as the result of the response. Response code should be nil if
-    # the request never recieves a response for some reason.
+    # the request never receives a response for some reason.
     def request(endpoint, form_data)
       uri = URI(endpoint)
       request = Net::HTTP::Post.new(uri.request_uri)
@@ -142,6 +142,17 @@ module Mixpanel
       [response.code, response.body]
     end
 
+    # Generate_tracking_url takes an endpoint HTTP or HTTPS url, and a Hash of data
+    # to post to that url. It should return a string for the tracking url:
+    #
+    # pixel_tracking_url
+
+    def generate_tracking_url(endpoint, form_data)
+      uri = URI(endpoint)
+      request = Net::HTTP::Get.new(uri.request_uri)
+      request.set_form_data(form_data)
+      "#{endpoint}?#{request.body}"
+    end
   end
 
   # BufferedConsumer buffers messages in memory, and sends messages as
