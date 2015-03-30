@@ -35,7 +35,7 @@ module Mixpanel
     @@init_http = block
   end
 
-  # A Consumer recieves messages from a Mixpanel::Tracker, and
+  # A Consumer receives messages from a Mixpanel::Tracker, and
   # sends them elsewhere- probably to Mixpanel's analytics services,
   # but can also enqueue them for later processing, log them to a
   # file, or do whatever else you might find useful.

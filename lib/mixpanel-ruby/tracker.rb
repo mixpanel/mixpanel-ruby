@@ -66,14 +66,7 @@ module Mixpanel
     #         'Email Template' => 'Pretty Pink Welcome',
     #         'User Sign-up Cohort' => 'July 2013'
     #     })
-    #
-    # Optionallly, #track can be used to generate a pixel tracking url
-    # by setting "as_pixel" to true. In this case, a call to #track will not
-    # report the event, but instead return the string representation of a URL
-    # that will report the event when requested. For more information, see:
-    # https://mixpanel.com/docs/api-documentation/pixel-based-event-tracking
-
-    def track(distinct_id, event, properties={}, ip=nil, as_pixel=nil)
+    def track(distinct_id, event, properties={}, ip=nil)
       # This is here strictly to allow rdoc to include the relevant
       # documentation
       super
@@ -144,7 +137,7 @@ module Mixpanel
     # representing the source of that event (for example, a user id),
     # an event name describing the event, and a set of properties describing
     # that event. Properties are provided as a Hash with string keys and
-    # strings, numbers or booleans as values. For more information please see:
+    # strings, numbers or booleans as values. For more information, please see:
     # https://mixpanel.com/docs/api-documentation/pixel-based-event-tracking
     #
     #     tracker = Mixpanel::Tracker.new
