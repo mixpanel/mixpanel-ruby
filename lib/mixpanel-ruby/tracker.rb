@@ -164,9 +164,9 @@ module Mixpanel
       }
 
       endpoint = endpoint || 'https://api.mixpanel.com/track'
-      data = Base64.encode(raw_data.to_json)
+      data = Base64.urlsafe_encode64(raw_data.to_json)
 
-      "#{endpoint}?data=#{data)}&ip=1&img=1"
+      "#{endpoint}?data=#{data}&ip=1&img=1"
     end
   end
 end

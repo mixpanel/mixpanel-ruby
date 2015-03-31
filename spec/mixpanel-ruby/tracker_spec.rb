@@ -2,6 +2,7 @@ require 'mixpanel-ruby'
 require 'base64'
 require 'json'
 require 'uri'
+require 'cgi'
 
 describe Mixpanel::Tracker do
   before(:each) do
@@ -17,6 +18,32 @@ describe Mixpanel::Tracker do
 
     expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/track').
       with(:body => {:data => 'eyJldmVudCI6IiRjcmVhdGVfYWxpYXMiLCJwcm9wZXJ0aWVzIjp7ImRpc3RpbmN0X2lkIjoiVEVTVCBJRCIsImFsaWFzIjoiVEVTVCBBTElBUyIsInRva2VuIjoiVEVTVCBUT0tFTiJ9fQ==', 'verbose' => '1'})
+  end
+
+  it 'should generate pixel tracking urls correctly' do
+    mixpanel = Mixpanel::Tracker.new('TEST TOKEN')
+    event = 'TEST EVENT'
+    properties = {'Circumstances' => 'During test'}
+    default_properties = {
+      'distinct_id' => 'TEST_ID',
+      'mp_lib' => 'ruby',
+      '$lib_version' => Mixpanel::VERSION,
+      'token' => 'TEST TOKEN',
+      'time' => @time_now.to_i
+    }
+    expected_data = {'event' => event, 'properties' => properties.merge(default_properties)}
+
+    url_string = mixpanel.generate_tracking_url('TEST_ID', event, properties)
+    url = URI(url_string)
+    parsed_query = CGI.parse(url.query)
+    data = JSON.parse(Base64.urlsafe_decode64(parsed_query['data'][0]))
+
+    expect(url.scheme).to eq('https')
+    expect(url.host).to eq('api.mixpanel.com')
+    expect(url.path).to eq('/track')
+    expect(parsed_query['ip'][0]).to eq('1')
+    expect(parsed_query['img'][0]).to eq('1')
+    expect(data).to eq(expected_data)
   end
 
   it 'should send a request to the track api with the default consumer' do
