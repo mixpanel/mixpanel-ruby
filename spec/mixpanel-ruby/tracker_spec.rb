@@ -34,15 +34,17 @@ describe Mixpanel::Tracker do
     expected_data = {'event' => event, 'properties' => properties.merge(default_properties)}
 
     url_string = mixpanel.generate_tracking_url('TEST_ID', event, properties)
-    url = URI(url_string)
-    parsed_query = CGI.parse(url.query)
-    data = JSON.parse(Base64.urlsafe_decode64(parsed_query['data'][0]))
 
+    url = URI(url_string)
     expect(url.scheme).to eq('https')
     expect(url.host).to eq('api.mixpanel.com')
     expect(url.path).to eq('/track')
+
+    parsed_query = CGI.parse(url.query)
     expect(parsed_query['ip'][0]).to eq('1')
     expect(parsed_query['img'][0]).to eq('1')
+
+    data = JSON.parse(Base64.urlsafe_decode64(parsed_query['data'][0]))
     expect(data).to eq(expected_data)
   end
 
