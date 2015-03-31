@@ -1,6 +1,5 @@
 require 'mixpanel-ruby/consumer'
 require 'time'
-require 'base64'
 
 module Mixpanel
 
