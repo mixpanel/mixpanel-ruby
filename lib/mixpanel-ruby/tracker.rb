@@ -133,7 +133,7 @@ module Mixpanel
     end
 
     # A call to #generate_tracking_url will return a formatted url for
-    # pixle based tracking.  #generate_tracking_url takes a distinct_id
+    # pixel based tracking.  #generate_tracking_url takes a distinct_id
     # representing the source of that event (for example, a user id),
     # an event name describing the event, and a set of properties describing
     # that event. Properties are provided as a Hash with string keys and
@@ -142,7 +142,7 @@ module Mixpanel
     #
     #     tracker = Mixpanel::Tracker.new
     #
-    #     # generate pixle tracking url in order to track that user
+    #     # generate pixel tracking url in order to track that user
     #     # "12345"'s credit card was declined
     #     url = tracker.generate_tracking_url("12345", "Credit Card Declined", {
     #       'time' => 1310111365
