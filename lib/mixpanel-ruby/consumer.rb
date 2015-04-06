@@ -102,14 +102,8 @@ module Mixpanel
 
       succeeded = nil
       if response_code.to_i == 200
-        begin
-          result = JSON.load(response_body)
-          succeeded = result['status'] == 1
-        rescue JSON::JSONError
-          {}
-        rescue => e
-          raise ServerError.new("Could not read 'status' key from response, with error \"#{e.message}\".")
-        end
+        result = JSON.parse(response_body) rescue {}
+        succeeded = result['status'] == 1
       end
 
       if !succeeded
