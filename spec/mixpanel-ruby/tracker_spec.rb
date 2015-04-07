@@ -38,7 +38,7 @@ describe Mixpanel::Tracker do
     url = URI(url_string)
     expect(url.scheme).to eq('https')
     expect(url.host).to eq('api.mixpanel.com')
-    expect(url.path).to eq('/track')
+    expect(url.path).to eq('/track/')
 
     parsed_query = CGI.parse(url.query)
     expect(parsed_query['ip'][0]).to eq('1')

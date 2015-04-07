@@ -163,7 +163,7 @@ module Mixpanel
         'properties' => properties,
       }
 
-      endpoint = endpoint || 'https://api.mixpanel.com/track'
+      endpoint = endpoint || 'https://api.mixpanel.com/track/'
       data = Base64.urlsafe_encode64(raw_data.to_json)
 
       "#{endpoint}?data=#{data}&ip=1&img=1"
