@@ -94,7 +94,7 @@
 
   <section class="description">
     
-<p>A <a href="Consumer.html">Consumer</a> recieves messages from a <a
+<p>A <a href="Consumer.html">Consumer</a> receives messages from a <a
 href="Tracker.html">Mixpanel::Tracker</a>, and sends them elsewhere-
 probably to Mixpanel&#39;s analytics services, but can also enqueue them
 for later processing, log them to a file, or do whatever else you might
@@ -210,14 +210,14 @@ that url. It should return a pair of</p>
 <dl class="rdoc-list label-list"><dt>response code, response body
 <dd>
 <p>as the result of the response. Response code should be nil if the request
-never recieves a response for some reason.</p>
+never receives a response for some reason.</p>
 </dd></dl>
           
           
 
           
           <div class="method-source-code" id="request-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 127</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 130</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">request</span>(<span class="ruby-identifier">endpoint</span>, <span class="ruby-identifier">form_data</span>)
   <span class="ruby-identifier">uri</span> = <span class="ruby-constant">URI</span>(<span class="ruby-identifier">endpoint</span>)
   <span class="ruby-identifier">request</span> = <span class="ruby-constant">Net</span><span class="ruby-operator">::</span><span class="ruby-constant">HTTP</span><span class="ruby-operator">::</span><span class="ruby-constant">Post</span>.<span class="ruby-identifier">new</span>(<span class="ruby-identifier">uri</span>.<span class="ruby-identifier">request_uri</span>)
@@ -264,7 +264,7 @@ never recieves a response for some reason.</p>
 
           
           <div class="method-source-code" id="send-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 115</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 118</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">send</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
     <span class="ruby-identifier">warn</span> <span class="ruby-string">&#39;[DEPRECATION] send has been deprecated as of release 2.0.0, please use send! instead&#39;</span>
     <span class="ruby-identifier">send!</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
@@ -326,13 +326,16 @@ href="BufferedConsumer.html">Mixpanel::BufferedConsumer</a></p>
     <span class="ruby-identifier">raise</span> <span class="ruby-constant">ConnectionError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-node">&quot;Could not connect to Mixpanel, with error \&quot;#{e.message}\&quot;.&quot;</span>)
   <span class="ruby-keyword">end</span>
 
-  <span class="ruby-identifier">succeeded</span> = <span class="ruby-keyword">nil</span>
+  <span class="ruby-identifier">result</span> = {}
   <span class="ruby-keyword">if</span> <span class="ruby-identifier">response_code</span>.<span class="ruby-identifier">to_i</span> <span class="ruby-operator">==</span> <span class="ruby-value">200</span>
-    <span class="ruby-identifier">result</span> = <span class="ruby-constant">JSON</span>.<span class="ruby-identifier">load</span>(<span class="ruby-identifier">response_body</span>) <span class="ruby-keyword">rescue</span> {}
-    <span class="ruby-identifier">succeeded</span> = <span class="ruby-identifier">result</span>[<span class="ruby-string">&#39;status&#39;</span>] <span class="ruby-operator">==</span> <span class="ruby-value">1</span>
+    <span class="ruby-keyword">begin</span>
+      <span class="ruby-identifier">result</span> = <span class="ruby-constant">JSON</span>.<span class="ruby-identifier">parse</span>(<span class="ruby-identifier">response_body</span>.<span class="ruby-identifier">to_s</span>)
+    <span class="ruby-keyword">rescue</span> <span class="ruby-constant">JSON</span><span class="ruby-operator">::</span><span class="ruby-constant">JSONError</span>
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">ServerError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-node">&quot;Could not interpret Mixpanel server response: &#39;#{response_body}&#39;&quot;</span>)
+    <span class="ruby-keyword">end</span>
   <span class="ruby-keyword">end</span>
 
-  <span class="ruby-keyword">if</span> <span class="ruby-operator">!</span><span class="ruby-identifier">succeeded</span>
+  <span class="ruby-keyword">if</span> <span class="ruby-identifier">result</span>[<span class="ruby-string">&#39;status&#39;</span>] <span class="ruby-operator">!=</span> <span class="ruby-value">1</span>
     <span class="ruby-identifier">raise</span> <span class="ruby-constant">ServerError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-node">&quot;Could not write to Mixpanel, server responded with #{response_code} returning: &#39;#{response_body}&#39;&quot;</span>)
   <span class="ruby-keyword">end</span>
 <span class="ruby-keyword">end</span></pre>

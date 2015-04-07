@@ -77,6 +77,8 @@
     
     <li ><a href="#method-i-alias">#alias</a>
     
+    <li ><a href="#method-i-generate_tracking_url">#generate_tracking_url</a>
+    
     <li class="calls-super" ><a href="#method-i-import">#import</a>
     
     <li class="calls-super" ><a href="#method-i-track">#track</a>
@@ -273,6 +275,75 @@ service, regardless of how the tracker is configured.</p>
   <span class="ruby-keyword">end</span>
 
   <span class="ruby-identifier">ret</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-generate_tracking_url" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">generate_tracking_url</span><span
+            class="method-args">(distinct_id, event, properties={}, endpoint=nil)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>A call to <a
+href="Tracker.html#method-i-generate_tracking_url">generate_tracking_url</a>
+will return a formatted url for pixel based tracking.  <a
+href="Tracker.html#method-i-generate_tracking_url">generate_tracking_url</a>
+takes a distinct_id representing the source of that event (for example, a
+user id), an event name describing the event, and a set of properties
+describing that event. Properties are provided as a Hash with string keys
+and strings, numbers or booleans as values. For more information, please
+see: <a
+href="https://mixpanel.com/docs/api-documentation/pixel-based-event-tracking">mixpanel.com/docs/api-documentation/pixel-based-event-tracking</a></p>
+
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>
+
+<span class="ruby-comment"># generate pixel tracking url in order to track that user</span>
+<span class="ruby-comment"># &quot;12345&quot;&#39;s credit card was declined</span>
+<span class="ruby-identifier">url</span> = <span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">generate_tracking_url</span>(<span class="ruby-string">&quot;12345&quot;</span>, <span class="ruby-string">&quot;Credit Card Declined&quot;</span>, {
+  <span class="ruby-string">&#39;time&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">1310111365</span>
+})
+
+<span class="ruby-identifier">url</span> <span class="ruby-operator">==</span> <span class="ruby-string">&#39;https://api.mixpanel.com/track/?data=[BASE_64_JSON_EVENT]&amp;ip=1&amp;img=1&#39;</span>
+</pre>
+          
+          
+
+          
+          <div class="method-source-code" id="generate_tracking_url-source">
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/tracker.rb, line 152</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">generate_tracking_url</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">event</span>, <span class="ruby-identifier">properties</span>={}, <span class="ruby-identifier">endpoint</span>=<span class="ruby-keyword">nil</span>)
+  <span class="ruby-identifier">properties</span> = {
+    <span class="ruby-string">&#39;distinct_id&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">distinct_id</span>,
+    <span class="ruby-string">&#39;token&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@token</span>,
+    <span class="ruby-string">&#39;time&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-constant">Time</span>.<span class="ruby-identifier">now</span>.<span class="ruby-identifier">to_i</span>,
+    <span class="ruby-string">&#39;mp_lib&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-string">&#39;ruby&#39;</span>,
+    <span class="ruby-string">&#39;$lib_version&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">VERSION</span>,
+  }.<span class="ruby-identifier">merge</span>(<span class="ruby-identifier">properties</span>)
+
+  <span class="ruby-identifier">raw_data</span> = {
+    <span class="ruby-string">&#39;event&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">event</span>,
+    <span class="ruby-string">&#39;properties&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">properties</span>,
+  }
+
+  <span class="ruby-identifier">endpoint</span> = <span class="ruby-identifier">endpoint</span> <span class="ruby-operator">||</span> <span class="ruby-string">&#39;https://api.mixpanel.com/track/&#39;</span>
+  <span class="ruby-identifier">data</span> = <span class="ruby-constant">Base64</span>.<span class="ruby-identifier">urlsafe_encode64</span>(<span class="ruby-identifier">raw_data</span>.<span class="ruby-identifier">to_json</span>)
+
+  <span class="ruby-node">&quot;#{endpoint}?data=#{data}&amp;ip=1&amp;img=1&quot;</span>
 <span class="ruby-keyword">end</span></pre>
           </div>
           

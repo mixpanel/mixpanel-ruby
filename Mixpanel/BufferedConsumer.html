@@ -187,7 +187,7 @@ to the constructor, the *_endpoint constructor arguments are ignored.</p>
 
           
           <div class="method-source-code" id="new-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 187</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 189</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">events_endpoint</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">update_endpoint</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">import_endpoint</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">max_buffer_length</span>=<span class="ruby-constant">MAX_LENGTH</span>, <span class="ruby-operator">&amp;</span><span class="ruby-identifier">block</span>)
   <span class="ruby-ivar">@max_length</span> = [<span class="ruby-identifier">max_buffer_length</span>, <span class="ruby-constant">MAX_LENGTH</span>].<span class="ruby-identifier">min</span>
   <span class="ruby-ivar">@buffers</span> = {
@@ -241,7 +241,7 @@ application exits or messages may not be sent.</p>
 
           
           <div class="method-source-code" id="flush-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 228</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 230</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">flush</span>
   <span class="ruby-ivar">@buffers</span>.<span class="ruby-identifier">keys</span>.<span class="ruby-identifier">each</span> { <span class="ruby-operator">|</span><span class="ruby-identifier">k</span><span class="ruby-operator">|</span> <span class="ruby-identifier">flush_type</span>(<span class="ruby-identifier">k</span>) }
 <span class="ruby-keyword">end</span></pre>
@@ -274,7 +274,7 @@ application exits or messages may not be sent.</p>
 
           
           <div class="method-source-code" id="send-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 220</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 222</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">send</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
     <span class="ruby-identifier">warn</span> <span class="ruby-string">&#39;[DEPRECATION] send has been deprecated as of release 2.0.0, please use send! instead&#39;</span>
     <span class="ruby-identifier">send!</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
@@ -313,7 +313,7 @@ messages will be send immediately on call.</p>
 
           
           <div class="method-source-code" id="send-21-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 208</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 210</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">send!</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
   <span class="ruby-identifier">type</span> = <span class="ruby-identifier">type</span>.<span class="ruby-identifier">to_sym</span>
 

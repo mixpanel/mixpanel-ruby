@@ -191,7 +191,9 @@ tracker = Mixpanel::Tracker.new(...)</pre>
 representing the source of that event (for example, a user id), an event
 name describing the event and a set of properties describing that event.
 Properties are provided as a Hash with string keys and strings, numbers or
-booleans as values.</p>
+booleans as values.  By default, we pass the time of the method call as the
+time the event occured, if you wish to override this pass a timestamp in
+the properties hash.</p>
 
 <pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>
 
@@ -202,7 +204,8 @@ booleans as values.</p>
 <span class="ruby-comment"># or aspects of the source or user associated with the event</span>
 <span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">import</span>(<span class="ruby-string">&quot;API_KEY&quot;</span>, <span class="ruby-string">&quot;12345&quot;</span>, <span class="ruby-string">&quot;Welcome Email Sent&quot;</span>, {
     <span class="ruby-string">&#39;Email Template&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-string">&#39;Pretty Pink Welcome&#39;</span>,
-    <span class="ruby-string">&#39;User Sign-up Cohort&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-string">&#39;July 2013&#39;</span>
+    <span class="ruby-string">&#39;User Sign-up Cohort&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-string">&#39;July 2013&#39;</span>,
+    <span class="ruby-string">&#39;time&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">1369353600</span>,
 })
 </pre>
           
@@ -210,7 +213,7 @@ booleans as values.</p>
 
           
           <div class="method-source-code" id="import-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/events.rb, line 95</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/events.rb, line 98</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">import</span>(<span class="ruby-identifier">api_key</span>, <span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">event</span>, <span class="ruby-identifier">properties</span>={}, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>)
   <span class="ruby-identifier">properties</span> = {
     <span class="ruby-string">&#39;distinct_id&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">distinct_id</span>,

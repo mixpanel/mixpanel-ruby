@@ -1,8 +1,8 @@
-Thu, 12 Mar 2015 18:45:57 +0000
-Readme.rdoc	Thu, 12 Mar 2015 18:35:28 +0000
+Tue, 07 Apr 2015 21:22:06 +0000
+Readme.rdoc	Tue, 07 Apr 2015 21:13:14 +0000
 lib/mixpanel-ruby.rb	Thu, 12 Mar 2015 00:26:46 +0000
-lib/mixpanel-ruby/consumer.rb	Thu, 12 Mar 2015 18:35:28 +0000
-lib/mixpanel-ruby/events.rb	Thu, 12 Mar 2015 00:26:46 +0000
+lib/mixpanel-ruby/consumer.rb	Tue, 07 Apr 2015 21:13:14 +0000
+lib/mixpanel-ruby/events.rb	Tue, 07 Apr 2015 21:13:14 +0000
 lib/mixpanel-ruby/people.rb	Thu, 12 Mar 2015 00:26:46 +0000
-lib/mixpanel-ruby/tracker.rb	Thu, 12 Mar 2015 00:26:46 +0000
-lib/mixpanel-ruby/version.rb	Thu, 12 Mar 2015 18:35:28 +0000
+lib/mixpanel-ruby/tracker.rb	Tue, 07 Apr 2015 21:13:14 +0000
+lib/mixpanel-ruby/version.rb	Tue, 07 Apr 2015 21:13:14 +0000
