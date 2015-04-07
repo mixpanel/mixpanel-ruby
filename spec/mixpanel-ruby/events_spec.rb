@@ -73,4 +73,3 @@ describe Mixpanel::Events do
     } ]])
   end
 end
-

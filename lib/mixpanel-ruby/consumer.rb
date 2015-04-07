@@ -35,7 +35,7 @@ module Mixpanel
     @@init_http = block
   end
 
-  # A Consumer recieves messages from a Mixpanel::Tracker, and
+  # A Consumer receives messages from a Mixpanel::Tracker, and
   # sends them elsewhere- probably to Mixpanel's analytics services,
   # but can also enqueue them for later processing, log them to a
   # file, or do whatever else you might find useful.
@@ -126,7 +126,7 @@ module Mixpanel
     # [response code, response body]
     #
     # as the result of the response. Response code should be nil if
-    # the request never recieves a response for some reason.
+    # the request never receives a response for some reason.
     def request(endpoint, form_data)
       uri = URI(endpoint)
       request = Net::HTTP::Post.new(uri.request_uri)
@@ -144,7 +144,6 @@ module Mixpanel
       response = client.request(request)
       [response.code, response.body]
     end
-
   end
 
   # BufferedConsumer buffers messages in memory, and sends messages as
