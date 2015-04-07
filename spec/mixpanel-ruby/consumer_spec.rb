@@ -46,6 +46,20 @@ describe Mixpanel::Consumer do
       expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/track').
         with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' })
     end
+
+    it 'should raise server error if response body is empty' do
+      stub_request(:any, 'https://api.mixpanel.com/track').to_return({:body => ''})
+      expect { subject.send!(:event, {'data' => 'TEST EVENT MESSAGE'}.to_json) }.to raise_exception(Mixpanel::ServerError, /Could not interpret Mixpanel server response: ''/)
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/track').
+        with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' })
+    end
+
+    it 'should raise server error when verbose is disabled' do
+      stub_request(:any, 'https://api.mixpanel.com/track').to_return({:body => '0'})
+      expect { subject.send!(:event, {'data' => 'TEST EVENT MESSAGE'}.to_json) }.to raise_exception(Mixpanel::ServerError, /Could not interpret Mixpanel server response: '0'/)
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/track').
+        with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' })
+    end
   end
 
   context 'raw consumer' do

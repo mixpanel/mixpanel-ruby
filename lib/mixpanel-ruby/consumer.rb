@@ -100,13 +100,16 @@ module Mixpanel
         raise ConnectionError.new("Could not connect to Mixpanel, with error \"#{e.message}\".")
       end
 
-      succeeded = nil
+      result = {}
       if response_code.to_i == 200
-        result = JSON.load(response_body) rescue {}
-        succeeded = result['status'] == 1
+        begin
+          result = JSON.parse(response_body.to_s)
+        rescue JSON::JSONError
+          raise ServerError.new("Could not interpret Mixpanel server response: '#{response_body}'")
+        end
       end
 
-      if !succeeded
+      if result['status'] != 1
         raise ServerError.new("Could not write to Mixpanel, server responded with #{response_code} returning: '#{response_body}'")
       end
     end
