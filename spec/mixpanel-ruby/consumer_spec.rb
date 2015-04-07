@@ -47,17 +47,17 @@ describe Mixpanel::Consumer do
         with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' })
     end
 
-    it 'should raise server error due to a json error' do
-      stub_request(:any, 'https://api.mixpanel.com/track').to_return({:status => 200, :body => '{'})
-      expect { subject.send!(:event, {'data' => 'TEST EVENT MESSAGE'}.to_json) }.to raise_exception(Mixpanel::ServerError, /Could not write to Mixpanel, server responded with 200/)
+    it 'should raise server error if response body is empty' do
+      stub_request(:any, 'https://api.mixpanel.com/track').to_return({:status => 200, :body => ''})
+      expect { subject.send!(:event, {'data' => 'TEST EVENT MESSAGE'}.to_json) }.to raise_exception(Mixpanel::ServerError, /Could not interpret Mixpanel server response: ''/)
       expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/track').
         with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' })
     end
 
-    it 'should raise server error when response does not contain key status' do
+    it 'should raise server error when verbose is disabled' do
       # when verbose is disabled, 'verbose' => '1' is ignored, and the response is just 0 even on success
       stub_request(:any, 'https://api.mixpanel.com/track').to_return({:status => 200, :body => '0'})
-      expect { subject.send!(:event, {'data' => 'TEST EVENT MESSAGE'}.to_json) }.to raise_exception(Mixpanel::ServerError, /Could not read 'status' key from response, with error/)
+      expect { subject.send!(:event, {'data' => 'TEST EVENT MESSAGE'}.to_json) }.to raise_exception(Mixpanel::ServerError, /Could not interpret Mixpanel server response: '0'/)
       expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/track').
         with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' })
     end
