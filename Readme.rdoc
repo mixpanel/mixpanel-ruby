@@ -49,6 +49,12 @@ In particular, for Rails apps, the following projects are currently actively mai
 
 == Changes
 
+== 2.1.0
+* Add Mixpanel::Tracker#generate_tracking_url, which generates {pixel tracking urls}[https://mixpanel.com/docs/api-documentation/pixel-based-event-tracking].
+* Rescue JSONErrors in the consumer and raise Mixpanel::ServerError in Mixpanel::Consumer#send!.
+* Make it clear how to import events with custom timestamp.
+* Update dependancies in gemspec
+
 == 2.0.1
 * Add Deprecated version of Mixpanel::BufferedConsumer#send
 
