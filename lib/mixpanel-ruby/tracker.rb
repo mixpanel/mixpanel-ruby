@@ -55,7 +55,7 @@ module Mixpanel
     # as a Hash with string keys and strings, numbers or booleans as
     # values.
     #
-    #     tracker = Mixpanel::Tracker.new
+    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #
     #     # Track that user "12345"'s credit card was declined
     #     tracker.track("12345", "Credit Card Declined")
@@ -79,7 +79,7 @@ module Mixpanel
     # as a Hash with string keys and strings, numbers or booleans as
     # values.
     #
-    #     tracker = Mixpanel::Tracker.new
+    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #
     #     # Import event that user "12345"'s credit card was declined
     #     tracker.import("API_KEY", "12345", "Credit Card Declined", {
@@ -140,7 +140,7 @@ module Mixpanel
     # strings, numbers or booleans as values. For more information, please see:
     # https://mixpanel.com/docs/api-documentation/pixel-based-event-tracking
     #
-    #     tracker = Mixpanel::Tracker.new
+    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #
     #     # generate pixel tracking url in order to track that user
     #     # "12345"'s credit card was declined

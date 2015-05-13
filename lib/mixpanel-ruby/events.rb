@@ -8,7 +8,7 @@ module Mixpanel
   # is a subclass of this class, and the best way to
   # track events is to instantiate a Mixpanel::Tracker
   #
-  #     tracker = Mixpanel::Tracker.new # Has all of the methods of Mixpanel::Event
+  #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN) # Has all of the methods of Mixpanel::Event
   #     tracker.track(...)
   #
   class Events
@@ -18,7 +18,7 @@ module Mixpanel
     # is to use Mixpanel::Tracker
     #
     #     # tracker has all of the methods of Mixpanel::Events
-    #     tracker = Mixpanel::Tracker.new(...)
+    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #
     def initialize(token, &block)
       @token = token
@@ -37,7 +37,7 @@ module Mixpanel
     # describing that event. Properties are provided as a Hash with
     # string keys and strings, numbers or booleans as values.
     #
-    #     tracker = Mixpanel::Tracker.new
+    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #
     #     # Track that user "12345"'s credit card was declined
     #     tracker.track("12345", "Credit Card Declined")
@@ -83,7 +83,7 @@ module Mixpanel
     # we pass the time of the method call as the time the event occured, if you
     # wish to override this pass a timestamp in the properties hash.
     #
-    #     tracker = Mixpanel::Tracker.new
+    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #
     #     # Track that user "12345"'s credit card was declined
     #     tracker.import("API_KEY", "12345", "Credit Card Declined")

@@ -17,7 +17,7 @@ module Mixpanel
     # You likely won't need to instantiate instances of Mixpanel::People
     # directly. The best way to get an instance of Mixpanel::People is
     #
-    #     tracker = Mixpanel::Tracker.new(...)
+    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #     tracker.people # An instance of Mixpanel::People
     #
     def initialize(token, &block)
@@ -35,7 +35,7 @@ module Mixpanel
     # keys, and values that are strings, numbers, booleans, or
     # DateTimes
     #
-    #    tracker = Mixpanel::Tracker.new
+    #    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #    # Sets properties on profile with id "1234"
     #    tracker.people.set("1234", {
     #        'company' => 'Acme',
@@ -61,7 +61,7 @@ module Mixpanel
     # in the profile. That means you can call set_once many times
     # without changing an original value.
     #
-    #    tracker = Mixpanel::Tracker.new
+    #    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #    tracker.people.set_once("12345", {
     #        'First Login Date': DateTime.now
     #    });
@@ -83,7 +83,7 @@ module Mixpanel
     # property. If no property exists with a given name, the value
     # will be added to zero.
     #
-    #    tracker = Mixpanel::Tracker.new
+    #    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #    tracker.people.increment("12345", {
     #        'Coins Spent' => 7,
     #        'Coins Earned' => -7, # Use a negative number to subtract
@@ -104,7 +104,7 @@ module Mixpanel
     # by one. Calling #plus_one(distinct_id, property_name) is the same as calling
     # #increment(distinct_id, {property_name => 1})
     #
-    #    tracker = Mixpanel::Tracker.new
+    #    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #    tracker.people.plus_one("12345", "Albums Released")
     #
     def plus_one(distinct_id, property_name, ip=nil, optional_params={})
@@ -115,7 +115,7 @@ module Mixpanel
     # If the given properties don't exist, a new list-valued
     # property will be created.
     #
-    #    tracker = Mixpanel::Tracker.new
+    #    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #    tracker.people.append("12345", {
     #        'Login Dates' => DateTime.now,
     #        'Alter Ego Names' => 'Ziggy Stardust'
@@ -138,7 +138,7 @@ module Mixpanel
     # property. After a union, every element in the list associated
     # with a property will be unique.
     #
-    #    tracker = Mixpanel::Tracker.new
+    #    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #    tracker.people.union("12345", {
     #        'Levels Completed' => ['Suffragette City']
     #    });
@@ -156,7 +156,7 @@ module Mixpanel
 
     # Removes properties and their values from a profile.
     #
-    #    tracker = Mixpanel::Tracker.new
+    #    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #
     #    # removes a single property and its value from a profile
     #    tracker.people.unset("12345", "Overdue Since")
@@ -178,7 +178,7 @@ module Mixpanel
     # Records a payment to you to a profile. Charges recorded with
     # #track_charge will appear in the \Mixpanel revenue report.
     #
-    #    tracker = Mixpanel::Tracker.new
+    #    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #
     #    # records a charge of $25.32 from user 12345
     #    tracker.people.track_charge("12345", 25.32)
