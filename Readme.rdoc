@@ -13,7 +13,7 @@ updates to \Mixpanel from your ruby applications.
 
     require 'mixpanel-ruby'
 
-    tracker = Mixpanel::Tracker.new(YOUR_TOKEN)
+    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
 
     # Track an event on behalf of user "User1"
     tracker.track('User1', 'A Mixpanel Event')
