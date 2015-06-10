@@ -91,7 +91,7 @@ describe Mixpanel::Events do
 
     context 'when providing a custom error handler' do
 
-      custom_error_handler = ->(e) { raise e }
+      let(:custom_error_handler) { double("Error hander") }
 
       before(:each) do
         @events = Mixpanel::Events.new('TEST TOKEN', custom_error_handler) do |type, message|
@@ -100,11 +100,9 @@ describe Mixpanel::Events do
       end
 
       it "should use the custom error_handler" do
+        expect(custom_error_handler).to receive(:call)
 
-        expect{
-          @events.track('TEST ID', 'Test Event', {})
-        }.to raise_error
-
+        @events.track('TEST ID', 'Test Event', {})
       end
 
     end

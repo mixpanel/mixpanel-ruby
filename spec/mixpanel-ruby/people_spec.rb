@@ -218,7 +218,7 @@ describe Mixpanel::People do
 
     context 'when providing a custom error handler' do
 
-      custom_error_handler = ->(e) { raise e }
+      let(:custom_error_handler) { double("Error hander") }
 
       before(:each) do
         @people = Mixpanel::People.new('TEST TOKEN', custom_error_handler) do |type, message|
@@ -227,11 +227,9 @@ describe Mixpanel::People do
       end
 
       it "should use the custom error_handler" do
+        expect(custom_error_handler).to receive(:call)
 
-        expect{
-          @people.set("TEST ID", {})
-        }.to raise_error
-
+        @people.set("TEST ID", {})
       end
 
     end
