@@ -72,4 +72,43 @@ describe Mixpanel::Events do
         }
     } ]])
   end
+
+  context 'error handling' do
+
+    before(:each) do
+      @events = Mixpanel::Events.new('TEST TOKEN') do |type, message|
+        raise Mixpanel::MixpanelError
+      end
+    end
+
+    it "should silence the exception and return false" do
+
+      result = @events.track('TEST ID', 'Test Event', {})
+
+      expect(result).to be_falsy
+
+    end
+
+    context 'when providing a custom error handler' do
+
+      custom_error_handler = ->(e) { raise e }
+
+      before(:each) do
+        @events = Mixpanel::Events.new('TEST TOKEN', custom_error_handler) do |type, message|
+          raise Mixpanel::MixpanelError
+        end
+      end
+
+      it "should use the custom error_handler" do
+
+        expect{
+          @events.track('TEST ID', 'Test Event', {})
+        }.to raise_error
+
+      end
+
+    end
+
+  end
+
 end

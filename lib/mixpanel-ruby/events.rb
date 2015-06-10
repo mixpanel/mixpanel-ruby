@@ -20,8 +20,9 @@ module Mixpanel
     #     # tracker has all of the methods of Mixpanel::Events
     #     tracker = Mixpanel::Tracker.new(...)
     #
-    def initialize(token, &block)
+    def initialize(token, error_handler = ->(e) {}, &block)
       @token = token
+      @error_handler = error_handler
 
       if block
         @sink = block
@@ -68,7 +69,8 @@ module Mixpanel
       ret = true
       begin
         @sink.call(:event, message.to_json)
-      rescue MixpanelError
+      rescue MixpanelError => e
+        @error_handler.call(e)
         ret = false
       end
 
@@ -118,7 +120,8 @@ module Mixpanel
       ret = true
       begin
         @sink.call(:import, message.to_json)
-      rescue MixpanelError
+      rescue MixpanelError => e
+        @error_handler.call(e)
         ret = false
       end
 

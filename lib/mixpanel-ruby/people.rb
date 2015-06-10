@@ -20,8 +20,9 @@ module Mixpanel
     #     tracker = Mixpanel::Tracker.new(...)
     #     tracker.people # An instance of Mixpanel::People
     #
-    def initialize(token, &block)
+    def initialize(token, error_handler = ->(e) {}, &block)
       @token = token
+      @error_handler = error_handler
 
       if block
         @sink = block
@@ -228,7 +229,8 @@ module Mixpanel
       ret = true
       begin
         @sink.call(:profile_update, message.to_json)
-      rescue MixpanelError
+      rescue MixpanelError => e
+        @error_handler.call(e)
         ret = false
       end
 

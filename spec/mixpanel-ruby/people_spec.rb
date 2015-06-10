@@ -200,4 +200,42 @@ describe Mixpanel::People do
     }]])
   end
 
+  context 'error handling' do
+
+    before(:each) do
+      @people = Mixpanel::People.new('TEST TOKEN') do |type, message|
+        raise Mixpanel::MixpanelError
+      end
+    end
+
+    it "should silence the exception and return false" do
+
+      result = @people.set("TEST ID", {})
+
+      expect(result).to be_falsy
+
+    end
+
+    context 'when providing a custom error handler' do
+
+      custom_error_handler = ->(e) { raise e }
+
+      before(:each) do
+        @people = Mixpanel::People.new('TEST TOKEN', custom_error_handler) do |type, message|
+          raise Mixpanel::MixpanelError
+        end
+      end
+
+      it "should use the custom error_handler" do
+
+        expect{
+          @people.set("TEST ID", {})
+        }.to raise_error
+
+      end
+
+    end
+
+  end
+
 end
