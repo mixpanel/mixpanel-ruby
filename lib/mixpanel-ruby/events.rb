@@ -1,4 +1,5 @@
 require 'mixpanel-ruby/consumer'
+require 'mixpanel-ruby/error'
 require 'time'
 
 module Mixpanel
@@ -12,6 +13,7 @@ module Mixpanel
   #     tracker.track(...)
   #
   class Events
+    @error_handler = ErrorHandler.new
 
     # You likely won't need to instantiate an instance of
     # Mixpanel::Events directly. The best way to get an instance
@@ -20,9 +22,9 @@ module Mixpanel
     #     # tracker has all of the methods of Mixpanel::Events
     #     tracker = Mixpanel::Tracker.new(...)
     #
-    def initialize(token, error_handler = ->(e) {}, &block)
+    def initialize(token, error_handler=nil, &block)
       @token = token
-      @error_handler = error_handler
+      @error_handler = error_handler if error_handler
 
       if block
         @sink = block
@@ -70,7 +72,7 @@ module Mixpanel
       begin
         @sink.call(:event, message.to_json)
       rescue MixpanelError => e
-        @error_handler.call(e)
+        @error_handler.handle(e)
         ret = false
       end
 
@@ -121,7 +123,7 @@ module Mixpanel
       begin
         @sink.call(:import, message.to_json)
       rescue MixpanelError => e
-        @error_handler.call(e)
+        @error_handler.hnadle(e)
         ret = false
       end
 

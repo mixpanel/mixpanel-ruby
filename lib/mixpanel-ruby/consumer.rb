@@ -3,15 +3,6 @@ require 'net/https'
 require 'json'
 
 module Mixpanel
-  class MixpanelError < StandardError
-  end
-  
-  class ConnectionError < MixpanelError
-  end
-  
-  class ServerError < MixpanelError
-  end
-
   @@init_http = nil
 
   # This method exists for backwards compatibility. The preferred

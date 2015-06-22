@@ -42,7 +42,7 @@ module Mixpanel
     # If a block is provided, it is passed a type (one of :event or :profile_update)
     # and a string message. This same format is accepted by Mixpanel::Consumer#send!
     # and Mixpanel::BufferedConsumer#send!
-    def initialize(token, error_handler = ->(e) {}, &block)
+    def initialize(token, error_handler=nil, &block)
       super(token, error_handler, &block)
       @token = token
       @people = People.new(token, error_handler, &block)
@@ -126,7 +126,7 @@ module Mixpanel
       begin
         consumer.send!(:event, message.to_json)
       rescue MixpanelError => e
-        @error_handler.call(e)
+        @error_handler.handle(e)
         ret = false
       end
 
