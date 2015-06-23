@@ -1,6 +1,6 @@
 require 'base64'
-require 'net/https'
 require 'json'
+require 'net/https'
 
 module Mixpanel
   @@init_http = nil

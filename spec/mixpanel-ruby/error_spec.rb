@@ -1,4 +1,5 @@
 require 'spec_helper'
+
 require 'mixpanel-ruby/error.rb'
 require 'mixpanel-ruby/events.rb'
 

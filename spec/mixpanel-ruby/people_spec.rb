@@ -1,4 +1,5 @@
 require 'spec_helper'
+
 require 'mixpanel-ruby/people'
 
 describe Mixpanel::People do

@@ -1,6 +1,7 @@
+require 'time'
+
 require 'mixpanel-ruby/consumer'
 require 'mixpanel-ruby/error'
-require 'time'
 
 module Mixpanel
 

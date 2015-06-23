@@ -1,7 +1,9 @@
-require 'mixpanel-ruby/consumer'
-require 'json'
 require 'date'
+require 'json'
 require 'time'
+
+require 'mixpanel-ruby/consumer'
+require 'mixpanel-ruby/error'
 
 module Mixpanel
 
