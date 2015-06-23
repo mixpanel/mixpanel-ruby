@@ -31,6 +31,9 @@ describe Mixpanel::ErrorHandler do
 
     @events.track('TEST ID', 'Test Event', {})
     expect(@log).to eq(['Mixpanel::MixpanelError'])
+
+    @events.import('TEST API KEY', 'TEST DISTINCT_ID', 'Test Event')
+    expect(@log).to eq(['Mixpanel::MixpanelError', 'Mixpanel::MixpanelError'])
   end
 
   it "should handle errors with custom error_handler with Mixpanel::People" do

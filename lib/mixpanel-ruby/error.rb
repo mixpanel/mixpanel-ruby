@@ -16,7 +16,7 @@ module Mixpanel
 
   # The default behavior of the gem is to silence all errors
   # thrown in the consumer.  If you wish to handle MixpanelErrors
-  # your self you should pass a class that extends ErrorHandler to
+  # yourself you should pass a class that extends ErrorHandler to
   # the Tracker on initialize:
   #
   #    require 'logger'

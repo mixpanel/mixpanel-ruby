@@ -124,8 +124,7 @@ module Mixpanel
       begin
         @sink.call(:import, message.to_json)
       rescue MixpanelError => e
-        puts 'hi'
-        @error_handler.hnadle(e)
+        @error_handler.hadle(e)
         ret = false
       end
 
