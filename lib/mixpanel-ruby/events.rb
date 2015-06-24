@@ -14,7 +14,6 @@ module Mixpanel
   #     tracker.track(...)
   #
   class Events
-    @error_handler = ErrorHandler.new
 
     # You likely won't need to instantiate an instance of
     # Mixpanel::Events directly. The best way to get an instance
@@ -25,7 +24,7 @@ module Mixpanel
     #
     def initialize(token, error_handler=nil, &block)
       @token = token
-      @error_handler = error_handler if error_handler
+      @error_handler = error_handler || ErrorHandler.new
 
       if block
         @sink = block
@@ -124,7 +123,7 @@ module Mixpanel
       begin
         @sink.call(:import, message.to_json)
       rescue MixpanelError => e
-        @error_handler.hadle(e)
+        @error_handler.handle(e)
         ret = false
       end
 

@@ -15,7 +15,6 @@ module Mixpanel
   #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
   #     tracker.people.set(...) # Or .append(..), or track_charge(...) etc.
   class People
-    @error_handler = ErrorHandler.new
 
     # You likely won't need to instantiate instances of Mixpanel::People
     # directly. The best way to get an instance of Mixpanel::People is
@@ -25,7 +24,7 @@ module Mixpanel
     #
     def initialize(token, error_handler=nil, &block)
       @token = token
-      @error_handler = error_handler if error_handler
+      @error_handler = error_handler || ErrorHandler.new
 
       if block
         @sink = block
