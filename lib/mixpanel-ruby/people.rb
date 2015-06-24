@@ -237,10 +237,12 @@ module Mixpanel
 
     private
 
-    def fix_property_dates(h)
-      h.inject({}) do |ret,(k,v)|
-        v = v.respond_to?(:new_offset) ? v.new_offset('0') : v
-        ret[k] = v.respond_to?(:strftime) ? v.strftime('%Y-%m-%dT%H:%M:%S') : v
+    def fix_property_dates(properties)
+      properties.inject({}) do |ret, (key, value)|
+        value = value.respond_to?(:new_offset) ? value.new_offset('0') : value
+        value = value.respond_to?(:utc) ? value.utc : value  # Handle ActiveSupport::TimeWithZone
+
+        ret[key] = value.respond_to?(:strftime) ? value.strftime('%Y-%m-%dT%H:%M:%S') : value
         ret
       end
     end
