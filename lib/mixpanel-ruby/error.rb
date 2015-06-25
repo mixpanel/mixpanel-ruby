@@ -2,8 +2,8 @@ module Mixpanel
 
   # Mixpanel specific errors that are thrown in the gem.
   # In the default consumer we catch all errors and raise
-  # Mixpanel specific errors that can be handled in a custom
-  # Error handler.
+  # Mixpanel specific errors that can be handled using a
+  # custom error handler.
   class MixpanelError < StandardError
   end
   
@@ -16,8 +16,8 @@ module Mixpanel
 
   # The default behavior of the gem is to silence all errors
   # thrown in the consumer.  If you wish to handle MixpanelErrors
-  # yourself you should pass a class that extends ErrorHandler to
-  # the Tracker on initialize:
+  # yourself you can pass an instance of a class that extends
+  # Mixpanel::ErrorHandler to Mixpanel::Tracker on initialize.
   #
   #    require 'logger'
   #
@@ -30,16 +30,17 @@ module Mixpanel
   #    
   #      def handle(error)
   #        logger.error "#{error.inspect}\n Backtrace: #{error.backtrace}"
-  #       end
+  #      end
   #
-  #     end
+  #    end
   #
   #    my_error_handler = MyErrorHandler.new
   #    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, my_error_handler)
   class ErrorHandler
 
+    # Override #handle to customize error handling
     def handle(error)
-      # Override this method to customize error handling within mixpanel-ruby        
+      false
     end
   end
 end
