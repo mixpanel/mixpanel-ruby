@@ -42,10 +42,10 @@ module Mixpanel
     # If a block is provided, it is passed a type (one of :event or :profile_update)
     # and a string message. This same format is accepted by Mixpanel::Consumer#send!
     # and Mixpanel::BufferedConsumer#send!
-    def initialize(token, &block)
-      super(token, &block)
+    def initialize(token, error_handler=nil, &block)
+      super(token, error_handler, &block)
       @token = token
-      @people = People.new(token, &block)
+      @people = People.new(token, error_handler, &block)
     end
 
     # A call to #track is a report that an event has occurred.  #track
@@ -125,7 +125,8 @@ module Mixpanel
       ret = true
       begin
         consumer.send!(:event, message.to_json)
-      rescue MixpanelError
+      rescue MixpanelError => e
+        @error_handler.handle(e)
         ret = false
       end
 

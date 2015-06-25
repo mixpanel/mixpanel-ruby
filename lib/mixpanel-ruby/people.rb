@@ -1,7 +1,9 @@
-require 'mixpanel-ruby/consumer'
-require 'json'
 require 'date'
+require 'json'
 require 'time'
+
+require 'mixpanel-ruby/consumer'
+require 'mixpanel-ruby/error'
 
 module Mixpanel
 
@@ -20,8 +22,9 @@ module Mixpanel
     #     tracker = Mixpanel::Tracker.new(...)
     #     tracker.people # An instance of Mixpanel::People
     #
-    def initialize(token, &block)
+    def initialize(token, error_handler=nil, &block)
       @token = token
+      @error_handler = error_handler || ErrorHandler.new
 
       if block
         @sink = block
@@ -228,7 +231,8 @@ module Mixpanel
       ret = true
       begin
         @sink.call(:profile_update, message.to_json)
-      rescue MixpanelError
+      rescue MixpanelError => e
+        @error_handler.handle(e)
         ret = false
       end
 

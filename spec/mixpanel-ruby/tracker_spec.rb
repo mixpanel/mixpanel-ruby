@@ -1,8 +1,8 @@
-require 'mixpanel-ruby'
 require 'base64'
-require 'json'
-require 'uri'
 require 'cgi'
+require 'json'
+require 'mixpanel-ruby'
+require 'uri'
 
 describe Mixpanel::Tracker do
   before(:each) do

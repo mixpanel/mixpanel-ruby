@@ -1,6 +1,7 @@
+require 'base64'
 require 'spec_helper'
 require 'webmock'
-require 'base64'
+
 require 'mixpanel-ruby/consumer'
 
 describe Mixpanel::Consumer do

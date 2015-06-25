@@ -1,7 +1,8 @@
 require 'spec_helper'
+require 'time'
+
 require 'mixpanel-ruby/events.rb'
 require 'mixpanel-ruby/version.rb'
-require 'time'
 
 describe Mixpanel::Events do
   before(:each) do
