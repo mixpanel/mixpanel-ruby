@@ -35,7 +35,7 @@ module Mixpanel
   # either by passing in an argument with a #send! method when you construct
   # the tracker, or just passing a block to Mixpanel::Tracker.new
   #
-  #    tracker = Mixpanel::Tracker.new(MY_TOKEN) do |type, message|
+  #    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN) do |type, message|
   #        # type will be one of :event, :profile_update or :import
   #        @kestrel.set(ANALYTICS_QUEUE, [type, message].to_json)
   #    end
@@ -148,7 +148,7 @@ module Mixpanel
   #
   #    buffered_consumer = Mixpanel::BufferedConsumer.new
   #    begin
-  #        buffered_tracker = Mixpanel::Tracker.new(YOUR_TOKEN) do |type, message|
+  #        buffered_tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN) do |type, message|
   #            buffered_consumer.send!(type, message)
   #        end
   #        # Do some tracking here
