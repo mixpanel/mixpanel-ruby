@@ -6,19 +6,16 @@
 
 <title>class Mixpanel::People - RDoc Documentation</title>
 
-<link href="../fonts.css" rel="stylesheet">
-<link href="../rdoc.css" rel="stylesheet">
-
 <script type="text/javascript">
   var rdoc_rel_prefix = "../";
 </script>
 
 <script src="../js/jquery.js"></script>
-<script src="../js/navigation.js"></script>
-<script src="../js/search_index.js"></script>
-<script src="../js/search.js"></script>
-<script src="../js/searcher.js"></script>
 <script src="../js/darkfish.js"></script>
+
+<link href="../css/fonts.css" rel="stylesheet">
+<link href="../css/rdoc.css" rel="stylesheet">
+
 
 
 <body id="top" role="document" class="class">
@@ -110,9 +107,9 @@
 
   <section class="description">
     
-<p>Handles formatting Mixpanel profile updates and sending them to the
-consumer. You will rarely need to instantiate this class directly- to send
-profile updates, use <a
+<p>Handles formatting <a href="../Mixpanel.html">Mixpanel</a> profile updates
+and sending them to the consumer. You will rarely need to instantiate this
+class directly- to send profile updates, use <a
 href="Tracker.html#attribute-i-people">Mixpanel::Tracker#people</a></p>
 
 <pre>tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
@@ -143,7 +140,7 @@ tracker.people.set(...) # Or .append(..), or track_charge(...) etc.</pre>
         
         <div class="method-heading">
           <span class="method-name">new</span><span
-            class="method-args">(token, &block)</span>
+            class="method-args">(token, error_handler=nil, &block)</span>
           
           <span class="method-click-advice">click to toggle source</span>
           
@@ -156,16 +153,18 @@ tracker.people.set(...) # Or .append(..), or track_charge(...) etc.</pre>
 href="People.html">Mixpanel::People</a> directly. The best way to get an
 instance of <a href="People.html">Mixpanel::People</a> is</p>
 
-<pre>tracker = Mixpanel::Tracker.new(...)
-tracker.people # An instance of Mixpanel::People</pre>
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">YOUR_MIXPANEL_TOKEN</span>)
+<span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">people</span> <span class="ruby-comment"># An instance of Mixpanel::People</span>
+</pre>
           
           
 
           
           <div class="method-source-code" id="new-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 23</span>
-<span class="ruby-keyword">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">token</span>, <span class="ruby-operator">&amp;</span><span class="ruby-identifier">block</span>)
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 25</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">token</span>, <span class="ruby-identifier">error_handler</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-operator">&amp;</span><span class="ruby-identifier">block</span>)
   <span class="ruby-ivar">@token</span> = <span class="ruby-identifier">token</span>
+  <span class="ruby-ivar">@error_handler</span> = <span class="ruby-identifier">error_handler</span> <span class="ruby-operator">||</span> <span class="ruby-constant">ErrorHandler</span>.<span class="ruby-identifier">new</span>
 
   <span class="ruby-keyword">if</span> <span class="ruby-identifier">block</span>
     <span class="ruby-ivar">@sink</span> = <span class="ruby-identifier">block</span>
@@ -208,7 +207,7 @@ tracker.people # An instance of Mixpanel::People</pre>
           <p>Appends a values to the end of list-valued properties. If the given
 properties don&#39;t exist, a new list-valued property will be created.</p>
 
-<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">YOUR_MIXPANEL_TOKEN</span>)
 <span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">people</span>.<span class="ruby-identifier">append</span>(<span class="ruby-string">&quot;12345&quot;</span>, {
     <span class="ruby-string">&#39;Login Dates&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-constant">DateTime</span>.<span class="ruby-identifier">now</span>,
     <span class="ruby-string">&#39;Alter Ego Names&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-string">&#39;Ziggy Stardust&#39;</span>
@@ -219,7 +218,7 @@ properties don&#39;t exist, a new list-valued property will be created.</p>
 
           
           <div class="method-source-code" id="append-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 124</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 127</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">append</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">properties</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
   <span class="ruby-identifier">properties</span> = <span class="ruby-identifier">fix_property_dates</span>(<span class="ruby-identifier">properties</span>)
   <span class="ruby-identifier">message</span> = {
@@ -259,7 +258,7 @@ properties don&#39;t exist, a new list-valued property will be created.</p>
 
           
           <div class="method-source-code" id="clear_charges-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 198</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 201</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">clear_charges</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
   <span class="ruby-identifier">unset</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-string">&#39;$transactions&#39;</span>, <span class="ruby-identifier">ip</span>, <span class="ruby-identifier">optional_params</span>)
 <span class="ruby-keyword">end</span></pre>
@@ -296,7 +295,7 @@ user and ignore alias pass into optional params</p>
 
           
           <div class="method-source-code" id="delete_user-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 205</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 208</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">delete_user</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">optional_params</span>={})
   <span class="ruby-identifier">update</span>({
     <span class="ruby-string">&#39;$distinct_id&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">distinct_id</span>,
@@ -331,7 +330,7 @@ string keys and numeric properties. Mixpanel will add the given amount to
 whatever value is currently assigned to the property. If no property exists
 with a given name, the value will be added to zero.</p>
 
-<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">YOUR_MIXPANEL_TOKEN</span>)
 <span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">people</span>.<span class="ruby-identifier">increment</span>(<span class="ruby-string">&quot;12345&quot;</span>, {
     <span class="ruby-string">&#39;Coins Spent&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">7</span>,
     <span class="ruby-string">&#39;Coins Earned&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">-7</span>, <span class="ruby-comment"># Use a negative number to subtract</span>
@@ -342,7 +341,7 @@ with a given name, the value will be added to zero.</p>
 
           
           <div class="method-source-code" id="increment-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 92</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 95</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">increment</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">properties</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
   <span class="ruby-identifier">properties</span> = <span class="ruby-identifier">fix_property_dates</span>(<span class="ruby-identifier">properties</span>)
   <span class="ruby-identifier">message</span> = {
@@ -382,14 +381,15 @@ property_name) is the same as calling <a
 href="People.html#method-i-increment">increment</a>(distinct_id,
 {property_name =&gt; 1})</p>
 
-<pre>tracker = Mixpanel::Tracker.new
-tracker.people.plus_one(&quot;12345&quot;, &quot;Albums Released&quot;)</pre>
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">YOUR_MIXPANEL_TOKEN</span>)
+<span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">people</span>.<span class="ruby-identifier">plus_one</span>(<span class="ruby-string">&quot;12345&quot;</span>, <span class="ruby-string">&quot;Albums Released&quot;</span>)
+</pre>
           
           
 
           
           <div class="method-source-code" id="plus_one-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 110</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 113</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">plus_one</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">property_name</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
   <span class="ruby-identifier">increment</span>(<span class="ruby-identifier">distinct_id</span>, {<span class="ruby-identifier">property_name</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">1</span>}, <span class="ruby-identifier">ip</span>, <span class="ruby-identifier">optional_params</span>)
 <span class="ruby-keyword">end</span></pre>
@@ -419,7 +419,7 @@ tracker.people.plus_one(&quot;12345&quot;, &quot;Albums Released&quot;)</pre>
           <p>Sets properties on a user record. Takes a Hash with string keys, and values
 that are strings, numbers, booleans, or DateTimes</p>
 
-<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">YOUR_MIXPANEL_TOKEN</span>)
 <span class="ruby-comment"># Sets properties on profile with id &quot;1234&quot;</span>
 <span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">people</span>.<span class="ruby-identifier">set</span>(<span class="ruby-string">&quot;1234&quot;</span>, {
     <span class="ruby-string">&#39;company&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-string">&#39;Acme&#39;</span>,
@@ -435,7 +435,7 @@ geolocation (rather than the ip of your server)</p>
 
           
           <div class="method-source-code" id="set-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 48</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 51</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">set</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">properties</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
   <span class="ruby-identifier">properties</span> = <span class="ruby-identifier">fix_property_dates</span>(<span class="ruby-identifier">properties</span>)
   <span class="ruby-identifier">message</span> = {
@@ -475,7 +475,7 @@ properties if they are not already present in the profile. That means you
 can call <a href="People.html#method-i-set_once">#set_once</a> many times
 without changing an original value.</p>
 
-<pre>tracker = Mixpanel::Tracker.new
+<pre>tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
 tracker.people.set_once(&quot;12345&quot;, {
     &#39;First Login Date&#39;: DateTime.now
 });</pre>
@@ -484,7 +484,7 @@ tracker.people.set_once(&quot;12345&quot;, {
 
           
           <div class="method-source-code" id="set_once-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 69</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 72</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">set_once</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">properties</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
   <span class="ruby-identifier">properties</span> = <span class="ruby-identifier">fix_property_dates</span>(<span class="ruby-identifier">properties</span>)
   <span class="ruby-identifier">message</span> = {
@@ -522,7 +522,7 @@ tracker.people.set_once(&quot;12345&quot;, {
 href="People.html#method-i-track_charge">track_charge</a> will appear in
 the Mixpanel revenue report.</p>
 
-<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">YOUR_MIXPANEL_TOKEN</span>)
 
 <span class="ruby-comment"># records a charge of $25.32 from user 12345</span>
 <span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">people</span>.<span class="ruby-identifier">track_charge</span>(<span class="ruby-string">&quot;12345&quot;</span>, <span class="ruby-value">25.32</span>)
@@ -537,7 +537,7 @@ the Mixpanel revenue report.</p>
 
           
           <div class="method-source-code" id="track_charge-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 191</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 194</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">track_charge</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">amount</span>, <span class="ruby-identifier">properties</span>={}, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
   <span class="ruby-identifier">properties</span> = <span class="ruby-identifier">fix_property_dates</span>(<span class="ruby-identifier">properties</span>)
   <span class="ruby-identifier">charge_properties</span> = <span class="ruby-identifier">properties</span>.<span class="ruby-identifier">merge</span>({<span class="ruby-string">&#39;$amount&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">amount</span>})
@@ -571,7 +571,7 @@ elements of a given list, and all elements currently in a list associated
 with the given property. After a union, every element in the list
 associated with a property will be unique.</p>
 
-<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">YOUR_MIXPANEL_TOKEN</span>)
 <span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">people</span>.<span class="ruby-identifier">union</span>(<span class="ruby-string">&quot;12345&quot;</span>, {
     <span class="ruby-string">&#39;Levels Completed&#39;</span> =<span class="ruby-operator">&gt;</span> [<span class="ruby-string">&#39;Suffragette City&#39;</span>]
 });
@@ -581,7 +581,7 @@ associated with a property will be unique.</p>
 
           
           <div class="method-source-code" id="union-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 146</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 149</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">union</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">properties</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
   <span class="ruby-identifier">properties</span> = <span class="ruby-identifier">fix_property_dates</span>(<span class="ruby-identifier">properties</span>)
   <span class="ruby-identifier">message</span> = {
@@ -617,19 +617,20 @@ associated with a property will be unique.</p>
           
           <p>Removes properties and their values from a profile.</p>
 
-<pre>tracker = Mixpanel::Tracker.new
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">YOUR_MIXPANEL_TOKEN</span>)
 
-# removes a single property and its value from a profile
-tracker.people.unset(&quot;12345&quot;, &quot;Overdue Since&quot;)
+<span class="ruby-comment"># removes a single property and its value from a profile</span>
+<span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">people</span>.<span class="ruby-identifier">unset</span>(<span class="ruby-string">&quot;12345&quot;</span>, <span class="ruby-string">&quot;Overdue Since&quot;</span>)
 
-# removes multiple properties and their values from a profile
-tracker.people.unset(&quot;12345&quot;, [&quot;Overdue Since&quot;, &quot;Paid Date&quot;])</pre>
+<span class="ruby-comment"># removes multiple properties and their values from a profile</span>
+<span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">people</span>.<span class="ruby-identifier">unset</span>(<span class="ruby-string">&quot;12345&quot;</span>, [<span class="ruby-string">&quot;Overdue Since&quot;</span>, <span class="ruby-string">&quot;Paid Date&quot;</span>])
+</pre>
           
           
 
           
           <div class="method-source-code" id="unset-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 167</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 170</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">unset</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">properties</span>, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">optional_params</span>={})
   <span class="ruby-identifier">properties</span> = [<span class="ruby-identifier">properties</span>] <span class="ruby-keyword">unless</span> <span class="ruby-identifier">properties</span>.<span class="ruby-identifier">is_a?</span>(<span class="ruby-constant">Array</span>)
   <span class="ruby-identifier">message</span> = {
@@ -675,7 +676,7 @@ href="https://mixpanel.com/help/reference/http">mixpanel.com/help/reference/http
 
           
           <div class="method-source-code" id="update-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 220</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/people.rb, line 223</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">update</span>(<span class="ruby-identifier">message</span>)
   <span class="ruby-identifier">data</span> = {
     <span class="ruby-string">&#39;$token&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@token</span>,
@@ -687,7 +688,8 @@ href="https://mixpanel.com/help/reference/http">mixpanel.com/help/reference/http
   <span class="ruby-identifier">ret</span> = <span class="ruby-keyword">true</span>
   <span class="ruby-keyword">begin</span>
     <span class="ruby-ivar">@sink</span>.<span class="ruby-identifier">call</span>(<span class="ruby-value">:profile_update</span>, <span class="ruby-identifier">message</span>.<span class="ruby-identifier">to_json</span>)
-  <span class="ruby-keyword">rescue</span> <span class="ruby-constant">MixpanelError</span>
+  <span class="ruby-keyword">rescue</span> <span class="ruby-constant">MixpanelError</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+    <span class="ruby-ivar">@error_handler</span>.<span class="ruby-identifier">handle</span>(<span class="ruby-identifier">e</span>)
     <span class="ruby-identifier">ret</span> = <span class="ruby-keyword">false</span>
   <span class="ruby-keyword">end</span>
 
@@ -711,7 +713,7 @@ href="https://mixpanel.com/help/reference/http">mixpanel.com/help/reference/http
 
 <footer id="validator-badges" role="contentinfo">
   <p><a href="http://validator.w3.org/check/referer">Validate</a>
-  <p>Generated by <a href="http://rdoc.rubyforge.org">RDoc</a> 4.1.0.
-  <p>Based on <a href="http://deveiate.org/projects/Darkfish-Rdoc/">Darkfish</a> by <a href="http://deveiate.org">Michael Granger</a>.
+  <p>Generated by <a href="http://docs.seattlerb.org/rdoc/">RDoc</a> 4.2.0.
+  <p>Based on <a href="http://deveiate.org/projects/Darkfish-RDoc/">Darkfish</a> by <a href="http://deveiate.org">Michael Granger</a>.
 </footer>
 

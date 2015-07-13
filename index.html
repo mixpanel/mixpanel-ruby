@@ -6,19 +6,16 @@
 
 <title>RDoc Documentation</title>
 
-<link href="./fonts.css" rel="stylesheet">
-<link href="./rdoc.css" rel="stylesheet">
-
 <script type="text/javascript">
   var rdoc_rel_prefix = "./";
 </script>
 
 <script src="./js/jquery.js"></script>
-<script src="./js/navigation.js"></script>
-<script src="./js/search_index.js"></script>
-<script src="./js/search.js"></script>
-<script src="./js/searcher.js"></script>
 <script src="./js/darkfish.js"></script>
+
+<link href="./css/fonts.css" rel="stylesheet">
+<link href="./css/rdoc.css" rel="stylesheet">
+
 
 
 <body id="top" role="document" class="file">
@@ -70,11 +67,15 @@
 
   <ul class="link-list">
   
+    <li><a href="./Mixpanel.html">Mixpanel</a>
+  
     <li><a href="./Mixpanel/BufferedConsumer.html">Mixpanel::BufferedConsumer</a>
   
     <li><a href="./Mixpanel/ConnectionError.html">Mixpanel::ConnectionError</a>
   
     <li><a href="./Mixpanel/Consumer.html">Mixpanel::Consumer</a>
+  
+    <li><a href="./Mixpanel/ErrorHandler.html">Mixpanel::ErrorHandler</a>
   
     <li><a href="./Mixpanel/Events.html">Mixpanel::Events</a>
   
@@ -99,20 +100,21 @@
 src="https://travis-ci.org/mixpanel/mixpanel-ruby.svg?branch=master"
 alt="Build Status" /></a></p>
 
-<h1 id="label-mixpanel-ruby%3A+The+official+Mixpanel+Ruby+library">mixpanel-ruby: The official Mixpanel Ruby library<span><a href="#label-mixpanel-ruby%3A+The+official+Mixpanel+Ruby+library">&para;</a> <a href="#documentation">&uarr;</a></span></h1>
+<h1 id="label-mixpanel-ruby-3A+The+official+Mixpanel+Ruby+library">mixpanel-ruby: The official <a href="Mixpanel.html">Mixpanel</a> Ruby library<span><a href="#label-mixpanel-ruby-3A+The+official+Mixpanel+Ruby+library">&para;</a> <a href="#top">&uarr;</a></span></h1>
 
 <p>mixpanel-ruby is a library for tracking events and sending Mixpanel profile
 updates to Mixpanel from your ruby applications.</p>
 
-<h2 id="label-Installation">Installation<span><a href="#label-Installation">&para;</a> <a href="#documentation">&uarr;</a></span></h2>
+<h2 id="label-Installation">Installation<span><a href="#label-Installation">&para;</a> <a href="#top">&uarr;</a></span></h2>
 
-<pre>gem install mixpanel-ruby</pre>
+<pre class="ruby"><span class="ruby-identifier">gem</span> <span class="ruby-identifier">install</span> <span class="ruby-identifier">mixpanel</span><span class="ruby-operator">-</span><span class="ruby-identifier">ruby</span>
+</pre>
 
-<h2 id="label-Getting+Started">Getting Started<span><a href="#label-Getting+Started">&para;</a> <a href="#documentation">&uarr;</a></span></h2>
+<h2 id="label-Getting+Started">Getting Started<span><a href="#label-Getting+Started">&para;</a> <a href="#top">&uarr;</a></span></h2>
 
 <pre class="ruby"><span class="ruby-identifier">require</span> <span class="ruby-string">&#39;mixpanel-ruby&#39;</span>
 
-<span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">YOUR_TOKEN</span>)
+<span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">YOUR_MIXPANEL_TOKEN</span>)
 
 <span class="ruby-comment"># Track an event on behalf of user &quot;User1&quot;</span>
 <span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">track</span>(<span class="ruby-string">&#39;User1&#39;</span>, <span class="ruby-string">&#39;A Mixpanel Event&#39;</span>)
@@ -130,7 +132,7 @@ href="Mixpanel/Tracker.html">Mixpanel::Tracker</a>. An instance of <a
 href="Mixpanel/Tracker.html">Mixpanel::Tracker</a> is enough to send events
 directly to Mixpanel, and get you integrated right away.</p>
 
-<h2 id="label-Additional+Information">Additional Information<span><a href="#label-Additional+Information">&para;</a> <a href="#documentation">&uarr;</a></span></h2>
+<h2 id="label-Additional+Information">Additional Information<span><a href="#label-Additional+Information">&para;</a> <a href="#top">&uarr;</a></span></h2>
 
 <p>For more information please visit:</p>
 <ul><li>
@@ -143,10 +145,10 @@ href="https://github.com/mixpanel/mixpanel-ruby/tree/master/demo">demo</a></p>
 <p>The <a href="http://mixpanel.github.io/mixpanel-ruby/">documentation</a></p>
 </li></ul>
 
-<p>The official Mixpanel gem is built with simplicity and broad applicability
-in mind, but there are also third party Ruby libraries that can work with
-the library to provide useful features in common situations, and support
-different development points of view.</p>
+<p>The official <a href="Mixpanel.html">Mixpanel</a> gem is built with
+simplicity and broad applicability in mind, but there are also third party
+Ruby libraries that can work with the library to provide useful features in
+common situations, and support different development points of view.</p>
 
 <p>In particular, for Rails apps, the following projects are currently
 actively maintained:</p>
@@ -156,9 +158,22 @@ actively maintained:</p>
 <p><a href="https://github.com/DouweM/mengpaneel">Mengpaneel</a></p>
 </li></ul>
 
-<h2 id="label-Changes">Changes<span><a href="#label-Changes">&para;</a> <a href="#documentation">&uarr;</a></span></h2>
+<h2 id="label-Changes">Changes<span><a href="#label-Changes">&para;</a> <a href="#top">&uarr;</a></span></h2>
 
-<h2 id="label-2.1.0">2.1.0<span><a href="#label-2.1.0">&para;</a> <a href="#documentation">&uarr;</a></span></h2>
+<h2 id="label-2.2.0">2.2.0<span><a href="#label-2.2.0">&para;</a> <a href="#top">&uarr;</a></span></h2>
+<ul><li>
+<p>Add <a href="Mixpanel/ErrorHandler.html">Mixpanel::ErrorHandler</a> to
+simplify custom error handling.</p>
+</li><li>
+<p>Modify Mixpanel::People#fix_property_dates to handle
+ActiveSupport::TimeWithZone.</p>
+</li><li>
+<p>Increase open and ssl timeouts from 2s to 10s.</p>
+</li><li>
+<p>Fix Doc inconsistancy: always pass token on Mixpanel::tracker.new.</p>
+</li></ul>
+
+<h2 id="label-2.1.0">2.1.0<span><a href="#label-2.1.0">&para;</a> <a href="#top">&uarr;</a></span></h2>
 <ul><li>
 <p>Add <a
 href="Mixpanel/Tracker.html#method-i-generate_tracking_url">Mixpanel::Tracker#generate_tracking_url</a>,
@@ -175,21 +190,22 @@ href="Mixpanel/Consumer.html#method-i-send-21">Mixpanel::Consumer#send!</a>.</p>
 <p>Update dependancies in gemspec</p>
 </li></ul>
 
-<h2 id="label-2.0.1">2.0.1<span><a href="#label-2.0.1">&para;</a> <a href="#documentation">&uarr;</a></span></h2>
+<h2 id="label-2.0.1">2.0.1<span><a href="#label-2.0.1">&para;</a> <a href="#top">&uarr;</a></span></h2>
 <ul><li>
 <p>Add Deprecated version of <a
 href="Mixpanel/BufferedConsumer.html#method-i-send">Mixpanel::BufferedConsumer#send</a></p>
 </li></ul>
 
-<h2 id="label-2.0.0">2.0.0<span><a href="#label-2.0.0">&para;</a> <a href="#documentation">&uarr;</a></span></h2>
+<h2 id="label-2.0.0">2.0.0<span><a href="#label-2.0.0">&para;</a> <a href="#top">&uarr;</a></span></h2>
 <ul><li>
 <p>Raise mixpanel server and connection errors in <a
 href="Mixpanel/Consumer.html">Mixpanel::Consumer</a>.</p>
 </li><li>
 <p>All public methods in Mixpanel::Event, <a
 href="Mixpanel/People.html">Mixpanel::People</a>, and subsequently <a
-href="Mixpanel/Tracker.html">Mixpanel::Tracker</a> rescue Mixpanel errors
-and return false in the case of an error, return true otherwise</p>
+href="Mixpanel/Tracker.html">Mixpanel::Tracker</a> rescue <a
+href="Mixpanel.html">Mixpanel</a> errors and return false in the case of an
+error, return true otherwise</p>
 </li><li>
 <p>Deprecate <a
 href="Mixpanel/Consumer.html#method-i-send">Mixpanel::Consumer#send</a>,
@@ -199,43 +215,43 @@ href="Mixpanel/Consumer.html#method-i-send-21">Mixpanel::Consumer#send!</a></p>
 <p>Require ruby version minimum of 2.0.0</p>
 </li></ul>
 
-<h2 id="label-1.4.0">1.4.0<span><a href="#label-1.4.0">&para;</a> <a href="#documentation">&uarr;</a></span></h2>
+<h2 id="label-1.4.0">1.4.0<span><a href="#label-1.4.0">&para;</a> <a href="#top">&uarr;</a></span></h2>
 <ul><li>
 <p>Allow unset to unset multiple properties</p>
 </li></ul>
 
-<h2 id="label-1.3.0">1.3.0<span><a href="#label-1.3.0">&para;</a> <a href="#documentation">&uarr;</a></span></h2>
+<h2 id="label-1.3.0">1.3.0<span><a href="#label-1.3.0">&para;</a> <a href="#top">&uarr;</a></span></h2>
 <ul><li>
 <p>Added Consumer#request method, demo with Faraday integration</p>
 </li></ul>
 
-<h2 id="label-1.2.0">1.2.0<span><a href="#label-1.2.0">&para;</a> <a href="#documentation">&uarr;</a></span></h2>
+<h2 id="label-1.2.0">1.2.0<span><a href="#label-1.2.0">&para;</a> <a href="#top">&uarr;</a></span></h2>
 <ul><li>
 <p>All objects with a “strftime” method will be formatted as dates in people
 updates.</p>
 </li></ul>
 
-<h2 id="label-1.1.0">1.1.0<span><a href="#label-1.1.0">&para;</a> <a href="#documentation">&uarr;</a></span></h2>
+<h2 id="label-1.1.0">1.1.0<span><a href="#label-1.1.0">&para;</a> <a href="#top">&uarr;</a></span></h2>
 <ul><li>
 <p>The default consumer now sends requests (and expects responses) in verbose,
 JSON mode, which may improve error reporting.</p>
 </li></ul>
 
-<h3 id="label-1.0.2">1.0.2<span><a href="#label-1.0.2">&para;</a> <a href="#documentation">&uarr;</a></span></h3>
+<h3 id="label-1.0.2">1.0.2<span><a href="#label-1.0.2">&para;</a> <a href="#top">&uarr;</a></span></h3>
 <ul><li>
 <p>Allow ip and optional_params arguments to be accepted by all <a
 href="Mixpanel/People.html">Mixpanel::People</a> methods (except
 destroy_user)</p>
 </li></ul>
 
-<h3 id="label-1.0.1">1.0.1<span><a href="#label-1.0.1">&para;</a> <a href="#documentation">&uarr;</a></span></h3>
+<h3 id="label-1.0.1">1.0.1<span><a href="#label-1.0.1">&para;</a> <a href="#top">&uarr;</a></span></h3>
 <ul><li>
 <p>Compatibility with earlier versions of ruby. Library development will
 continue to target 1.9, so later versions may not be compatible with Ruby
 1.8, but we love patches!</p>
 </li></ul>
 
-<h3 id="label-1.0.0">1.0.0<span><a href="#label-1.0.0">&para;</a> <a href="#documentation">&uarr;</a></span></h3>
+<h3 id="label-1.0.0">1.0.0<span><a href="#label-1.0.0">&para;</a> <a href="#top">&uarr;</a></span></h3>
 <ul><li>
 <p>tracker#import added</p>
 </li><li>
@@ -254,7 +270,7 @@ versions of the library will not work with 1.0.0 consumer classes.</p>
 
 <footer id="validator-badges" role="contentinfo">
   <p><a href="http://validator.w3.org/check/referer">Validate</a>
-  <p>Generated by <a href="http://rdoc.rubyforge.org">RDoc</a> 4.1.0.
-  <p>Based on <a href="http://deveiate.org/projects/Darkfish-Rdoc/">Darkfish</a> by <a href="http://deveiate.org">Michael Granger</a>.
+  <p>Generated by <a href="http://docs.seattlerb.org/rdoc/">RDoc</a> 4.2.0.
+  <p>Based on <a href="http://deveiate.org/projects/Darkfish-RDoc/">Darkfish</a> by <a href="http://deveiate.org">Michael Granger</a>.
 </footer>
 

@@ -6,19 +6,16 @@
 
 <title>class Mixpanel::Events - RDoc Documentation</title>
 
-<link href="../fonts.css" rel="stylesheet">
-<link href="../rdoc.css" rel="stylesheet">
-
 <script type="text/javascript">
   var rdoc_rel_prefix = "../";
 </script>
 
 <script src="../js/jquery.js"></script>
-<script src="../js/navigation.js"></script>
-<script src="../js/search_index.js"></script>
-<script src="../js/search.js"></script>
-<script src="../js/searcher.js"></script>
 <script src="../js/darkfish.js"></script>
+
+<link href="../css/fonts.css" rel="stylesheet">
+<link href="../css/rdoc.css" rel="stylesheet">
+
 
 
 <body id="top" role="document" class="class">
@@ -92,12 +89,13 @@
 
   <section class="description">
     
-<p>Handles formatting Mixpanel event tracking messages and sending them to the
-consumer. <a href="Tracker.html">Mixpanel::Tracker</a> is a subclass of
-this class, and the best way to track events is to instantiate a <a
+<p>Handles formatting <a href="../Mixpanel.html">Mixpanel</a> event tracking
+messages and sending them to the consumer. <a
+href="Tracker.html">Mixpanel::Tracker</a> is a subclass of this class, and
+the best way to track events is to instantiate a <a
 href="Tracker.html">Mixpanel::Tracker</a></p>
 
-<pre>tracker = Mixpanel::Tracker.new # Has all of the methods of Mixpanel::Event
+<pre>tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN) # Has all of the methods of Mixpanel::Event
 tracker.track(...)</pre>
 
   </section>
@@ -125,7 +123,7 @@ tracker.track(...)</pre>
         
         <div class="method-heading">
           <span class="method-name">new</span><span
-            class="method-args">(token, &block)</span>
+            class="method-args">(token, error_handler=nil, &block)</span>
           
           <span class="method-click-advice">click to toggle source</span>
           
@@ -138,16 +136,18 @@ tracker.track(...)</pre>
 href="Events.html">Mixpanel::Events</a> directly. The best way to get an
 instance is to use <a href="Tracker.html">Mixpanel::Tracker</a></p>
 
-<pre># tracker has all of the methods of Mixpanel::Events
-tracker = Mixpanel::Tracker.new(...)</pre>
+<pre class="ruby"><span class="ruby-comment"># tracker has all of the methods of Mixpanel::Events</span>
+<span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">YOUR_MIXPANEL_TOKEN</span>)
+</pre>
           
           
 
           
           <div class="method-source-code" id="new-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/events.rb, line 23</span>
-<span class="ruby-keyword">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">token</span>, <span class="ruby-operator">&amp;</span><span class="ruby-identifier">block</span>)
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/events.rb, line 25</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">token</span>, <span class="ruby-identifier">error_handler</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-operator">&amp;</span><span class="ruby-identifier">block</span>)
   <span class="ruby-ivar">@token</span> = <span class="ruby-identifier">token</span>
+  <span class="ruby-ivar">@error_handler</span> = <span class="ruby-identifier">error_handler</span> <span class="ruby-operator">||</span> <span class="ruby-constant">ErrorHandler</span>.<span class="ruby-identifier">new</span>
 
   <span class="ruby-keyword">if</span> <span class="ruby-identifier">block</span>
     <span class="ruby-ivar">@sink</span> = <span class="ruby-identifier">block</span>
@@ -195,7 +195,7 @@ booleans as values.  By default, we pass the time of the method call as the
 time the event occured, if you wish to override this pass a timestamp in
 the properties hash.</p>
 
-<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">YOUR_MIXPANEL_TOKEN</span>)
 
 <span class="ruby-comment"># Track that user &quot;12345&quot;&#39;s credit card was declined</span>
 <span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">import</span>(<span class="ruby-string">&quot;API_KEY&quot;</span>, <span class="ruby-string">&quot;12345&quot;</span>, <span class="ruby-string">&quot;Credit Card Declined&quot;</span>)
@@ -213,7 +213,7 @@ the properties hash.</p>
 
           
           <div class="method-source-code" id="import-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/events.rb, line 98</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/events.rb, line 102</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">import</span>(<span class="ruby-identifier">api_key</span>, <span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">event</span>, <span class="ruby-identifier">properties</span>={}, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>)
   <span class="ruby-identifier">properties</span> = {
     <span class="ruby-string">&#39;distinct_id&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">distinct_id</span>,
@@ -237,7 +237,8 @@ the properties hash.</p>
   <span class="ruby-identifier">ret</span> = <span class="ruby-keyword">true</span>
   <span class="ruby-keyword">begin</span>
     <span class="ruby-ivar">@sink</span>.<span class="ruby-identifier">call</span>(<span class="ruby-value">:import</span>, <span class="ruby-identifier">message</span>.<span class="ruby-identifier">to_json</span>)
-  <span class="ruby-keyword">rescue</span> <span class="ruby-constant">MixpanelError</span>
+  <span class="ruby-keyword">rescue</span> <span class="ruby-constant">MixpanelError</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+    <span class="ruby-ivar">@error_handler</span>.<span class="ruby-identifier">handle</span>(<span class="ruby-identifier">e</span>)
     <span class="ruby-identifier">ret</span> = <span class="ruby-keyword">false</span>
   <span class="ruby-keyword">end</span>
 
@@ -272,7 +273,7 @@ event and a set of properties describing that event. Properties are
 provided as a Hash with string keys and strings, numbers or booleans as
 values.</p>
 
-<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>
+<pre class="ruby"><span class="ruby-identifier">tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">YOUR_MIXPANEL_TOKEN</span>)
 
 <span class="ruby-comment"># Track that user &quot;12345&quot;&#39;s credit card was declined</span>
 <span class="ruby-identifier">tracker</span>.<span class="ruby-identifier">track</span>(<span class="ruby-string">&quot;12345&quot;</span>, <span class="ruby-string">&quot;Credit Card Declined&quot;</span>)
@@ -289,7 +290,7 @@ values.</p>
 
           
           <div class="method-source-code" id="track-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/events.rb, line 51</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/events.rb, line 54</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">track</span>(<span class="ruby-identifier">distinct_id</span>, <span class="ruby-identifier">event</span>, <span class="ruby-identifier">properties</span>={}, <span class="ruby-identifier">ip</span>=<span class="ruby-keyword">nil</span>)
   <span class="ruby-identifier">properties</span> = {
     <span class="ruby-string">&#39;distinct_id&#39;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">distinct_id</span>,
@@ -310,7 +311,8 @@ values.</p>
   <span class="ruby-identifier">ret</span> = <span class="ruby-keyword">true</span>
   <span class="ruby-keyword">begin</span>
     <span class="ruby-ivar">@sink</span>.<span class="ruby-identifier">call</span>(<span class="ruby-value">:event</span>, <span class="ruby-identifier">message</span>.<span class="ruby-identifier">to_json</span>)
-  <span class="ruby-keyword">rescue</span> <span class="ruby-constant">MixpanelError</span>
+  <span class="ruby-keyword">rescue</span> <span class="ruby-constant">MixpanelError</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+    <span class="ruby-ivar">@error_handler</span>.<span class="ruby-identifier">handle</span>(<span class="ruby-identifier">e</span>)
     <span class="ruby-identifier">ret</span> = <span class="ruby-keyword">false</span>
   <span class="ruby-keyword">end</span>
 
@@ -334,7 +336,7 @@ values.</p>
 
 <footer id="validator-badges" role="contentinfo">
   <p><a href="http://validator.w3.org/check/referer">Validate</a>
-  <p>Generated by <a href="http://rdoc.rubyforge.org">RDoc</a> 4.1.0.
-  <p>Based on <a href="http://deveiate.org/projects/Darkfish-Rdoc/">Darkfish</a> by <a href="http://deveiate.org">Michael Granger</a>.
+  <p>Generated by <a href="http://docs.seattlerb.org/rdoc/">RDoc</a> 4.2.0.
+  <p>Based on <a href="http://deveiate.org/projects/Darkfish-RDoc/">Darkfish</a> by <a href="http://deveiate.org">Michael Granger</a>.
 </footer>
 

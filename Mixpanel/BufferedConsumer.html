@@ -6,19 +6,16 @@
 
 <title>class Mixpanel::BufferedConsumer - RDoc Documentation</title>
 
-<link href="../fonts.css" rel="stylesheet">
-<link href="../rdoc.css" rel="stylesheet">
-
 <script type="text/javascript">
   var rdoc_rel_prefix = "../";
 </script>
 
 <script src="../js/jquery.js"></script>
-<script src="../js/navigation.js"></script>
-<script src="../js/search_index.js"></script>
-<script src="../js/search.js"></script>
-<script src="../js/searcher.js"></script>
 <script src="../js/darkfish.js"></script>
+
+<link href="../css/fonts.css" rel="stylesheet">
+<link href="../css/rdoc.css" rel="stylesheet">
+
 
 
 <body id="top" role="document" class="class">
@@ -105,17 +102,16 @@ application exits or the messages remaining in the buffer will not be sent.</p>
 a <a href="Tracker.html">Mixpanel::Tracker</a>, instantiate your <a
 href="Tracker.html">Tracker</a> like this</p>
 
-<pre class="ruby"><span class="ruby-identifier">buffered_consumer</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">BufferedConsumer</span>.<span class="ruby-identifier">new</span>
-<span class="ruby-keyword">begin</span>
-    <span class="ruby-identifier">buffered_tracker</span> = <span class="ruby-constant">Mixpanel</span><span class="ruby-operator">::</span><span class="ruby-constant">Tracker</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">YOUR_TOKEN</span>) <span class="ruby-keyword">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span><span class="ruby-operator">|</span>
-        <span class="ruby-identifier">buffered_consumer</span>.<span class="ruby-identifier">send!</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
-    <span class="ruby-keyword">end</span>
-    <span class="ruby-comment"># Do some tracking here</span>
-    <span class="ruby-operator">...</span>
-<span class="ruby-keyword">ensure</span>
-    <span class="ruby-identifier">buffered_consumer</span>.<span class="ruby-identifier">flush</span>
-<span class="ruby-keyword">end</span>
-</pre>
+<pre>buffered_consumer = Mixpanel::BufferedConsumer.new
+begin
+    buffered_tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN) do |type, message|
+        buffered_consumer.send!(type, message)
+    end
+    # Do some tracking here
+    ...
+ensure
+    buffered_consumer.flush
+end</pre>
 
   </section>
 
@@ -166,20 +162,22 @@ href="Tracker.html">Tracker</a> like this</p>
         <div class="method-description">
           
           <p>Create a <a href="BufferedConsumer.html">Mixpanel::BufferedConsumer</a>. If
-you provide endpoint arguments, they will be used instead of the default
-Mixpanel endpoints. This can be useful for proxying, debugging, or if you
-prefer not to use SSL for your events.</p>
+you provide endpoint arguments, they will be used instead of the default <a
+href="../Mixpanel.html">Mixpanel</a> endpoints. This can be useful for
+proxying, debugging, or if you prefer not to use SSL for your events.</p>
 
 <p>You can also change the preferred buffer size before the consumer
-automatically sends its buffered events. The Mixpanel endpoints have a
-limit of 50 events per HTTP request, but you can lower the limit if your
-individual events are very large.</p>
+automatically sends its buffered events. The <a
+href="../Mixpanel.html">Mixpanel</a> endpoints have a limit of 50 events
+per HTTP request, but you can lower the limit if your individual events are
+very large.</p>
 
 <p>By default, <a href="BufferedConsumer.html">BufferedConsumer</a> will use a
-standard Mixpanel consumer to send the events once the buffer is full (or
-on calls to <a href="BufferedConsumer.html#method-i-flush">flush</a>), but
-you can override this behavior by passing a block to the constructor, in
-the same way you might pass a block to the <a
+standard <a href="../Mixpanel.html">Mixpanel</a> consumer to send the
+events once the buffer is full (or on calls to <a
+href="BufferedConsumer.html#method-i-flush">flush</a>), but you can
+override this behavior by passing a block to the constructor, in the same
+way you might pass a block to the <a
 href="Tracker.html">Mixpanel::Tracker</a> constructor. If a block is passed
 to the constructor, the *_endpoint constructor arguments are ignored.</p>
           
@@ -187,7 +185,7 @@ to the constructor, the *_endpoint constructor arguments are ignored.</p>
 
           
           <div class="method-source-code" id="new-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 189</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 180</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">events_endpoint</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">update_endpoint</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">import_endpoint</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">max_buffer_length</span>=<span class="ruby-constant">MAX_LENGTH</span>, <span class="ruby-operator">&amp;</span><span class="ruby-identifier">block</span>)
   <span class="ruby-ivar">@max_length</span> = [<span class="ruby-identifier">max_buffer_length</span>, <span class="ruby-constant">MAX_LENGTH</span>].<span class="ruby-identifier">min</span>
   <span class="ruby-ivar">@buffers</span> = {
@@ -233,7 +231,8 @@ to the constructor, the *_endpoint constructor arguments are ignored.</p>
 
         <div class="method-description">
           
-          <p>Pushes all remaining messages in the buffer to Mixpanel. You should call <a
+          <p>Pushes all remaining messages in the buffer to <a
+href="../Mixpanel.html">Mixpanel</a>. You should call <a
 href="BufferedConsumer.html#method-i-flush">flush</a> before your
 application exits or messages may not be sent.</p>
           
@@ -241,7 +240,7 @@ application exits or messages may not be sent.</p>
 
           
           <div class="method-source-code" id="flush-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 230</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 221</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">flush</span>
   <span class="ruby-ivar">@buffers</span>.<span class="ruby-identifier">keys</span>.<span class="ruby-identifier">each</span> { <span class="ruby-operator">|</span><span class="ruby-identifier">k</span><span class="ruby-operator">|</span> <span class="ruby-identifier">flush_type</span>(<span class="ruby-identifier">k</span>) }
 <span class="ruby-keyword">end</span></pre>
@@ -274,7 +273,7 @@ application exits or messages may not be sent.</p>
 
           
           <div class="method-source-code" id="send-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 222</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 213</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">send</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
     <span class="ruby-identifier">warn</span> <span class="ruby-string">&#39;[DEPRECATION] send has been deprecated as of release 2.0.0, please use send! instead&#39;</span>
     <span class="ruby-identifier">send!</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
@@ -302,9 +301,9 @@ application exits or messages may not be sent.</p>
 
         <div class="method-description">
           
-          <p>Stores a message for Mixpanel in memory. When the buffer hits a maximum
-length, the consumer will flush automatically. Flushes are synchronous when
-they occur.</p>
+          <p>Stores a message for <a href="../Mixpanel.html">Mixpanel</a> in memory.
+When the buffer hits a maximum length, the consumer will flush
+automatically. Flushes are synchronous when they occur.</p>
 
 <p>Currently, only :event and :profile_update messages are buffered, :import
 messages will be send immediately on call.</p>
@@ -313,7 +312,7 @@ messages will be send immediately on call.</p>
 
           
           <div class="method-source-code" id="send-21-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 210</span>
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 201</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier">send!</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
   <span class="ruby-identifier">type</span> = <span class="ruby-identifier">type</span>.<span class="ruby-identifier">to_sym</span>
 
@@ -342,7 +341,7 @@ messages will be send immediately on call.</p>
 
 <footer id="validator-badges" role="contentinfo">
   <p><a href="http://validator.w3.org/check/referer">Validate</a>
-  <p>Generated by <a href="http://rdoc.rubyforge.org">RDoc</a> 4.1.0.
-  <p>Based on <a href="http://deveiate.org/projects/Darkfish-Rdoc/">Darkfish</a> by <a href="http://deveiate.org">Michael Granger</a>.
+  <p>Generated by <a href="http://docs.seattlerb.org/rdoc/">RDoc</a> 4.2.0.
+  <p>Based on <a href="http://deveiate.org/projects/Darkfish-RDoc/">Darkfish</a> by <a href="http://deveiate.org">Michael Granger</a>.
 </footer>
 
