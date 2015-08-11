@@ -187,7 +187,7 @@ module Mixpanel
     #    tracker.people.track_charge("12345", 25.32)
     #
     #    # records a charge of $30.50 on the 2nd of January,
-    #    mixpanel.people.track_charge("12345", 30.50, {
+    #    tracker.people.track_charge("12345", 30.50, {
     #        '$time' => DateTime.parse("Jan 2 2013")
     #    })
     #
