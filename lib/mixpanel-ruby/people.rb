@@ -47,14 +47,14 @@ module Mixpanel
     #    });
     #
     # If you provide an ip argument, \Mixpanel will use that
-    # ip address for geolocation (rather than the ip of your server)
-    def set(distinct_id, properties, ip=nil, optional_params={})
+    # If not, we just ignore geolocation identification
+    def set(distinct_id, properties, ip=0, optional_params={})
       properties = fix_property_dates(properties)
       message = {
         '$distinct_id' => distinct_id,
         '$set' => properties,
+        '$ip' => ip
       }.merge(optional_params)
-      message['$ip'] = ip if ip
 
       update(message)
     end
@@ -69,13 +69,13 @@ module Mixpanel
     #        'First Login Date': DateTime.now
     #    });
     #
-    def set_once(distinct_id, properties, ip=nil, optional_params={})
+    def set_once(distinct_id, properties, ip=0, optional_params={})
       properties = fix_property_dates(properties)
       message = {
         '$distinct_id' => distinct_id,
         '$set_once' => properties,
+        '$ip' => ip
       }.merge(optional_params)
-      message['$ip'] = ip if ip
 
       update(message)
     end
@@ -92,13 +92,13 @@ module Mixpanel
     #        'Coins Earned' => -7, # Use a negative number to subtract
     #    });
     #
-    def increment(distinct_id, properties, ip=nil, optional_params={})
+    def increment(distinct_id, properties, ip=0, optional_params={})
       properties = fix_property_dates(properties)
       message = {
         '$distinct_id' => distinct_id,
         '$add' => properties,
+        '$ip' => ip
       }.merge(optional_params)
-      message['$ip'] = ip if ip
 
       update(message)
     end
@@ -129,8 +129,8 @@ module Mixpanel
       message = {
         '$distinct_id' => distinct_id,
         '$append' => properties,
+        '$ip' => ip
       }.merge(optional_params)
-      message['$ip'] = ip if ip
 
       update(message)
     end
@@ -151,8 +151,8 @@ module Mixpanel
       message = {
         '$distinct_id' => distinct_id,
         '$union' => properties,
+        '$ip' => ip
       }.merge(optional_params)
-      message['$ip'] = ip if ip
 
       update(message)
     end
@@ -172,8 +172,8 @@ module Mixpanel
       message = {
         '$distinct_id' => distinct_id,
         '$unset' => properties,
+        '$ip' => ip
       }.merge(optional_params)
-      message['$ip'] = ip if ip
 
       update(message)
     end
