@@ -71,6 +71,7 @@ describe Mixpanel::Tracker do
             'mp_lib' => 'ruby',
             '$lib_version' => Mixpanel::VERSION,
             'token' => 'TEST TOKEN',
+            '$ip' => nil,
             'time' => @time_now.to_i
         }
     })
@@ -94,6 +95,7 @@ describe Mixpanel::Tracker do
               'mp_lib' => 'ruby',
               '$lib_version' => Mixpanel::VERSION,
               'token' => 'TEST TOKEN',
+              '$ip' => nil,
               'time' => @time_now.to_i
             }
           }
@@ -106,6 +108,7 @@ describe Mixpanel::Tracker do
                 'mp_lib' => 'ruby',
                 '$lib_version' => Mixpanel::VERSION,
                 'token' => 'TEST TOKEN',
+                '$ip' => nil,
                 'time' => @time_now.to_i
               }
             },
@@ -116,6 +119,7 @@ describe Mixpanel::Tracker do
           { '$token' => 'TEST TOKEN',
             '$distinct_id' => 'ID',
             '$time' => @time_now.to_i * 1000,
+            '$ip' => 0,
             '$set' => {'k' => 'v'}
           }
         ],
@@ -123,6 +127,7 @@ describe Mixpanel::Tracker do
           { '$token' => 'TEST TOKEN',
             '$distinct_id' => 'ID',
             '$time' => @time_now.to_i * 1000,
+            '$ip' => 0,
             '$append' => {'k' => 'v'}
           }
         ]

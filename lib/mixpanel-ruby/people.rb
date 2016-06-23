@@ -110,7 +110,7 @@ module Mixpanel
     #    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #    tracker.people.plus_one("12345", "Albums Released")
     #
-    def plus_one(distinct_id, property_name, ip=nil, optional_params={})
+    def plus_one(distinct_id, property_name, ip=0, optional_params={})
       increment(distinct_id, {property_name => 1}, ip, optional_params)
     end
 
@@ -124,7 +124,7 @@ module Mixpanel
     #        'Alter Ego Names' => 'Ziggy Stardust'
     #    });
     #
-    def append(distinct_id, properties, ip=nil, optional_params={})
+    def append(distinct_id, properties, ip=0, optional_params={})
       properties = fix_property_dates(properties)
       message = {
         '$distinct_id' => distinct_id,
@@ -146,7 +146,7 @@ module Mixpanel
     #        'Levels Completed' => ['Suffragette City']
     #    });
     #
-    def union(distinct_id, properties, ip=nil, optional_params={})
+    def union(distinct_id, properties, ip=0, optional_params={})
       properties = fix_property_dates(properties)
       message = {
         '$distinct_id' => distinct_id,
@@ -167,7 +167,7 @@ module Mixpanel
     #    # removes multiple properties and their values from a profile
     #    tracker.people.unset("12345", ["Overdue Since", "Paid Date"])
     #
-    def unset(distinct_id, properties, ip=nil, optional_params={})
+    def unset(distinct_id, properties, ip=0, optional_params={})
       properties = [properties] unless properties.is_a?(Array)
       message = {
         '$distinct_id' => distinct_id,
@@ -191,14 +191,14 @@ module Mixpanel
     #        '$time' => DateTime.parse("Jan 2 2013")
     #    })
     #
-    def track_charge(distinct_id, amount, properties={}, ip=nil, optional_params={})
+    def track_charge(distinct_id, amount, properties={}, ip=0, optional_params={})
       properties = fix_property_dates(properties)
       charge_properties = properties.merge({'$amount' => amount})
       append(distinct_id, {'$transactions' => charge_properties}, ip, optional_params)
     end
 
     # Clear all charges from a \Mixpanel people profile
-    def clear_charges(distinct_id, ip=nil, optional_params={})
+    def clear_charges(distinct_id, ip=0, optional_params={})
       unset(distinct_id, '$transactions', ip, optional_params)
     end
 
