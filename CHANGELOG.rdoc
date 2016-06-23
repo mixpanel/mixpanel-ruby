@@ -1,0 +1,54 @@
+== Changes
+
+== 2.2.0
+* Add Mixpanel::ErrorHandler to simplify custom error handling.
+* Modify Mixpanel::People#fix_property_dates to handle ActiveSupport::TimeWithZone.
+* Increase open and ssl timeouts from 2s to 10s.
+* Fix Doc inconsistancy: always pass token on Mixpanel::tracker.new.
+
+== 2.1.0
+* Add Mixpanel::Tracker#generate_tracking_url, which generates {pixel tracking urls}[https://mixpanel.com/docs/api-documentation/pixel-based-event-tracking].
+* Rescue JSONErrors in the consumer and raise Mixpanel::ServerError in Mixpanel::Consumer#send!.
+* Make it clear how to import events with custom timestamp.
+* Update dependancies in gemspec
+
+== 2.0.1
+* Add Deprecated version of Mixpanel::BufferedConsumer#send
+
+== 2.0.0
+* Raise mixpanel server and connection errors in Mixpanel::Consumer.
+* All public methods in Mixpanel::Event, Mixpanel::People, and subsequently Mixpanel::Tracker
+  rescue Mixpanel errors and return false in the case of an error, return true otherwise
+* Deprecate Mixpanel::Consumer#send, replace with Mixpanel::Consumer#send!
+* Require ruby version minimum of 2.0.0
+
+== 1.4.0
+* Allow unset to unset multiple properties
+
+== 1.3.0
+* Added Consumer#request method, demo with Faraday integration
+
+== 1.2.0
+* All objects with a "strftime" method will be formatted as dates in
+  people updates.
+
+== 1.1.0
+* The default consumer now sends requests (and expects responses) in
+  verbose, JSON mode, which may improve error reporting.
+
+=== 1.0.2
+* Allow ip and optional_params arguments to be accepted by all
+  Mixpanel::People methods (except #destroy_user)
+
+=== 1.0.1
+* Compatibility with earlier versions of ruby. Library development will continue
+  to target 1.9, so later versions may not be compatible with Ruby 1.8, but we
+  love patches!
+
+=== 1.0.0
+* tracker#import added
+* Change to internal tracking message format. Messages written
+  by earlier versions of the library will not work with 1.0.0 consumer classes.
+* alias bugfixed
+* Fixes to tests to allow for different timezones
+* Support for optional/experimental people api properties in people calls
