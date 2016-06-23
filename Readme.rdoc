@@ -1,9 +1,10 @@
 {<img src="https://travis-ci.org/mixpanel/mixpanel-ruby.svg?branch=master" alt="Build Status" />}[https://travis-ci.org/mixpanel/mixpanel-ruby]
 
-= mixpanel-ruby: The official Mixpanel Ruby library
+= The unofficial Mixpanel Ruby library
 
 mixpanel-ruby is a library for tracking events and sending \Mixpanel profile
 updates to \Mixpanel from your ruby applications.
+We start to maintain a fork, because official library, not a pull request friendly anymore, plus we have our vision of event tracking and side effect policy.
 
 == Installation
 
