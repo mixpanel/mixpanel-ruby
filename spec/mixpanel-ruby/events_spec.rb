@@ -27,6 +27,7 @@ describe Mixpanel::Events do
             'mp_lib' => 'ruby',
             '$lib_version' => Mixpanel::VERSION,
             'token' => 'TEST TOKEN',
+            '$ip' => 0,
             'time' => @time_now.to_i
         }
     }]])
@@ -46,6 +47,7 @@ describe Mixpanel::Events do
                 'mp_lib' => 'ruby',
                 '$lib_version' => Mixpanel::VERSION,
                 'token' => 'TEST TOKEN',
+                '$ip' => 0,
                 'time' => @time_now.to_i
             }
         }
@@ -68,6 +70,7 @@ describe Mixpanel::Events do
                 'mp_lib' => 'ruby',
                 '$lib_version' => Mixpanel::VERSION,
                 'token' => 'TEST TOKEN',
+                '$ip' => 0,
                 'time' => older_time.to_i,
             }
         }

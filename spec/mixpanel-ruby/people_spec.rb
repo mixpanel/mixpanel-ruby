@@ -22,6 +22,7 @@ describe Mixpanel::People do
     expect(@log).to eq([[:profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$ip' => 0,
         '$time' => @time_now.to_i * 1000,
         '$set' => {
             '$firstname' => 'David',
@@ -37,6 +38,7 @@ describe Mixpanel::People do
     expect(@log).to eq([[:profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$ip' => 0,
         '$time' => @time_now.to_i * 1000,
         '$set' => {
             'created_at' => '2013-01-02T03:04:05'
@@ -51,6 +53,7 @@ describe Mixpanel::People do
     expect(@log).to eq([[:profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$ip' => 0,
         '$time' => @time_now.to_i * 1000,
         '$set' => {
             'created_at' => '2013-01-02T02:04:05'
@@ -66,6 +69,7 @@ describe Mixpanel::People do
     expect(@log).to eq([[:profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$ip' => 0,
         '$time' => @time_now.to_i * 1000,
         '$set' => {
             'created_at' => '2013-01-02T02:04:05'
@@ -81,6 +85,7 @@ describe Mixpanel::People do
     expect(@log).to eq([[:profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$ip' => 0,
         '$time' => @time_now.to_i * 1000,
         '$set_once' => {
             '$firstname' => 'David',
@@ -94,6 +99,7 @@ describe Mixpanel::People do
     expect(@log).to eq([[:profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$ip' => 0,
         '$time' => @time_now.to_i * 1000,
         '$add' => {
             'Albums Released' => 10
@@ -106,6 +112,7 @@ describe Mixpanel::People do
     expect(@log).to eq([[:profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$ip' => 0,
         '$time' => @time_now.to_i * 1000,
         '$add' => {
             'Albums Released' => 1
@@ -118,6 +125,7 @@ describe Mixpanel::People do
     expect(@log).to eq([[:profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$ip' => 0,
         '$time' => @time_now.to_i * 1000,
         '$append' => {
             'Albums' => 'Diamond Dogs'
@@ -130,6 +138,7 @@ describe Mixpanel::People do
     expect(@log).to eq([[:profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$ip' => 0,
         '$time' => @time_now.to_i * 1000,
         '$union' => {
             'Albums' => ['Diamond Dogs']
@@ -142,6 +151,7 @@ describe Mixpanel::People do
     expect(@log).to eq([[:profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$ip' => 0,
         '$time' => @time_now.to_i * 1000,
         '$unset' => ['Albums']
     }]])
@@ -152,6 +162,7 @@ describe Mixpanel::People do
     expect(@log).to eq([[:profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$ip' => 0,
         '$time' => @time_now.to_i * 1000,
         '$unset' => ['Albums', 'Vinyls']
     }]])
@@ -165,6 +176,7 @@ describe Mixpanel::People do
     expect(@log).to eq([[:profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$ip' => 0,
         '$time' => @time_now.to_i * 1000,
         '$append' => {
             '$transactions' => {
@@ -181,6 +193,7 @@ describe Mixpanel::People do
     expect(@log).to eq([[:profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
         '$distinct_id' => 'TEST ID',
+        '$ip' => 0,
         '$time' => @time_now.to_i * 1000,
         '$unset' => ['$transactions']
     }]])
@@ -210,8 +223,8 @@ describe Mixpanel::People do
     @people.delete_user("TEST ID", {"$ignore_alias"=>true})
     expect(@log).to eq([[:profile_update, 'data' => {
         '$token' => 'TEST TOKEN',
-        '$distinct_id' => 'TEST ID',
         '$time' => @time_now.to_i * 1000,
+        '$distinct_id' => 'TEST ID',
         '$delete' => '',
         "$ignore_alias"=>true
     }]])
