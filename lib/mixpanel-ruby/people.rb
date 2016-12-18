@@ -48,7 +48,21 @@ module Mixpanel
     #
     # If you provide an ip argument, \Mixpanel will use that
     # ip address for geolocation (rather than the ip of your server)
-    def set(distinct_id, properties, ip=nil, optional_params={})
+    # If a BufferedConsumer is passed in it will call 
+    # send on that buffer. Make sure to flush after it is done
+    #
+    #    tracker = Mixpanel::Tracker.new
+    #    buffered_consumer = Mixpanel::BufferedConsumer.new
+    #    # Sets properties on profile with id "1234"
+    #    500.times do 
+    #        tracker.people.set("1234", {
+    #        'company' => 'Acme',
+    #        'plan' => 'Premium',
+    #        'Sign-Up Date' => DateTime.now},
+    #         nil,{},buffered_consumer);
+    #    buffered_consumer.flush
+    def set(distinct_id, properties, ip=nil, optional_params={}, consumer=nil)
+      @sink = consumer.method(:send) if consumer.is_a? Mixpanel::BufferedConsumer 
       properties = fix_property_dates(properties)
       message = {
         '$distinct_id' => distinct_id,
@@ -69,7 +83,10 @@ module Mixpanel
     #        'First Login Date': DateTime.now
     #    });
     #
-    def set_once(distinct_id, properties, ip=nil, optional_params={})
+    # If a BufferedConsumer is passed in it will call 
+    # send on that buffer. Make sure to flush after it is done
+    def set_once(distinct_id, properties, ip=nil, optional_params={}, consumer=nil)
+      @sink = consumer.method(:send) if consumer.is_a? Mixpanel::BufferedConsumer 
       properties = fix_property_dates(properties)
       message = {
         '$distinct_id' => distinct_id,
