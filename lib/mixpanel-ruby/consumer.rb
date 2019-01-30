@@ -225,9 +225,16 @@ module Mixpanel
     private
 
     def flush_type(type)
-      @buffers[type].each_slice(@max_length) do |chunk|
-        data = chunk.map {|message| JSON.load(message)['data'] }
-        @sink.call(type, {'data' => data}.to_json)
+      sent_messages = 0
+      begin
+        @buffers[type].each_slice(@max_length) do |chunk|
+          data = chunk.map {|message| JSON.load(message)['data'] }
+          @sink.call(type, {'data' => data}.to_json)
+          sent_messages += @max_length
+        end
+      rescue
+        @buffers[type].slice!(0, sent_messages)
+        raise
       end
       @buffers[type] = []
     end
