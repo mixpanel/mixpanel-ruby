@@ -230,7 +230,7 @@ module Mixpanel
         @buffers[type].each_slice(@max_length) do |chunk|
           data = chunk.map {|message| JSON.load(message)['data'] }
           @sink.call(type, {'data' => data}.to_json)
-          sent_messages += @max_length
+          sent_messages += chunk.length
         end
       rescue
         @buffers[type].slice!(0, sent_messages)
