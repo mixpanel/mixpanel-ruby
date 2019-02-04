@@ -160,4 +160,42 @@ describe Mixpanel::BufferedConsumer do
 
   end
 
+  context 'with failing requests' do
+    let(:sent_messages) { [] }
+    let(:submission_queue) { [] }
+    subject do
+      Mixpanel::BufferedConsumer.new(nil, nil, nil, 2) do |type, message|
+        raise Mixpanel::ServerError if submission_queue.shift == :fail
+        sent_messages << [type, message]
+      end
+    end
+
+    it 'clears any slices that complete on flush' do
+      # construct a consumer that is backed up and has a multi-slice buffer
+      3.times { submission_queue << :fail }
+      4.times do |i|
+        begin
+          subject.send!(:event, {'data' => i}.to_json)
+        rescue Mixpanel::ServerError
+        end
+      end
+      expect(sent_messages).to match_array([])
+
+      submission_queue << :pass
+      submission_queue << :fail
+
+      expect { subject.flush }.to raise_error Mixpanel::ServerError
+      expect(sent_messages).to match_array([
+        [:event, '{"data":[0,1]}']
+      ])
+
+      submission_queue << :pass
+      subject.flush
+      expect(sent_messages).to match_array([
+        [:event, '{"data":[0,1]}'],
+        [:event, '{"data":[2,3]}'],
+      ])
+    end
+  end
+
 end

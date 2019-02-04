@@ -49,6 +49,9 @@ In particular, for Rails apps, the following projects are currently actively mai
 
 == Changes
 
+== 2.2.1
+* Fix buffer clearing on partially successful writes in BufferedConsumer.
+
 == 2.2.0
 * Add Mixpanel::ErrorHandler to simplify custom error handling.
 * Modify Mixpanel::People#fix_property_dates to handle ActiveSupport::TimeWithZone.
