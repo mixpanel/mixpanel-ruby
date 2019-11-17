@@ -58,9 +58,13 @@ module Mixpanel
     # they will be used instead of the default Mixpanel endpoints.
     # This can be useful for proxying, debugging, or if you prefer
     # not to use SSL for your events.
-    def initialize(events_endpoint=nil, update_endpoint=nil, import_endpoint=nil)
+    def initialize(events_endpoint=nil,
+                   update_endpoint=nil,
+                   groups_endpoint=nil,
+                   import_endpoint=nil)
       @events_endpoint = events_endpoint || 'https://api.mixpanel.com/track'
       @update_endpoint = update_endpoint || 'https://api.mixpanel.com/engage'
+      @groups_endpoint = groups_endpoint || 'https://api.mixpanel.com/groups'
       @import_endpoint = import_endpoint || 'https://api.mixpanel.com/import'
     end
 
@@ -75,6 +79,7 @@ module Mixpanel
       endpoint = {
         :event => @events_endpoint,
         :profile_update => @update_endpoint,
+        :group_update => @groups_endpoint,
         :import => @import_endpoint,
       }[type]
 
