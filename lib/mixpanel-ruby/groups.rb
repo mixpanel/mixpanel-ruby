@@ -82,6 +82,26 @@ module Mixpanel
       update(message)
     end
 
+    # Removes a specific value in a list property
+    #
+    #    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
+    #
+    #    # removes "socks" from the "Items purchased" list property
+    #    # for the specified group
+    #    tracker.groups.remove("GROUP KEY", "1234", { 'Items purchased' => 'socks' })
+    #
+    def remove(group_key, group_id, properties, ip=nil, optional_params={})
+      properties = fix_property_dates(properties)
+      message = {
+        '$group_key' => group_key,
+        '$group_id' => group_id,
+        '$remove' => properties,
+      }.merge(optional_params)
+      message['$ip'] = ip if ip
+
+      update(message)
+    end
+
     # Set union on list valued properties.
     # Associates a list containing all elements of a given list,
     # and all elements currently in a list associated with the given
@@ -129,7 +149,8 @@ module Mixpanel
       update(message)
     end
 
-    # Permanently delete a group from \Mixpanel groups analytics
+    # Permanently delete a group from \Mixpanel groups analytics (all group
+    # properties on events stay)
     def delete_group(group_key, group_id, optional_params={})
       update({
         '$group_key' => group_key,

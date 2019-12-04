@@ -94,6 +94,21 @@ describe Mixpanel::Groups do
     }]])
   end
 
+  it 'should send a well formed groups/remove message' do
+    @groups.remove("TEST GROUP KEY", "TEST GROUP ID", {
+        'Albums' => 'Diamond Dogs'
+    })
+    expect(@log).to eq([[:group_update, 'data' => {
+        '$token' => 'TEST TOKEN',
+        '$group_key' => 'TEST GROUP KEY',
+        '$group_id' => 'TEST GROUP ID',
+        '$time' => @time_now.to_i * 1000,
+        '$remove' => {
+            'Albums' => 'Diamond Dogs'
+        }
+    }]])
+  end
+
   it 'should send a well formed groups/union message' do
     @groups.union("TEST GROUP KEY", "TEST GROUP ID", {
       'Albums' => ['Diamond Dogs']
