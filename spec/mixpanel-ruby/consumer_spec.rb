@@ -22,6 +22,13 @@ describe Mixpanel::Consumer do
         with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' })
     end
 
+    it 'should send a request to api.mixpanel.com/groups on groups updates' do
+      stub_request(:any, 'https://api.mixpanel.com/groups').to_return({:body => '{"status": 1, "error": null}'})
+      subject.send!(:group_update, {'data' => 'TEST EVENT MESSAGE'}.to_json)
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/groups').
+        with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' })
+    end
+
     it 'should send a request to api.mixpanel.com/import on event imports' do
       stub_request(:any, 'https://api.mixpanel.com/import').to_return({:body => '{"status": 1, "error": null}'})
       subject.send!(:import, {'data' => 'TEST EVENT MESSAGE', 'api_key' => 'API_KEY','verbose' => '1' }.to_json)

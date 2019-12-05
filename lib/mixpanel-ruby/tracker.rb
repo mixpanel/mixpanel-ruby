@@ -1,5 +1,6 @@
 require 'mixpanel-ruby/events.rb'
 require 'mixpanel-ruby/people.rb'
+require 'mixpanel-ruby/groups.rb'
 
 module Mixpanel
   # Use Mixpanel::Tracker to track events and profile updates in your application.
@@ -13,15 +14,24 @@ module Mixpanel
   #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
   #     tracker.people.set(a_distinct_id, {properties})
   #
+  # To send groups updates, call
+  #
+  #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
+  #     tracker.groups.set(group_key, group_id, {properties})
+  #
   # You can find your project token in the settings dialog for your
   # project, inside of the Mixpanel web application.
   #
   # Mixpanel::Tracker is a subclass of Mixpanel::Events, and exposes
   # an instance of Mixpanel::People as Tracker#people
+  # and an instance of Mixpanel::Groups as Tracker#groups
   class Tracker < Events
     # An instance of Mixpanel::People. Use this to
     # send profile updates
     attr_reader :people
+
+    # An instance of Mixpanel::Groups. Use this to send groups updates
+    attr_reader :groups
 
     # Takes your Mixpanel project token, as a string.
     #
@@ -46,6 +56,7 @@ module Mixpanel
       super(token, error_handler, &block)
       @token = token
       @people = People.new(token, error_handler, &block)
+      @groups = Groups.new(token, error_handler, &block)
     end
 
     # A call to #track is a report that an event has occurred.  #track

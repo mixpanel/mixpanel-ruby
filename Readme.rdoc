@@ -49,6 +49,9 @@ In particular, for Rails apps, the following projects are currently actively mai
 
 == Changes
 
+== 2.2.2
+* Add Group Analytics support with Mixpanel::Groups
+
 == 2.2.1
 * Fix buffer clearing on partially successful writes in BufferedConsumer.
 
