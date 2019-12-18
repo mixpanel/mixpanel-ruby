@@ -8,6 +8,7 @@
 
 <script type="text/javascript">
   var rdoc_rel_prefix = "../";
+  var index_rel_prefix = "../";
 </script>
 
 <script src="../js/jquery.js"></script>
@@ -127,8 +128,6 @@ href="../Mixpanel.html">Mixpanel</a>.</p>
   </section>
 
   
-  
-  
   <section id="5Buntitled-5D" class="documentation-section">
     
 
@@ -149,7 +148,7 @@ href="../Mixpanel.html">Mixpanel</a>.</p>
         
         <div class="method-heading">
           <span class="method-name">new</span><span
-            class="method-args">(events_endpoint=nil, update_endpoint=nil, import_endpoint=nil)</span>
+            class="method-args">(events_endpoint=nil, update_endpoint=nil, groups_endpoint=nil, import_endpoint=nil)</span>
           
           <span class="method-click-advice">click to toggle source</span>
           
@@ -168,9 +167,13 @@ proxying, debugging, or if you prefer not to use SSL for your events.</p>
           
           <div class="method-source-code" id="new-source">
             <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 61</span>
-<span class="ruby-keyword">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">events_endpoint</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">update_endpoint</span>=<span class="ruby-keyword">nil</span>, <span class="ruby-identifier">import_endpoint</span>=<span class="ruby-keyword">nil</span>)
+<span class="ruby-keyword">def</span> <span class="ruby-identifier ruby-title">initialize</span>(<span class="ruby-identifier">events_endpoint</span>=<span class="ruby-keyword">nil</span>,
+               <span class="ruby-identifier">update_endpoint</span>=<span class="ruby-keyword">nil</span>,
+               <span class="ruby-identifier">groups_endpoint</span>=<span class="ruby-keyword">nil</span>,
+               <span class="ruby-identifier">import_endpoint</span>=<span class="ruby-keyword">nil</span>)
   <span class="ruby-ivar">@events_endpoint</span> = <span class="ruby-identifier">events_endpoint</span> <span class="ruby-operator">||</span> <span class="ruby-string">&#39;https://api.mixpanel.com/track&#39;</span>
   <span class="ruby-ivar">@update_endpoint</span> = <span class="ruby-identifier">update_endpoint</span> <span class="ruby-operator">||</span> <span class="ruby-string">&#39;https://api.mixpanel.com/engage&#39;</span>
+  <span class="ruby-ivar">@groups_endpoint</span> = <span class="ruby-identifier">groups_endpoint</span> <span class="ruby-operator">||</span> <span class="ruby-string">&#39;https://api.mixpanel.com/groups&#39;</span>
   <span class="ruby-ivar">@import_endpoint</span> = <span class="ruby-identifier">import_endpoint</span> <span class="ruby-operator">||</span> <span class="ruby-string">&#39;https://api.mixpanel.com/import&#39;</span>
 <span class="ruby-keyword">end</span></pre>
           </div>
@@ -216,8 +219,8 @@ never receives a response for some reason.</p>
 
           
           <div class="method-source-code" id="request-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 121</span>
-<span class="ruby-keyword">def</span> <span class="ruby-identifier">request</span>(<span class="ruby-identifier">endpoint</span>, <span class="ruby-identifier">form_data</span>)
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 126</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier ruby-title">request</span>(<span class="ruby-identifier">endpoint</span>, <span class="ruby-identifier">form_data</span>)
   <span class="ruby-identifier">uri</span> = <span class="ruby-constant">URI</span>(<span class="ruby-identifier">endpoint</span>)
   <span class="ruby-identifier">request</span> = <span class="ruby-constant">Net</span><span class="ruby-operator">::</span><span class="ruby-constant">HTTP</span><span class="ruby-operator">::</span><span class="ruby-constant">Post</span>.<span class="ruby-identifier">new</span>(<span class="ruby-identifier">uri</span>.<span class="ruby-identifier">request_uri</span>)
   <span class="ruby-identifier">request</span>.<span class="ruby-identifier">set_form_data</span>(<span class="ruby-identifier">form_data</span>)
@@ -263,8 +266,8 @@ never receives a response for some reason.</p>
 
           
           <div class="method-source-code" id="send-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 109</span>
-<span class="ruby-keyword">def</span> <span class="ruby-identifier">send</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 114</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier ruby-title">send</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
     <span class="ruby-identifier">warn</span> <span class="ruby-string">&#39;[DEPRECATION] send has been deprecated as of release 2.0.0, please use send! instead&#39;</span>
     <span class="ruby-identifier">send!</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
 <span class="ruby-keyword">end</span></pre>
@@ -305,25 +308,26 @@ href="BufferedConsumer.html">Mixpanel::BufferedConsumer</a></p>
 
           
           <div class="method-source-code" id="send-21-source">
-            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 73</span>
-<span class="ruby-keyword">def</span> <span class="ruby-identifier">send!</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
+            <pre><span class="ruby-comment"># File lib/mixpanel-ruby/consumer.rb, line 77</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier ruby-title">send!</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">message</span>)
   <span class="ruby-identifier">type</span> = <span class="ruby-identifier">type</span>.<span class="ruby-identifier">to_sym</span>
   <span class="ruby-identifier">endpoint</span> = {
-    <span class="ruby-value">:event</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@events_endpoint</span>,
-    <span class="ruby-value">:profile_update</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@update_endpoint</span>,
-    <span class="ruby-value">:import</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@import_endpoint</span>,
+    <span class="ruby-value">:event</span> <span class="ruby-operator">=&gt;</span> <span class="ruby-ivar">@events_endpoint</span>,
+    <span class="ruby-value">:profile_update</span> <span class="ruby-operator">=&gt;</span> <span class="ruby-ivar">@update_endpoint</span>,
+    <span class="ruby-value">:group_update</span> <span class="ruby-operator">=&gt;</span> <span class="ruby-ivar">@groups_endpoint</span>,
+    <span class="ruby-value">:import</span> <span class="ruby-operator">=&gt;</span> <span class="ruby-ivar">@import_endpoint</span>,
   }[<span class="ruby-identifier">type</span>]
 
   <span class="ruby-identifier">decoded_message</span> = <span class="ruby-constant">JSON</span>.<span class="ruby-identifier">load</span>(<span class="ruby-identifier">message</span>)
   <span class="ruby-identifier">api_key</span> = <span class="ruby-identifier">decoded_message</span>[<span class="ruby-string">&quot;api_key&quot;</span>]
   <span class="ruby-identifier">data</span> = <span class="ruby-constant">Base64</span>.<span class="ruby-identifier">encode64</span>(<span class="ruby-identifier">decoded_message</span>[<span class="ruby-string">&quot;data&quot;</span>].<span class="ruby-identifier">to_json</span>).<span class="ruby-identifier">gsub</span>(<span class="ruby-string">&quot;\n&quot;</span>, <span class="ruby-string">&#39;&#39;</span>)
 
-  <span class="ruby-identifier">form_data</span> = {<span class="ruby-string">&quot;data&quot;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">data</span>, <span class="ruby-string">&quot;verbose&quot;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">1</span>}
-  <span class="ruby-identifier">form_data</span>.<span class="ruby-identifier">merge!</span>(<span class="ruby-string">&quot;api_key&quot;</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">api_key</span>) <span class="ruby-keyword">if</span> <span class="ruby-identifier">api_key</span>
+  <span class="ruby-identifier">form_data</span> = {<span class="ruby-string">&quot;data&quot;</span> <span class="ruby-operator">=&gt;</span> <span class="ruby-identifier">data</span>, <span class="ruby-string">&quot;verbose&quot;</span> <span class="ruby-operator">=&gt;</span> <span class="ruby-value">1</span>}
+  <span class="ruby-identifier">form_data</span>.<span class="ruby-identifier">merge!</span>(<span class="ruby-string">&quot;api_key&quot;</span> <span class="ruby-operator">=&gt;</span> <span class="ruby-identifier">api_key</span>) <span class="ruby-keyword">if</span> <span class="ruby-identifier">api_key</span>
 
   <span class="ruby-keyword">begin</span>
     <span class="ruby-identifier">response_code</span>, <span class="ruby-identifier">response_body</span> = <span class="ruby-identifier">request</span>(<span class="ruby-identifier">endpoint</span>, <span class="ruby-identifier">form_data</span>)
-  <span class="ruby-keyword">rescue</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+  <span class="ruby-keyword">rescue</span> <span class="ruby-operator">=&gt;</span> <span class="ruby-identifier">e</span>
     <span class="ruby-identifier">raise</span> <span class="ruby-constant">ConnectionError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-node">&quot;Could not connect to Mixpanel, with error \&quot;#{e.message}\&quot;.&quot;</span>)
   <span class="ruby-keyword">end</span>
 
@@ -357,8 +361,8 @@ href="BufferedConsumer.html">Mixpanel::BufferedConsumer</a></p>
 
 
 <footer id="validator-badges" role="contentinfo">
-  <p><a href="http://validator.w3.org/check/referer">Validate</a>
-  <p>Generated by <a href="http://docs.seattlerb.org/rdoc/">RDoc</a> 4.2.0.
+  <p><a href="https://validator.w3.org/check/referer">Validate</a>
+  <p>Generated by <a href="https://ruby.github.io/rdoc/">RDoc</a> 6.0.1.
   <p>Based on <a href="http://deveiate.org/projects/Darkfish-RDoc/">Darkfish</a> by <a href="http://deveiate.org">Michael Granger</a>.
 </footer>
 

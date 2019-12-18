@@ -8,6 +8,7 @@
 
 <script type="text/javascript">
   var rdoc_rel_prefix = "./";
+  var index_rel_prefix = "./";
 </script>
 
 <script src="./js/jquery.js"></script>
@@ -33,6 +34,8 @@
       <li><a href="Readme_rdoc.html#label-Getting+Started">Getting Started</a>
       <li><a href="Readme_rdoc.html#label-Additional+Information">Additional Information</a>
       <li><a href="Readme_rdoc.html#label-Changes">Changes</a>
+      <li><a href="Readme_rdoc.html#label-2.2.2">2.2.2</a>
+      <li><a href="Readme_rdoc.html#label-2.2.1">2.2.1</a>
       <li><a href="Readme_rdoc.html#label-2.2.0">2.2.0</a>
       <li><a href="Readme_rdoc.html#label-2.1.0">2.1.0</a>
       <li><a href="Readme_rdoc.html#label-2.0.1">2.0.1</a>
@@ -70,6 +73,9 @@
     <a href="Mixpanel/Events.html">Mixpanel::Events</a>
   </li>
   <li class="class">
+    <a href="Mixpanel/Groups.html">Mixpanel::Groups</a>
+  </li>
+  <li class="class">
     <a href="Mixpanel/MixpanelError.html">Mixpanel::MixpanelError</a>
   </li>
   <li class="class">
@@ -92,19 +98,9 @@
     <span class="container">Mixpanel</span>
 
   <li class="method">
-    <a href="Mixpanel/Tracker.html#method-c-new">::new</a>
+    <a href="Mixpanel/Consumer.html#method-c-new">::new</a>
     &mdash;
-    <span class="container">Mixpanel::Tracker</span>
-
-  <li class="method">
-    <a href="Mixpanel/Events.html#method-c-new">::new</a>
-    &mdash;
-    <span class="container">Mixpanel::Events</span>
-
-  <li class="method">
-    <a href="Mixpanel/People.html#method-c-new">::new</a>
-    &mdash;
-    <span class="container">Mixpanel::People</span>
+    <span class="container">Mixpanel::Consumer</span>
 
   <li class="method">
     <a href="Mixpanel/BufferedConsumer.html#method-c-new">::new</a>
@@ -112,9 +108,24 @@
     <span class="container">Mixpanel::BufferedConsumer</span>
 
   <li class="method">
-    <a href="Mixpanel/Consumer.html#method-c-new">::new</a>
+    <a href="Mixpanel/Events.html#method-c-new">::new</a>
     &mdash;
-    <span class="container">Mixpanel::Consumer</span>
+    <span class="container">Mixpanel::Events</span>
+
+  <li class="method">
+    <a href="Mixpanel/Groups.html#method-c-new">::new</a>
+    &mdash;
+    <span class="container">Mixpanel::Groups</span>
+
+  <li class="method">
+    <a href="Mixpanel/People.html#method-c-new">::new</a>
+    &mdash;
+    <span class="container">Mixpanel::People</span>
+
+  <li class="method">
+    <a href="Mixpanel/Tracker.html#method-c-new">::new</a>
+    &mdash;
+    <span class="container">Mixpanel::Tracker</span>
 
   <li class="method">
     <a href="Mixpanel/Tracker.html#method-i-alias">#alias</a>
@@ -130,6 +141,11 @@
     <a href="Mixpanel/People.html#method-i-clear_charges">#clear_charges</a>
     &mdash;
     <span class="container">Mixpanel::People</span>
+
+  <li class="method">
+    <a href="Mixpanel/Groups.html#method-i-delete_group">#delete_group</a>
+    &mdash;
+    <span class="container">Mixpanel::Groups</span>
 
   <li class="method">
     <a href="Mixpanel/People.html#method-i-delete_user">#delete_user</a>
@@ -152,14 +168,14 @@
     <span class="container">Mixpanel::ErrorHandler</span>
 
   <li class="method">
-    <a href="Mixpanel/Tracker.html#method-i-import">#import</a>
-    &mdash;
-    <span class="container">Mixpanel::Tracker</span>
-
-  <li class="method">
     <a href="Mixpanel/Events.html#method-i-import">#import</a>
     &mdash;
     <span class="container">Mixpanel::Events</span>
+
+  <li class="method">
+    <a href="Mixpanel/Tracker.html#method-i-import">#import</a>
+    &mdash;
+    <span class="container">Mixpanel::Tracker</span>
 
   <li class="method">
     <a href="Mixpanel/People.html#method-i-increment">#increment</a>
@@ -172,12 +188,12 @@
     <span class="container">Mixpanel::People</span>
 
   <li class="method">
-    <a href="Mixpanel/Consumer.html#method-i-request">#request</a>
+    <a href="Mixpanel/Groups.html#method-i-remove">#remove</a>
     &mdash;
-    <span class="container">Mixpanel::Consumer</span>
+    <span class="container">Mixpanel::Groups</span>
 
   <li class="method">
-    <a href="Mixpanel/Consumer.html#method-i-send">#send</a>
+    <a href="Mixpanel/Consumer.html#method-i-request">#request</a>
     &mdash;
     <span class="container">Mixpanel::Consumer</span>
 
@@ -185,6 +201,11 @@
     <a href="Mixpanel/BufferedConsumer.html#method-i-send">#send</a>
     &mdash;
     <span class="container">Mixpanel::BufferedConsumer</span>
+
+  <li class="method">
+    <a href="Mixpanel/Consumer.html#method-i-send">#send</a>
+    &mdash;
+    <span class="container">Mixpanel::Consumer</span>
 
   <li class="method">
     <a href="Mixpanel/Consumer.html#method-i-send-21">#send!</a>
@@ -202,9 +223,19 @@
     <span class="container">Mixpanel::People</span>
 
   <li class="method">
+    <a href="Mixpanel/Groups.html#method-i-set">#set</a>
+    &mdash;
+    <span class="container">Mixpanel::Groups</span>
+
+  <li class="method">
     <a href="Mixpanel/People.html#method-i-set_once">#set_once</a>
     &mdash;
     <span class="container">Mixpanel::People</span>
+
+  <li class="method">
+    <a href="Mixpanel/Groups.html#method-i-set_once">#set_once</a>
+    &mdash;
+    <span class="container">Mixpanel::Groups</span>
 
   <li class="method">
     <a href="Mixpanel/Events.html#method-i-track">#track</a>
@@ -227,21 +258,36 @@
     <span class="container">Mixpanel::People</span>
 
   <li class="method">
+    <a href="Mixpanel/Groups.html#method-i-union">#union</a>
+    &mdash;
+    <span class="container">Mixpanel::Groups</span>
+
+  <li class="method">
     <a href="Mixpanel/People.html#method-i-unset">#unset</a>
     &mdash;
     <span class="container">Mixpanel::People</span>
 
   <li class="method">
+    <a href="Mixpanel/Groups.html#method-i-unset">#unset</a>
+    &mdash;
+    <span class="container">Mixpanel::Groups</span>
+
+  <li class="method">
     <a href="Mixpanel/People.html#method-i-update">#update</a>
     &mdash;
     <span class="container">Mixpanel::People</span>
+
+  <li class="method">
+    <a href="Mixpanel/Groups.html#method-i-update">#update</a>
+    &mdash;
+    <span class="container">Mixpanel::Groups</span>
 </ul>
 </main>
 
 
 <footer id="validator-badges" role="contentinfo">
-  <p><a href="http://validator.w3.org/check/referer">Validate</a>
-  <p>Generated by <a href="http://docs.seattlerb.org/rdoc/">RDoc</a> 4.2.0.
+  <p><a href="https://validator.w3.org/check/referer">Validate</a>
+  <p>Generated by <a href="https://ruby.github.io/rdoc/">RDoc</a> 6.0.1.
   <p>Based on <a href="http://deveiate.org/projects/Darkfish-RDoc/">Darkfish</a> by <a href="http://deveiate.org">Michael Granger</a>.
 </footer>
 

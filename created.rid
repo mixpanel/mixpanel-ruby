@@ -1,9 +1,10 @@
-Mon, 13 Jul 2015 17:15:32 +0000
-Readme.rdoc	Mon, 13 Jul 2015 17:07:55 +0000
-lib/mixpanel-ruby.rb	Thu, 12 Mar 2015 00:26:46 +0000
-lib/mixpanel-ruby/consumer.rb	Mon, 13 Jul 2015 17:07:55 +0000
-lib/mixpanel-ruby/error.rb	Mon, 13 Jul 2015 17:07:55 +0000
-lib/mixpanel-ruby/events.rb	Mon, 13 Jul 2015 17:07:55 +0000
-lib/mixpanel-ruby/people.rb	Mon, 13 Jul 2015 17:07:55 +0000
-lib/mixpanel-ruby/tracker.rb	Mon, 13 Jul 2015 17:07:55 +0000
-lib/mixpanel-ruby/version.rb	Mon, 13 Jul 2015 17:07:55 +0000
+Tue, 17 Dec 2019 16:55:43 -0800
+Readme.rdoc	Tue, 17 Dec 2019 16:55:38 -0800
+lib/mixpanel-ruby.rb	Tue, 17 Dec 2019 16:55:38 -0800
+lib/mixpanel-ruby/consumer.rb	Tue, 17 Dec 2019 16:55:38 -0800
+lib/mixpanel-ruby/error.rb	Tue, 17 Dec 2019 16:55:38 -0800
+lib/mixpanel-ruby/events.rb	Tue, 17 Dec 2019 16:55:38 -0800
+lib/mixpanel-ruby/groups.rb	Tue, 17 Dec 2019 16:55:38 -0800
+lib/mixpanel-ruby/people.rb	Tue, 17 Dec 2019 16:55:38 -0800
+lib/mixpanel-ruby/tracker.rb	Tue, 17 Dec 2019 16:55:38 -0800
+lib/mixpanel-ruby/version.rb	Tue, 17 Dec 2019 16:55:38 -0800
