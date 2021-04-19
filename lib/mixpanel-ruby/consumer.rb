@@ -108,6 +108,8 @@ module Mixpanel
       if result['status'] != 1
         raise ServerError.new("Could not write to Mixpanel, server responded with #{response_code} returning: '#{response_body}'")
       end
+
+      [response_code, response_body]
     end
 
     # This method was deprecated in release 2.0.0, please use send! instead
