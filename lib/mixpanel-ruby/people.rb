@@ -223,7 +223,7 @@ module Mixpanel
     def update(message)
       data = {
         '$token' => @token,
-        '$time' =>  ((Time.now.to_f) * 1000.0).to_i,
+        '$time' =>  Time.now.to_f,
       }.merge(message)
 
       message = {'data' => data}
