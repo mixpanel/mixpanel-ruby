@@ -183,7 +183,7 @@ module Mixpanel
     # the constructor, the *_endpoint constructor arguments are
     # ignored.
     def initialize(events_endpoint=nil, update_endpoint=nil, import_endpoint=nil, max_buffer_length=MAX_LENGTH, &block)
-      @max_length = [max_buffer_length, MAX_LENGTH].min
+      @max_length = [max_buffer_length, MAX_LENGTH].max
       @buffers = {
         :event => [],
         :profile_update => [],
