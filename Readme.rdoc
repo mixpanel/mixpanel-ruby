@@ -1,5 +1,3 @@
-{<img src="https://travis-ci.org/mixpanel/mixpanel-ruby.svg?branch=master" alt="Build Status" />}[https://travis-ci.org/mixpanel/mixpanel-ruby]
-
 = mixpanel-ruby: The official Mixpanel Ruby library
 
 mixpanel-ruby is a library for tracking events and sending \Mixpanel profile
