@@ -12,7 +12,7 @@ spec = Gem::Specification.new do |spec|
   spec.homepage = 'https://mixpanel.com/help/reference/ruby'
   spec.license = 'Apache License 2.0'
 
-  spec.required_ruby_version = '>= 2.2.0'
+  spec.required_ruby_version = '>= 2.3.0'
   spec.add_dependency 'mutex_m'
   spec.add_runtime_dependency "base64"
 
