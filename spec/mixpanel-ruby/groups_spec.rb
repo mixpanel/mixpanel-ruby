@@ -39,7 +39,7 @@ describe Mixpanel::Groups do
         '$token' => 'TEST TOKEN',
         '$group_key' => 'TEST GROUP KEY',
         '$group_id' => 'TEST GROUP ID',
-        '$time' => @time_now.to_i * 1000,
+        '$time' => (@time_now.to_f * 1000).to_i,
         '$set' => {
             'created_at' => '2013-01-02T03:04:05'
         }
@@ -54,7 +54,7 @@ describe Mixpanel::Groups do
         '$token' => 'TEST TOKEN',
         '$group_key' => 'TEST GROUP KEY',
         '$group_id' => 'TEST GROUP ID',
-        '$time' => @time_now.to_i * 1000,
+        '$time' => (@time_now.to_f * 1000).to_i,
         '$set' => {
             'created_at' => '2013-01-02T02:04:05'
         }
@@ -70,7 +70,7 @@ describe Mixpanel::Groups do
         '$token' => 'TEST TOKEN',
         '$group_key' => 'TEST GROUP KEY',
         '$group_id' => 'TEST GROUP ID',
-        '$time' => @time_now.to_i * 1000,
+        '$time' => (@time_now.to_f * 1000).to_i,
         '$set' => {
             'created_at' => '2013-01-02T02:04:05'
         }
@@ -86,7 +86,7 @@ describe Mixpanel::Groups do
         '$token' => 'TEST TOKEN',
         '$group_key' => 'TEST GROUP KEY',
         '$group_id' => 'TEST GROUP ID',
-        '$time' => @time_now.to_i * 1000,
+        '$time' => (@time_now.to_f * 1000).to_i,
         '$set_once' => {
             '$groupname' => 'Mixpanel',
             '$grouprevenue' => 200
@@ -102,7 +102,7 @@ describe Mixpanel::Groups do
         '$token' => 'TEST TOKEN',
         '$group_key' => 'TEST GROUP KEY',
         '$group_id' => 'TEST GROUP ID',
-        '$time' => @time_now.to_i * 1000,
+        '$time' => (@time_now.to_f * 1000).to_i,
         '$remove' => {
             'Albums' => 'Diamond Dogs'
         }
@@ -117,7 +117,7 @@ describe Mixpanel::Groups do
         '$token' => 'TEST TOKEN',
         '$group_key' => 'TEST GROUP KEY',
         '$group_id' => 'TEST GROUP ID',
-        '$time' => @time_now.to_i * 1000,
+        '$time' => (@time_now.to_f * 1000).to_i,
         '$union' => {
             'Albums' => ['Diamond Dogs']
         }
@@ -130,7 +130,7 @@ describe Mixpanel::Groups do
         '$token' => 'TEST TOKEN',
         '$group_key' => 'TEST GROUP KEY',
         '$group_id' => 'TEST GROUP ID',
-        '$time' => @time_now.to_i * 1000,
+        '$time' => (@time_now.to_f * 1000).to_i,
         '$unset' => ['Albums']
     }]])
   end
@@ -141,7 +141,7 @@ describe Mixpanel::Groups do
         '$token' => 'TEST TOKEN',
         '$group_key' => 'TEST GROUP KEY',
         '$group_id' => 'TEST GROUP ID',
-        '$time' => @time_now.to_i * 1000,
+        '$time' => (@time_now.to_f * 1000).to_i,
         '$unset' => ['Albums', 'Vinyls']
     }]])
   end
@@ -152,7 +152,7 @@ describe Mixpanel::Groups do
         '$token' => 'TEST TOKEN',
         '$group_key' => 'TEST GROUP KEY',
         '$group_id' => 'TEST GROUP ID',
-        '$time' => @time_now.to_i * 1000,
+        '$time' => (@time_now.to_f * 1000).to_i,
         '$delete' => ''
     }]])
   end
