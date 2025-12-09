@@ -15,14 +15,12 @@ jobs:
     strategy:
       matrix:
         ruby-version:
-          - '2.0'
-          - '2.1'
           - '2.2'
           - '2.3'
           - '2.5'
           - '2.6'
-          # - '2.7'
-          # - '3.0'
+          - '2.7'
+          - '3.0'
 
     steps:
     - uses: actions/checkout@v6
