@@ -13,7 +13,7 @@ spec = Gem::Specification.new do |spec|
   spec.license = 'Apache License 2.0'
 
   spec.required_ruby_version = '>= 2.3.0'
-  spec.add_dependency 'mutex_m'
+  spec.add_runtime_dependency 'mutex_m'
   spec.add_runtime_dependency "base64"
 
   spec.add_development_dependency 'activesupport', '~> 4.0'
