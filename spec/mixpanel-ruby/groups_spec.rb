@@ -1,5 +1,5 @@
 require 'spec_helper'
-require 'active_support/time'
+require "active_support/time"
 
 require 'mixpanel-ruby/groups'
 
@@ -23,7 +23,7 @@ describe Mixpanel::Groups do
         '$token' => 'TEST TOKEN',
         '$group_key' => 'TEST GROUP KEY',
         '$group_id' => 'TEST GROUP ID',
-        '$time' => @time_now.to_i * 1000,
+        '$time' => (@time_now.to_f * 1000).to_i,
         '$set' => {
             '$groupname' => 'Mixpanel',
             '$grouprevenue' => 200

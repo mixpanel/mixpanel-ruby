@@ -170,7 +170,7 @@ module Mixpanel
     def update(message)
       data = {
         '$token' => @token,
-        '$time' =>  Time.now.to_f,
+        '$time' =>  Time.now.to_i * 1000,
       }.merge(message)
 
       message = {'data' => data}

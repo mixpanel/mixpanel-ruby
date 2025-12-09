@@ -29,7 +29,7 @@ describe Mixpanel::Tracker do
       'mp_lib' => 'ruby',
       '$lib_version' => Mixpanel::VERSION,
       'token' => 'TEST TOKEN',
-      'time' => @time_now.to_i
+      'time' => @time_now.to_i * 1000
     }
     expected_data = {'event' => event, 'properties' => properties.merge(default_properties)}
 
@@ -61,7 +61,7 @@ describe Mixpanel::Tracker do
       with { |req| body = req.body }
 
     message_urlencoded = body[/^data=(.*?)(?:&|$)/, 1]
-    message_json = Base64.strict_decode64(URI.unescape(message_urlencoded))
+    message_json = Base64.strict_decode64(CGI.unescape(message_urlencoded))
     message = JSON.load(message_json)
     expect(message).to eq({
         'event' => 'TEST EVENT',
@@ -71,7 +71,7 @@ describe Mixpanel::Tracker do
             'mp_lib' => 'ruby',
             '$lib_version' => Mixpanel::VERSION,
             'token' => 'TEST TOKEN',
-            'time' => @time_now.to_i
+            'time' => @time_now.to_i * 1000
         }
     })
   end
@@ -94,7 +94,7 @@ describe Mixpanel::Tracker do
               'mp_lib' => 'ruby',
               '$lib_version' => Mixpanel::VERSION,
               'token' => 'TEST TOKEN',
-              'time' => @time_now.to_i
+              'time' => @time_now.to_i * 1000
             }
           }
         ],
@@ -106,7 +106,7 @@ describe Mixpanel::Tracker do
                 'mp_lib' => 'ruby',
                 '$lib_version' => Mixpanel::VERSION,
                 'token' => 'TEST TOKEN',
-                'time' => @time_now.to_i
+                'time' => @time_now.to_i * 1000
               }
             },
             'api_key' => 'API_KEY',
