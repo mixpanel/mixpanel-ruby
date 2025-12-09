@@ -27,7 +27,7 @@ describe Mixpanel::Events do
             'mp_lib' => 'ruby',
             '$lib_version' => Mixpanel::VERSION,
             'token' => 'TEST TOKEN',
-            'time' => @time_now.to_i
+            'time' => @time_now.to_i * 1000
         }
     }]])
   end
@@ -46,7 +46,7 @@ describe Mixpanel::Events do
                 'mp_lib' => 'ruby',
                 '$lib_version' => Mixpanel::VERSION,
                 'token' => 'TEST TOKEN',
-                'time' => @time_now.to_i
+                'time' => @time_now.to_i * 1000
             }
         }
     } ]])

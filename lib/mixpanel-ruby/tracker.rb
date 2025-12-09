@@ -165,7 +165,7 @@ module Mixpanel
       properties = {
         'distinct_id' => distinct_id,
         'token' => @token,
-        'time' => Time.now.to_f,
+        'time' => (Time.now.to_f * 1000).to_i,
         'mp_lib' => 'ruby',
         '$lib_version' => Mixpanel::VERSION,
       }.merge(properties)
