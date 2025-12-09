@@ -47,6 +47,14 @@ In particular, for Rails apps, the following projects are currently actively mai
 
 == Changes
 
+== 2.3.1
+* Convert timestamps to milliseconds and update Ruby compatibility
+
+== 2.3.0
+* Clear submitted slices during BufferedConsumer#flush
+* Groups analytics support
+* use millisecond precision for time properties
+
 == 2.2.2
 * Add Group Analytics support with Mixpanel::Groups
 
