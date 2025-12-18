@@ -104,6 +104,11 @@ describe Mixpanel::BufferedConsumer do
   context 'Default BufferedConsumer' do
     subject { Mixpanel::BufferedConsumer.new(nil, nil, nil, max_length) }
 
+    it 'should use the max for max_length' do
+      consumer = Mixpanel::BufferedConsumer.new(nil, nil, nil, 100)
+      expect(consumer.instance_variable_get(:@max_length)).to eq(100)
+    end
+
     it 'should not send a request for a single message until flush is called' do
       stub_request(:any, 'https://api.mixpanel.com/track').to_return({:body => '{"status": 1, "error": null}'})
       subject.send!(:event, {'data' => 'TEST EVENT 1'}.to_json)
