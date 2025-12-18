@@ -4,6 +4,7 @@ require 'net/https'
 
 module Mixpanel
   @@init_http = nil
+  @@init_http_request = nil
 
   # This method exists for backwards compatibility. The preferred
   # way to customize or configure the HTTP library of a consumer
@@ -24,6 +25,20 @@ module Mixpanel
   # to configure their connections
   def self.config_http(&block)
     @@init_http = block
+  end
+
+  # This method exists as a doorway to configure the http request object,
+  # necessary to use the import method, which is dependant on
+  # your API SECRET in basic_auth
+  #
+  #    Mixpanel.config_http_request do |http_request|
+  #      http_request.basic_auth "'#{ENV['MIXPANEL_API_SECRET']}'", ''
+  #    end
+  #
+  # \Mixpanel Consumer and BufferedConsumer will call your block
+  # to configure the http request
+  def self.config_http_request(&block)
+    @@init_http_request = block
   end
 
   # A Consumer receives messages from a Mixpanel::Tracker, and
@@ -126,6 +141,7 @@ module Mixpanel
     def request(endpoint, form_data)
       uri = URI(endpoint)
       request = Net::HTTP::Post.new(uri.request_uri)
+      Mixpanel.with_http_request(request)
       request.set_form_data(form_data)
 
       client = Net::HTTP.new(uri.host, uri.port)
@@ -250,6 +266,12 @@ module Mixpanel
   def self.with_http(http)
     if @@init_http
       @@init_http.call(http)
+    end
+  end
+
+  def self.with_http_request(http_request)
+    if @@init_http_request
+      @@init_http_request.call(http_request)
     end
   end
 end
