@@ -23,4 +23,6 @@ spec = Gem::Specification.new do |spec|
   spec.add_development_dependency 'webmock', '~> 3.16.2'
   spec.add_development_dependency 'debug'
   spec.add_development_dependency 'ruby-lsp-rspec'
+  spec.add_development_dependency 'simplecov'
+  spec.add_development_dependency 'simplecov-cobertura'
 end
