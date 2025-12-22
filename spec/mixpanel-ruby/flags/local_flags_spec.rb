@@ -26,7 +26,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
   end
 
   after(:each) do
-    provider.stop_polling_for_definitions
+    provider.stop_polling_for_definitions!
   end
 
   def create_test_flag(options = {})
@@ -103,7 +103,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
   describe '#get_variant_value' do
     it 'returns fallback when no flag definitions' do
       stub_flag_definitions([])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_variant_value('nonexistent_flag', 'control', test_context)
       expect(result).to eq('control')
@@ -112,7 +112,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
 
     it 'returns fallback if flag definition call fails' do
       stub_flag_definitions_failure(500)
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_variant_value('nonexistent_flag', 'control', test_context)
       expect(result).to eq('control')
@@ -121,7 +121,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
     it 'returns fallback when flag does not exist' do
       other_flag = create_test_flag(flag_key: 'other_flag')
       stub_flag_definitions([other_flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_variant_value('nonexistent_flag', 'control', test_context)
       expect(result).to eq('control')
@@ -130,7 +130,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
     it 'returns fallback when no context' do
       flag = create_test_flag(context: 'distinct_id')
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_variant_value('test_flag', 'fallback', {})
       expect(result).to eq('fallback')
@@ -139,7 +139,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
     it 'returns fallback when wrong context key' do
       flag = create_test_flag(context: 'user_id')
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_variant_value('test_flag', 'fallback', { 'distinct_id' => 'user123' })
       expect(result).to eq('fallback')
@@ -156,7 +156,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       )
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_variant_value('test_flag', 'control', { 'distinct_id' => 'test_user' })
       expect(result).to eq('true')
@@ -173,7 +173,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       )
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_variant_value('test_flag', 'fallback', { 'distinct_id' => 'test_user' })
       expect(['false', 'true']).to include(result)
@@ -182,7 +182,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
     it 'returns fallback when rollout percentage zero' do
       flag = create_test_flag(rollout_percentage: 0.0)
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_variant_value('test_flag', 'fallback', test_context)
       expect(result).to eq('fallback')
@@ -191,7 +191,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
     it 'returns variant when rollout percentage hundred' do
       flag = create_test_flag(rollout_percentage: 100.0)
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_variant_value('test_flag', 'fallback', test_context)
       expect(result).not_to eq('fallback')
@@ -205,7 +205,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       context = user_context_with_properties({'plan' => 'premium'})
       result = provider.get_variant_value('test_flag', 'fallback', context)
@@ -221,7 +221,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       context = user_context_with_properties({'plan' => 'basic'})
       result = provider.get_variant_value('test_flag', 'fallback', context)
@@ -236,7 +236,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       context = user_context_with_properties({'plan' => 'premium'})
       result = provider.get_variant_value('test_flag', 'fallback', context)
@@ -251,7 +251,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       context = {'distinct_id' => 'user123', 'custom_properties' => {}}
       result = provider.get_variant_value('test_flag', 'fallback', context)
@@ -266,7 +266,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       context = user_context_with_properties({'plan' => 'PremIum'})
       result = provider.get_variant_value('test_flag', 'fallback', context)
@@ -282,7 +282,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       context = user_context_with_properties({'plan' => 'premium'})
       result = provider.get_variant_value('test_flag', 'fallback', context)
@@ -298,7 +298,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       context = user_context_with_properties({'plan' => 'premium'})
       result = provider.get_variant_value('test_flag', 'fallback', context)
@@ -314,7 +314,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       context = user_context_with_properties({'url' => 'https://helloworld.com/Springfield/all-about-it'})
       result = provider.get_variant_value('test_flag', 'fallback', context)
@@ -330,7 +330,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       context = user_context_with_properties({'url' => 'https://helloworld.com/Boston/all-about-it'})
       result = provider.get_variant_value('test_flag', 'fallback', context)
@@ -348,7 +348,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       context = user_context_with_properties({'name' => 'b'})
       result = provider.get_variant_value('test_flag', 'fallback', context)
@@ -367,7 +367,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       context = user_context_with_properties({'name' => 'd'})
       result = provider.get_variant_value('test_flag', 'fallback', context)
@@ -385,7 +385,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       context = user_context_with_properties({
         'name' => 'Johannes',
@@ -407,7 +407,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       context = user_context_with_properties({
         'name' => 'Johannes',
@@ -428,7 +428,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       context = user_context_with_properties({'queries_ran' => 30})
       result = provider.get_variant_value('test_flag', 'fallback', context)
@@ -447,7 +447,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       context = user_context_with_properties({'queries_ran' => 20})
       result = provider.get_variant_value('test_flag', 'fallback', context)
@@ -467,7 +467,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       )
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_variant_value('test_flag', 'fallback', test_context)
       expect(result).to eq('variant_a')
@@ -487,7 +487,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       )
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_variant_value('test_flag', 'fallback', test_context)
       expect(result).to eq('variant_b')
@@ -507,7 +507,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       )
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_variant_value('test_flag', 'fallback', test_context)
       expect(result).to eq('variant_c')
@@ -524,7 +524,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       )
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_variant_value('test_flag', 'control', test_context)
       expect(result).to eq('variant_b')
@@ -533,7 +533,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
     it 'tracks exposure when variant selected' do
       flag = create_test_flag
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       expect(mock_tracker).to receive(:call).once
 
@@ -548,7 +548,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       )
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       expect(mock_tracker).to receive(:call) do |distinct_id, event_name, properties|
         expect(distinct_id).to eq('qa_user')
@@ -563,7 +563,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
 
     it 'does not track exposure on fallback' do
       stub_flag_definitions([])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       expect(mock_tracker).not_to receive(:call)
 
@@ -573,7 +573,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
     it 'does not track exposure without distinct_id' do
       flag = create_test_flag(context: 'company')
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       expect(mock_tracker).not_to receive(:call)
 
@@ -584,7 +584,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
   describe '#get_variant' do
     it 'returns fallback variant when no flag definitions' do
       stub_flag_definitions([])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       fallback = Mixpanel::Flags::SelectedVariant.new(variant_value: 'control')
       result = provider.get_variant('nonexistent_flag', fallback, test_context)
@@ -594,10 +594,9 @@ describe Mixpanel::Flags::LocalFlagsProvider do
     end
 
     it 'returns variant with correct properties' do
-      # TODO: create two variants, one with 0% and one with 100%, and ensure correct selection, please.
       flag = create_test_flag(rollout_percentage: 100.0)
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       fallback = Mixpanel::Flags::SelectedVariant.new(variant_value: 'fallback')
       result = provider.get_variant('test_flag', fallback, test_context, report_exposure: false)
@@ -610,7 +609,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
   describe '#get_all_variants' do
     it 'returns empty hash when no flag definitions' do
       stub_flag_definitions([])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_all_variants(test_context)
 
@@ -622,7 +621,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag2 = create_test_flag(flag_key: 'flag2', rollout_percentage: 100.0)
 
       stub_flag_definitions([flag1, flag2])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_all_variants(test_context)
 
@@ -634,7 +633,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag2 = create_test_flag(flag_key: 'flag2', rollout_percentage: 0.0)
 
       stub_flag_definitions([flag1, flag2])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       result = provider.get_all_variants(test_context)
 
@@ -647,7 +646,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag2 = create_test_flag(flag_key: 'flag2', rollout_percentage: 100.0)
 
       stub_flag_definitions([flag1, flag2])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       expect(mock_tracker).not_to receive(:call)
 
@@ -658,9 +657,9 @@ describe Mixpanel::Flags::LocalFlagsProvider do
   describe '#is_enabled' do
     it 'returns false for nonexistent flag' do
       stub_flag_definitions([])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
-      result = provider.is_enabled('nonexistent_flag', test_context)
+      result = provider.is_enabled?('nonexistent_flag', test_context)
       expect(result).to eq(false)
     end
 
@@ -671,9 +670,9 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(variants: variants, rollout_percentage: 100.0)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
-      result = provider.is_enabled('test_flag', test_context)
+      result = provider.is_enabled?('test_flag', test_context)
       expect(result).to eq(true)
     end
 
@@ -684,9 +683,9 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(variants: variants, rollout_percentage: 100.0)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
-      result = provider.is_enabled('test_flag', test_context)
+      result = provider.is_enabled?('test_flag', test_context)
       expect(result).to eq(false)
     end
 
@@ -697,9 +696,9 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       flag = create_test_flag(variants: variants, rollout_percentage: 100.0)
 
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
-      result = provider.is_enabled('test_flag', test_context)
+      result = provider.is_enabled?('test_flag', test_context)
       expect(result).to eq(false)
     end
   end
@@ -708,7 +707,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
     it 'successfully tracks' do
       flag = create_test_flag
       stub_flag_definitions([flag])
-      provider.start_polling_for_definitions
+      provider.start_polling_for_definitions!
 
       variant = Mixpanel::Flags::SelectedVariant.new(
         variant_key: 'treatment',
@@ -746,14 +745,14 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       )
 
       begin
-        polling_provider.start_polling_for_definitions
+        polling_provider.start_polling_for_definitions!
 
         sleep 0.3
 
         result = polling_provider.get_variant_value('test_flag', 'fallback', test_context, report_exposure: false)
         expect(result).not_to eq('fallback')
       ensure
-        polling_provider.stop_polling_for_definitions
+        polling_provider.stop_polling_for_definitions!
       end
     end
   end

@@ -36,7 +36,7 @@ module Mixpanel
 
       # Start polling for flag definitions
       # Fetches immediately, then at regular intervals if polling enabled
-      def start_polling_for_definitions
+      def start_polling_for_definitions!
         fetch_flag_definitions
 
         if @config[:enable_polling] && !@polling_thread
@@ -58,7 +58,7 @@ module Mixpanel
         @error_handler.handle(e) if @error_handler
       end
 
-      def stop_polling_for_definitions
+      def stop_polling_for_definitions!
         @stop_polling = true
         @polling_thread&.join
         @polling_thread = nil
@@ -68,7 +68,7 @@ module Mixpanel
       # @param flag_key [String] Feature flag key
       # @param context [Hash] Evaluation context (must include 'distinct_id')
       # @return [Boolean]
-      def is_enabled(flag_key, context)
+      def is_enabled?(flag_key, context)
         value = get_variant_value(flag_key, false, context)
         value == true
       end
@@ -203,7 +203,7 @@ module Mixpanel
           rollout_hash = Utils.normalized_hash(context_value.to_s, salt)
 
           if rollout_hash < rollout['rollout_percentage'] &&
-             is_runtime_evaluation_satisfied(rollout, context)
+             is_runtime_evaluation_satisfied?(rollout, context)
             return rollout
           end
         end
@@ -282,7 +282,7 @@ module Mixpanel
         lowercase_keys_and_values(custom_props)
       end
 
-      def is_runtime_evaluation_satisfied(rollout, context)
+      def is_runtime_evaluation_satisfied?(rollout, context)
         runtime_rule = rollout['runtime_evaluation_rule']
         return true unless runtime_rule
 

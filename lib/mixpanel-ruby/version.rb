@@ -1,3 +1,3 @@
 module Mixpanel
-  VERSION = '2.4.0-beta'
+  VERSION = '3.0.0'
 end

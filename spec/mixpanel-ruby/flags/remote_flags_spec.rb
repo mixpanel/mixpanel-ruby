@@ -269,7 +269,7 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
       })
       stub_flags_request(response)
 
-      result = provider.is_enabled('test_flag', test_context)
+      result = provider.is_enabled?('test_flag', test_context)
       expect(result).to eq(true)
     end
 
@@ -282,7 +282,7 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
       })
       stub_flags_request(response)
 
-      result = provider.is_enabled('test_flag', test_context)
+      result = provider.is_enabled?('test_flag', test_context)
       expect(result).to eq(false)
     end
 
@@ -297,7 +297,7 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
       stub_flags_request(response)
 
       expect(mock_tracker).to receive(:call).once
-      result = provider.is_enabled('string_flag', test_context)
+      result = provider.is_enabled?('string_flag', test_context)
       expect(result).to eq(false)
 
       # Test number 1
@@ -311,7 +311,7 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
       stub_flags_request(response)
 
       expect(mock_tracker).to receive(:call).once
-      result = provider.is_enabled('number_flag', test_context)
+      result = provider.is_enabled?('number_flag', test_context)
       expect(result).to eq(false)
     end
 
@@ -324,7 +324,7 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
       })
       stub_flags_request(response)
 
-      result = provider.is_enabled('missing-flag', test_context)
+      result = provider.is_enabled?('missing-flag', test_context)
       expect(result).to eq(false)
     end
 
@@ -343,13 +343,13 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
         expect(properties['Variant name']).to eq('on')
       end
 
-      provider.is_enabled('test_flag', test_context)
+      provider.is_enabled?('test_flag', test_context)
     end
 
     it 'returns false on network error' do
       stub_flags_request_error(Errno::ECONNREFUSED)
 
-      result = provider.is_enabled('test_flag', test_context)
+      result = provider.is_enabled?('test_flag', test_context)
       expect(result).to eq(false)
     end
   end

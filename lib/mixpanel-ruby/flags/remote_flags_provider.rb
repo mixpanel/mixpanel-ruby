@@ -83,7 +83,7 @@ module Mixpanel
       # @param flag_key [String] Feature flag key
       # @param context [Hash] Evaluation context
       # @return [Boolean]
-      def is_enabled(flag_key, context)
+      def is_enabled?(flag_key, context)
         value = get_variant_value(flag_key, false, context)
         value == true
       rescue MixpanelError => e

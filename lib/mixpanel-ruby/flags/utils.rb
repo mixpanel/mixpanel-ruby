@@ -58,7 +58,7 @@ module Mixpanel
         parent_id = SecureRandom.hex(8)
         trace_flags = '01'  # sampled
 
-        return "#{version}-#{trace_id}-#{parent_id}-#{trace_flags}"
+        "#{version}-#{trace_id}-#{parent_id}-#{trace_flags}"
       end
     end
   end
