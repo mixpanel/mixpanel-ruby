@@ -1,6 +1,8 @@
 require 'mixpanel-ruby/events.rb'
 require 'mixpanel-ruby/people.rb'
 require 'mixpanel-ruby/groups.rb'
+require 'mixpanel-ruby/flags/local_flags_provider.rb'
+require 'mixpanel-ruby/flags/remote_flags_provider.rb'
 
 module Mixpanel
   # Use Mixpanel::Tracker to track events and profile updates in your application.
@@ -33,6 +35,14 @@ module Mixpanel
     # An instance of Mixpanel::Groups. Use this to send groups updates
     attr_reader :groups
 
+    # An instance of Mixpanel::Flags::LocalFlagsProvider. Use this for
+    # client-side feature flag evaluation
+    attr_reader :local_flags
+
+    # An instance of Mixpanel::Flags::RemoteFlagsProvider. Use this for
+    # server-side feature flag evaluation
+    attr_reader :remote_flags
+
     # Takes your Mixpanel project token, as a string.
     #
     #    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
@@ -52,11 +62,31 @@ module Mixpanel
     # If a block is provided, it is passed a type (one of :event or :profile_update)
     # and a string message. This same format is accepted by Mixpanel::Consumer#send!
     # and Mixpanel::BufferedConsumer#send!
-    def initialize(token, error_handler=nil, &block)
+    def initialize(token, error_handler=nil, local_flags_config: nil, remote_flags_config: nil, &block)
       super(token, error_handler, &block)
       @token = token
       @people = People.new(token, error_handler, &block)
       @groups = Groups.new(token, error_handler, &block)
+
+      # Initialize local flags if config provided
+      if local_flags_config
+        @local_flags = Flags::LocalFlagsProvider.new(
+          token,
+          local_flags_config,
+          method(:track),  # Pass bound method as callback
+          error_handler || ErrorHandler.new
+        )
+      end
+
+      # Initialize remote flags if config provided
+      if remote_flags_config
+        @remote_flags = Flags::RemoteFlagsProvider.new(
+          token,
+          remote_flags_config,
+          method(:track),  # Pass bound method as callback
+          error_handler || ErrorHandler.new
+        )
+      end
     end
 
     # A call to #track is a report that an event has occurred.  #track
