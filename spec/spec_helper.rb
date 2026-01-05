@@ -1,3 +1,17 @@
+require 'simplecov'
+require 'simplecov-cobertura'
+
+SimpleCov.start do
+  add_filter '/spec/'
+  add_filter '/demo/'
+
+  # Generate both HTML and Cobertura XML formats since CodeCov typically requires XML
+  formatter SimpleCov::Formatter::MultiFormatter.new([
+    SimpleCov::Formatter::HTMLFormatter,
+    SimpleCov::Formatter::CoberturaFormatter
+  ])
+end
+
 require 'json'
 require 'webmock/rspec'
 
