@@ -68,6 +68,12 @@ describe Mixpanel::Consumer do
       expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/track').
         with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' })
     end
+
+    it 'should return the response status and body' do
+      stub_request(:any, 'https://api.mixpanel.com/track').to_return({:body => '{"status": 1, "error": null}'})
+      expect(subject.send!(:event, {'data' => 'TEST EVENT MESSAGE'}.to_json))
+        .to eq(['200', '{"status": 1, "error": null}'])
+    end
   end
 
   context 'raw consumer' do
