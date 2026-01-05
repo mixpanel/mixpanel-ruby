@@ -129,7 +129,7 @@ module Mixpanel
       request.set_form_data(form_data)
 
       client = Net::HTTP.new(uri.host, uri.port)
-      client.use_ssl = true
+      client.use_ssl = (uri.scheme == 'https')
       client.open_timeout = 10
       client.continue_timeout = 10
       client.read_timeout = 10

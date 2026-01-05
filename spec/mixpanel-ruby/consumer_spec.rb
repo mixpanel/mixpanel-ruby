@@ -3,6 +3,7 @@ require 'spec_helper'
 require 'webmock'
 
 require 'mixpanel-ruby/consumer'
+require 'mixpanel-ruby/error'
 
 describe Mixpanel::Consumer do
   before { WebMock.reset! }
@@ -93,6 +94,17 @@ describe Mixpanel::Consumer do
     end
 
     it_behaves_like 'consumer'
+  end
+
+  context 'custom http endpoints' do
+    let(:endpoints) { ["http://example.com/track", nil, nil] }
+    subject { Mixpanel::Consumer.new(*endpoints) }
+
+    it 'should not use ssl' do
+      stub_request(:any, endpoints.first).to_return({:body => '{"status": 1, "error": null}'})
+      expect { subject.send!(:event, {'data' => 'TEST EVENT MESSAGE'}.to_json) }.not_to raise_error # WebMock::NetConnectNotAllowedError
+      expect(WebMock).to have_requested(:post, endpoints.first)
+    end
   end
 
 end
