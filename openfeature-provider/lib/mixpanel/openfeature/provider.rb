@@ -49,7 +49,12 @@ module Mixpanel
 
         context = build_context(evaluation_context)
         fallback = ::Mixpanel::Flags::SelectedVariant.new(variant_value: default_value)
-        result = @flags_provider.get_variant(flag_key, fallback, context)
+
+        begin
+          result = @flags_provider.get_variant(flag_key, fallback, context)
+        rescue StandardError
+          return error_result(default_value, ::OpenFeature::SDK::Provider::ErrorCode::GENERAL)
+        end
 
         if result.equal?(fallback)
           return error_result(default_value, ::OpenFeature::SDK::Provider::ErrorCode::FLAG_NOT_FOUND)

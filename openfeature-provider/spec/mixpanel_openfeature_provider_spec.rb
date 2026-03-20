@@ -365,6 +365,58 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
     end
   end
 
+  # --- SDK exception handling ---
+
+  describe 'SDK exception handling' do
+    it 'returns default value with GENERAL error when get_variant raises' do
+      allow(mock_flags).to receive(:get_variant).and_raise(RuntimeError, 'unexpected SDK error')
+
+      result = provider.fetch_boolean_value(flag_key: 'flag', default_value: true)
+      expect(result.value).to be true
+      expect(result.error_code).to eq('GENERAL')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns default value for string when get_variant raises' do
+      allow(mock_flags).to receive(:get_variant).and_raise(StandardError, 'connection failed')
+
+      result = provider.fetch_string_value(flag_key: 'flag', default_value: 'fallback')
+      expect(result.value).to eq('fallback')
+      expect(result.error_code).to eq('GENERAL')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns default value for integer when get_variant raises' do
+      allow(mock_flags).to receive(:get_variant).and_raise(StandardError, 'timeout')
+
+      result = provider.fetch_integer_value(flag_key: 'flag', default_value: 42)
+      expect(result.value).to eq(42)
+      expect(result.error_code).to eq('GENERAL')
+      expect(result.reason).to eq('ERROR')
+    end
+  end
+
+  # --- Null variant key ---
+
+  describe 'null variant key' do
+    it 'resolves successfully with nil variant when variant_key is nil' do
+      setup_flag('flag', 'hello', variant_key: nil)
+      result = provider.fetch_string_value(flag_key: 'flag', default_value: 'default')
+      expect(result.value).to eq('hello')
+      expect(result.variant).to be_nil
+      expect(result.reason).to eq('STATIC')
+      expect(result.error_code).to be_nil
+    end
+
+    it 'resolves boolean with nil variant key' do
+      setup_flag('flag', true, variant_key: nil)
+      result = provider.fetch_boolean_value(flag_key: 'flag', default_value: false)
+      expect(result.value).to be true
+      expect(result.variant).to be_nil
+      expect(result.reason).to eq('STATIC')
+    end
+  end
+
   # --- Lifecycle ---
 
   describe '#shutdown' do
