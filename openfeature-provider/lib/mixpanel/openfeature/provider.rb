@@ -109,7 +109,7 @@ module Mixpanel
           evaluation_context.fields.each { |k, v| ctx[k] = v }
         end
         if evaluation_context.respond_to?(:targeting_key) && evaluation_context.targeting_key
-          ctx['targeting_key'] = evaluation_context.targeting_key
+          ctx['targetingKey'] = evaluation_context.targeting_key
         end
         ctx
       end

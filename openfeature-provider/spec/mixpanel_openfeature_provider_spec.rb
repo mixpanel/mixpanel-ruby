@@ -348,7 +348,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
         targeting_key: 'tk-123'
       )
       allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
-        expect(ctx).to eq({ 'distinct_id' => 'user-1', 'targeting_key' => 'tk-123' })
+        expect(ctx).to eq({ 'distinct_id' => 'user-1', 'targetingKey' => 'tk-123' })
         Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
       end
 
