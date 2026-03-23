@@ -13,7 +13,7 @@ module Mixpanel
       end
 
       def shutdown
-        # No-op — Mixpanel SDK manages its own lifecycle
+        @flags_provider.shutdown if @flags_provider.respond_to?(:shutdown)
       end
 
       def fetch_boolean_value(flag_key:, default_value:, evaluation_context: nil)
@@ -51,7 +51,7 @@ module Mixpanel
         fallback = ::Mixpanel::Flags::SelectedVariant.new(variant_value: default_value)
 
         begin
-          result = @flags_provider.get_variant(flag_key, fallback, context)
+          result = @flags_provider.get_variant(flag_key, fallback, context, report_exposure: true)
         rescue StandardError
           return error_result(default_value, ::OpenFeature::SDK::Provider::ErrorCode::GENERAL)
         end
@@ -106,12 +106,25 @@ module Mixpanel
 
         ctx = {}
         if evaluation_context.respond_to?(:fields)
-          evaluation_context.fields.each { |k, v| ctx[k] = v }
+          evaluation_context.fields.each { |k, v| ctx[k] = unwrap_value(v) }
         end
         if evaluation_context.respond_to?(:targeting_key) && evaluation_context.targeting_key
-          ctx['targetingKey'] = evaluation_context.targeting_key
+          ctx['targetingKey'] = unwrap_value(evaluation_context.targeting_key)
         end
         ctx
+      end
+
+      def unwrap_value(value)
+        case value
+        when Float
+          value.finite? && value == value.floor ? value.to_i : value
+        when Array
+          value.map { |v| unwrap_value(v) }
+        when Hash
+          value.transform_values { |v| unwrap_value(v) }
+        else
+          value
+        end
       end
 
       def flags_ready?

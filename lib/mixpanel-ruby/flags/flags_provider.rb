@@ -80,6 +80,8 @@ module Mixpanel
       # @param selected_variant [SelectedVariant] The selected variant
       # @param context [Hash] User context (must include 'distinct_id')
       # @param latency_ms [Integer, nil] Optional latency in milliseconds
+      def shutdown; end
+
       def track_exposure_event(flag_key, selected_variant, context, latency_ms = nil)
         distinct_id = context['distinct_id'] || context[:distinct_id]
 

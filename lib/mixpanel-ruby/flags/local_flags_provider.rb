@@ -64,6 +64,10 @@ module Mixpanel
         @polling_thread = nil
       end
 
+      def shutdown
+        stop_polling_for_definitions!
+      end
+
       # Check if flag is enabled (for boolean flags)
       # @param flag_key [String] Feature flag key
       # @param context [Hash] Evaluation context (must include 'distinct_id')
