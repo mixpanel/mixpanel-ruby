@@ -7,7 +7,7 @@
 #
 # Run: bundle exec ruby demo/import_service_account_example.rb
 
-$LOAD_PATH.unshift File.join(__dir__, '../../lib')
+$LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 require 'mixpanel-ruby'
 
 # ── Configuration ─────────────────────────────────────────────────────────────

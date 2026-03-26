@@ -106,6 +106,8 @@ module Mixpanel
     #       "12345", "Credit Card Declined", { 'time' => 1310111365 }
     #     )
     def import(credentials, distinct_id, event, properties={}, ip=nil)
+      raise ArgumentError, "credentials must be a Hash with :service_account_username/:service_account_password/:project_id or :project_token (got #{credentials.class})" unless credentials.is_a?(Hash)
+      credentials = credentials.transform_keys(&:to_sym)
       credentials_data = if credentials[:service_account_username]
         missing = [:service_account_username, :service_account_password, :project_id].select { |k| credentials[k].to_s.strip.empty? }
         raise ArgumentError, "service account credentials missing required fields: #{missing.join(', ')}" unless missing.empty?

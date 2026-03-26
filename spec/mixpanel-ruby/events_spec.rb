@@ -110,6 +110,29 @@ describe Mixpanel::Events do
     }]])
   end
 
+  it 'should accept string keys in credentials hash' do
+    @events.import(
+      { 'service_account_username' => 'sa@serviceaccount.mixpanel.com',
+        'service_account_password' => 'sa-secret',
+        'project_id'               => '12345' },
+      'TEST ID', 'Test Event', { 'Circumstances' => 'During a test' }
+    )
+    expect(@log.first.first).to eq(:import)
+    expect(@log.first.last.dig('credentials', 'type')).to eq('service_account')
+  end
+
+  it 'should raise ArgumentError with a clear message when credentials is a String' do
+    expect {
+      @events.import('OLD_API_KEY', 'TEST ID', 'Test Event')
+    }.to raise_error(ArgumentError, /credentials must be a Hash.*got String/)
+  end
+
+  it 'should raise ArgumentError with a clear message when credentials is nil' do
+    expect {
+      @events.import(nil, 'TEST ID', 'Test Event')
+    }.to raise_error(ArgumentError, /credentials must be a Hash.*got NilClass/)
+  end
+
   it 'should raise ArgumentError when no recognised credential key is provided' do
     expect {
       @events.import({}, 'TEST ID', 'Test Event')
