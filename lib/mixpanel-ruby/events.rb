@@ -107,6 +107,8 @@ module Mixpanel
     #     )
     def import(credentials, distinct_id, event, properties={}, ip=nil)
       credentials_data = if credentials[:service_account_username]
+        missing = [:service_account_username, :service_account_password, :project_id].select { |k| credentials[k].to_s.strip.empty? }
+        raise ArgumentError, "service account credentials missing required fields: #{missing.join(', ')}" unless missing.empty?
         {
           'type'       => 'service_account',
           'username'   => credentials[:service_account_username],
@@ -114,6 +116,7 @@ module Mixpanel
           'project_id' => credentials[:project_id].to_s,
         }
       elsif credentials[:project_token]
+        raise ArgumentError, ":project_token must not be blank" if credentials[:project_token].to_s.strip.empty?
         {
           'type'  => 'project_token',
           'token' => credentials[:project_token],

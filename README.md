@@ -33,8 +33,7 @@ right away.
 
 ## Importing Events
 
-> **⚠️ Breaking change in v3.1.0:** The authentication method for `Tracker#import` has changed.
-> The `api_key` string parameter has been replaced to use Service Accounts or Project token.
+> **⚠️ Breaking change in v3.1.0:** The `api_key` string argument to `Tracker#import` has been replaced by a credentials Hash supporting Service Account or Project Token authentication.
 > More details here: https://developer.mixpanel.com/reference/import-events#authentication and https://developer.mixpanel.com/reference/service-accounts
 
 Use `Mixpanel::Tracker#import` to import historical events. The import endpoint

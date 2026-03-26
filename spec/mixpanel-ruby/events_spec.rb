@@ -110,9 +110,27 @@ describe Mixpanel::Events do
     }]])
   end
 
-  it 'should raise ArgumentError for invalid credentials' do
+  it 'should raise ArgumentError when no recognised credential key is provided' do
     expect {
       @events.import({}, 'TEST ID', 'Test Event')
     }.to raise_error(ArgumentError, /credentials must include/)
+  end
+
+  it 'should raise ArgumentError when service account is missing password or project_id' do
+    expect {
+      @events.import({ service_account_username: 'u' }, 'TEST ID', 'Test Event')
+    }.to raise_error(ArgumentError, /service account credentials missing required fields: service_account_password, project_id/)
+  end
+
+  it 'should raise ArgumentError when service account has blank project_id' do
+    expect {
+      @events.import({ service_account_username: 'u', service_account_password: 'p', project_id: '' }, 'TEST ID', 'Test Event')
+    }.to raise_error(ArgumentError, /service account credentials missing required fields: project_id/)
+  end
+
+  it 'should raise ArgumentError when project_token is blank' do
+    expect {
+      @events.import({ project_token: '' }, 'TEST ID', 'Test Event')
+    }.to raise_error(ArgumentError, /:project_token must not be blank/)
   end
 end

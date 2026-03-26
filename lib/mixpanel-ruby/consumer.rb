@@ -94,14 +94,20 @@ module Mixpanel
         case credentials["type"]
         when "service_account"
           basic_auth = [credentials["username"], credentials["password"]]
-          endpoint = "#{endpoint}?project_id=#{credentials["project_id"]}"
+          uri = URI(endpoint)
+          uri.query = URI.encode_www_form((URI.decode_www_form(uri.query || '') << ['project_id', credentials["project_id"]]))
+          endpoint = uri.to_s
         when "project_token"
           basic_auth = [credentials["token"], ""]
         end
       end
 
       begin
-        response_code, response_body = request(endpoint, form_data, basic_auth: basic_auth)
+        if basic_auth
+          response_code, response_body = request(endpoint, form_data, basic_auth: basic_auth)
+        else
+          response_code, response_body = request(endpoint, form_data)
+        end
       rescue => e
         raise ConnectionError.new("Could not connect to Mixpanel, with error \"#{e.message}\".")
       end
