@@ -35,7 +35,7 @@ describe Mixpanel::ErrorHandler do
 
     it "should handle errors in import calls" do
       expect {
-        expect(@tracker.import('TEST API KEY', 'TEST DISTINCT_ID', 'Test Event')).to be false
+        expect(@tracker.import({ project_token: 'TEST TOKEN' }, 'TEST DISTINCT_ID', 'Test Event')).to be false
       }.to_not raise_error
     end
 
@@ -63,7 +63,7 @@ describe Mixpanel::ErrorHandler do
     end
 
     it "should handle errors in import calls" do
-      @tracker.import('TEST API KEY', 'TEST DISTINCT_ID', 'Test Event')
+      @tracker.import({ project_token: 'TEST TOKEN' }, 'TEST DISTINCT_ID', 'Test Event')
       expect(@log).to eq(['Mixpanel::MixpanelError'])
     end
 

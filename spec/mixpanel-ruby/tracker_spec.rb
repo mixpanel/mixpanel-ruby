@@ -82,7 +82,7 @@ describe Mixpanel::Tracker do
       messages << [type, JSON.load(message)]
     end
     mixpanel.track('ID', 'Event')
-    mixpanel.import('API_KEY', 'ID', 'Import')
+    mixpanel.import({ project_token: 'MY_TOKEN' }, 'ID', 'Import')
     mixpanel.people.set('ID', {'k' => 'v'})
     mixpanel.people.append('ID', {'k' => 'v'})
 
@@ -109,7 +109,7 @@ describe Mixpanel::Tracker do
                 'time' => @time_now.to_i * 1000
               }
             },
-            'api_key' => 'API_KEY',
+            'credentials' => { 'type' => 'project_token', 'token' => 'MY_TOKEN' },
           }
         ],
         [ :profile_update, 'data' =>

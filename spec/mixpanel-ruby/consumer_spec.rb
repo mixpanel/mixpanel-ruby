@@ -29,11 +29,30 @@ describe Mixpanel::Consumer do
         with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' })
     end
 
-    it 'should send a request to api.mixpanel.com/import on event imports' do
+    it 'should send a request to api.mixpanel.com/import using project token auth' do
       stub_request(:any, 'https://api.mixpanel.com/import').to_return({:body => '{"status": 1, "error": null}'})
-      subject.send!(:import, {'data' => 'TEST EVENT MESSAGE', 'api_key' => 'API_KEY','verbose' => '1' }.to_json)
+      subject.send!(:import, {
+        'data' => 'TEST EVENT MESSAGE',
+        'credentials' => { 'type' => 'project_token', 'token' => 'MY_TOKEN' }
+      }.to_json)
       expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import').
-        with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'api_key' => 'API_KEY', 'verbose' => '1' })
+        with(
+          headers: { 'Authorization' => 'Basic ' + Base64.strict_encode64('MY_TOKEN:') },
+          body: { 'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' }
+        )
+    end
+
+    it 'should send a request to api.mixpanel.com/import using service account auth' do
+      stub_request(:any, /api\.mixpanel\.com\/import/).to_return({:body => '{"status": 1, "error": null}'})
+      subject.send!(:import, {
+        'data' => 'TEST EVENT MESSAGE',
+        'credentials' => { 'type' => 'service_account', 'username' => 'u', 'password' => 'p', 'project_id' => '99' }
+      }.to_json)
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import?project_id=99').
+        with(
+          headers: { 'Authorization' => 'Basic ' + Base64.strict_encode64('u:p') },
+          body: { 'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'verbose' => '1' }
+        )
     end
 
     it 'should encode long messages without newlines' do
@@ -79,9 +98,9 @@ describe Mixpanel::Consumer do
       ret = Mixpanel::Consumer.new
       class << ret
         attr_reader :called
-        def request(*args)
+        def request(*args, **kwargs)
           @called = true
-          super(*args)
+          super(*args, **kwargs)
         end
       end
 
@@ -131,19 +150,22 @@ describe Mixpanel::BufferedConsumer do
         with(:body => {'data' => 'WyJ4IDAiLCJ4IDEiLCJ4IDIiLCJ4IDMiLCJ4IDQiLCJ4IDUiLCJ4IDYiLCJ4IDciLCJ4IDgiLCJ4IDkiXQ==', 'verbose' => '1' })
     end
 
-    it 'should send one message per api key on import' do
+    it 'should send import messages immediately (not buffered)' do
       stub_request(:any, 'https://api.mixpanel.com/import').to_return({:body => '{"status": 1, "error": null}'})
-      subject.send!(:import, {'data' => 'TEST EVENT 1', 'api_key' => 'KEY 1'}.to_json)
-      subject.send!(:import, {'data' => 'TEST EVENT 1', 'api_key' => 'KEY 2'}.to_json)
-      subject.send!(:import, {'data' => 'TEST EVENT 2', 'api_key' => 'KEY 1'}.to_json)
-      subject.send!(:import, {'data' => 'TEST EVENT 2', 'api_key' => 'KEY 2'}.to_json)
-      subject.flush
+      subject.send!(:import, {'data' => 'TEST EVENT 1', 'credentials' => {'type' => 'project_token', 'token' => 'TOKEN 1'}}.to_json)
+      subject.send!(:import, {'data' => 'TEST EVENT 2', 'credentials' => {'type' => 'project_token', 'token' => 'TOKEN 1'}}.to_json)
 
       expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import').
-        with(:body => {'data' => 'IlRFU1QgRVZFTlQgMSI=', 'api_key' => 'KEY 1', 'verbose' => '1' })
+        with(
+          headers: { 'Authorization' => 'Basic ' + Base64.strict_encode64('TOKEN 1:') },
+          body: { 'data' => 'IlRFU1QgRVZFTlQgMSI=', 'verbose' => '1' }
+        )
 
       expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import').
-        with(:body => {'data' => 'IlRFU1QgRVZFTlQgMSI=', 'api_key' => 'KEY 2', 'verbose' => '1' })
+        with(
+          headers: { 'Authorization' => 'Basic ' + Base64.strict_encode64('TOKEN 1:') },
+          body: { 'data' => 'IlRFU1QgRVZFTlQgMiI=', 'verbose' => '1' }
+        )
     end
   end
 

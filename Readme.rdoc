@@ -27,6 +27,37 @@ The primary class you will use to track events is Mixpanel::Tracker. An instance
 Mixpanel::Tracker is enough to send events directly to \Mixpanel, and get you integrated
 right away.
 
+== Importing Events
+
+*⚠️ Breaking change in v3.1.0:* The authentication method for +Tracker#import+ has changed.
+The +api_key+ string parameter has been replaced to use Service Accounts or Project token.
+More details here: https://developer.mixpanel.com/reference/import-events#authentication and https://developer.mixpanel.com/reference/service-accounts
+
+Use Mixpanel::Tracker#import to import historical events. The import endpoint
+requires authentication via HTTP Basic Auth using one of the following methods:
+
+=== Service Account (recommended)
+
+  tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
+
+  tracker.import(
+    { service_account_username: 'sa@serviceaccount.mixpanel.com',
+      service_account_password: 'sa-secret',
+      project_id: '12345' },
+    'user_id', 'Event Name', { 'time' => 1310111365 }
+  )
+
+=== Project Token
+
+The project token is sent as the HTTP Basic Auth username with an empty password.
+
+  tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
+
+  tracker.import(
+    { project_token: YOUR_MIXPANEL_TOKEN },
+    'user_id', 'Event Name', { 'time' => 1310111365 }
+  )
+
 == Additional Information
 
 For more information please visit:
@@ -46,6 +77,14 @@ In particular, for Rails apps, the following projects are currently actively mai
 * Mengpaneel[https://github.com/DouweM/mengpaneel]
 
 == Changes
+
+== 3.1.0
+* Add service account and project token authentication for the /import endpoint
+  (breaking change: the first argument to Tracker#import has changed from an api_key string
+  to a credentials Hash — all other methods are unaffected)
+
+== 3.0.0
+* Implement feature flags provider
 
 == 2.3.1
 * Convert timestamps to milliseconds and update Ruby compatibility

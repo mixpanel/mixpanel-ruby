@@ -114,27 +114,34 @@ module Mixpanel
     end
 
     # A call to #import is to import an event occurred in the past. #import
-    # takes a distinct_id representing the source of that event (for
-    # example, a user id), an event name describing the event, and a
+    # takes a credentials Hash, a distinct_id representing the source of that
+    # event (for example, a user id), an event name describing the event, and a
     # set of properties describing that event. Properties are provided
     # as a Hash with string keys and strings, numbers or booleans as
     # values.
     #
+    # The credentials Hash must specify one of two authentication methods:
+    #
     #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #
-    #     # Import event that user "12345"'s credit card was declined
-    #     tracker.import("API_KEY", "12345", "Credit Card Declined", {
-    #       'time' => 1310111365
-    #     })
+    #     # Service account authentication (recommended)
+    #     tracker.import(
+    #       { service_account_username: 'sa@serviceaccount.mixpanel.com',
+    #         service_account_password: 'sa-secret',
+    #         project_id: '12345' },
+    #       "12345", "Credit Card Declined", { 'time' => 1310111365 }
+    #     )
     #
-    #     # Properties describe the circumstances of the event,
-    #     # or aspects of the source or user associated with the event
-    #     tracker.import("API_KEY", "12345", "Welcome Email Sent", {
+    #     # Project token authentication
+    #     tracker.import(
+    #       { project_token: YOUR_MIXPANEL_TOKEN },
+    #       "12345", "Welcome Email Sent", {
     #         'Email Template' => 'Pretty Pink Welcome',
     #         'User Sign-up Cohort' => 'July 2013',
     #         'time' => 1310111365
-    #     })
-    def import(api_key, distinct_id, event, properties={}, ip=nil)
+    #       }
+    #     )
+    def import(credentials, distinct_id, event, properties={}, ip=nil)
       # This is here strictly to allow rdoc to include the relevant
       # documentation
       super
