@@ -84,14 +84,30 @@ module Mixpanel
       }[type]
 
       decoded_message = JSON.load(message)
-      api_key = decoded_message["api_key"]
+      credentials = decoded_message["credentials"]
       data = Base64.encode64(decoded_message["data"].to_json).gsub("\n", '')
 
       form_data = {"data" => data, "verbose" => 1}
-      form_data.merge!("api_key" => api_key) if api_key
+
+      basic_auth = nil
+      if type == :import && credentials
+        case credentials["type"]
+        when "service_account"
+          basic_auth = [credentials["username"], credentials["password"]]
+          uri = URI(endpoint)
+          uri.query = URI.encode_www_form((URI.decode_www_form(uri.query || '') << ['project_id', credentials["project_id"]]))
+          endpoint = uri.to_s
+        when "project_token"
+          basic_auth = [credentials["token"], ""]
+        end
+      end
 
       begin
-        response_code, response_body = request(endpoint, form_data)
+        if basic_auth
+          response_code, response_body = request(endpoint, form_data, basic_auth: basic_auth)
+        else
+          response_code, response_body = request(endpoint, form_data)
+        end
       rescue => e
         raise ConnectionError.new("Could not connect to Mixpanel, with error \"#{e.message}\".")
       end
@@ -123,10 +139,11 @@ module Mixpanel
     #
     # as the result of the response. Response code should be nil if
     # the request never receives a response for some reason.
-    def request(endpoint, form_data)
+    def request(endpoint, form_data, basic_auth: nil)
       uri = URI(endpoint)
       request = Net::HTTP::Post.new(uri.request_uri)
       request.set_form_data(form_data)
+      request.basic_auth(*basic_auth) if basic_auth
 
       client = Net::HTTP.new(uri.host, uri.port)
       client.use_ssl = true

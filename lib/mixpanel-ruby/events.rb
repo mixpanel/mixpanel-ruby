@@ -87,19 +87,46 @@ module Mixpanel
     # we pass the time of the method call as the time the event occured, if you
     # wish to override this pass a timestamp in the properties hash.
     #
-    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
+    # The credentials argument must be a Hash specifying one of two
+    # authentication methods:
     #
-    #     # Track that user "12345"'s credit card was declined
-    #     tracker.import("API_KEY", "12345", "Credit Card Declined")
+    # Service account (recommended):
     #
-    #     # Properties describe the circumstances of the event,
-    #     # or aspects of the source or user associated with the event
-    #     tracker.import("API_KEY", "12345", "Welcome Email Sent", {
-    #         'Email Template' => 'Pretty Pink Welcome',
-    #         'User Sign-up Cohort' => 'July 2013',
-    #         'time' => 1369353600,
-    #     })
-    def import(api_key, distinct_id, event, properties={}, ip=nil)
+    #     tracker.import(
+    #       { service_account_username: 'sa@serviceaccount.mixpanel.com',
+    #         service_account_password: 'sa-secret',
+    #         project_id: '12345' },
+    #       "12345", "Credit Card Declined", { 'time' => 1310111365 }
+    #     )
+    #
+    # Project token (token sent as Basic Auth username, empty password):
+    #
+    #     tracker.import(
+    #       { project_token: YOUR_MIXPANEL_TOKEN },
+    #       "12345", "Credit Card Declined", { 'time' => 1310111365 }
+    #     )
+    def import(credentials, distinct_id, event, properties={}, ip=nil)
+      raise ArgumentError, "credentials must be a Hash with :service_account_username/:service_account_password/:project_id or :project_token (got #{credentials.class})" unless credentials.is_a?(Hash)
+      credentials = credentials.transform_keys(&:to_sym)
+      credentials_data = if credentials[:service_account_username]
+        missing = [:service_account_username, :service_account_password, :project_id].select { |k| credentials[k].to_s.strip.empty? }
+        raise ArgumentError, "service account credentials missing required fields: #{missing.join(', ')}" unless missing.empty?
+        {
+          'type'       => 'service_account',
+          'username'   => credentials[:service_account_username],
+          'password'   => credentials[:service_account_password],
+          'project_id' => credentials[:project_id].to_s,
+        }
+      elsif credentials[:project_token]
+        raise ArgumentError, ":project_token must not be blank" if credentials[:project_token].to_s.strip.empty?
+        {
+          'type'  => 'project_token',
+          'token' => credentials[:project_token],
+        }
+      else
+        raise ArgumentError, "credentials must include :service_account_username/:service_account_password/:project_id or :project_token"
+      end
+
       properties = {
         'distinct_id' => distinct_id,
         'token' => @token,
@@ -115,8 +142,8 @@ module Mixpanel
       }
 
       message = {
-        'data' => data,
-        'api_key' => api_key,
+        'data'        => data,
+        'credentials' => credentials_data,
       }
 
       ret = true
