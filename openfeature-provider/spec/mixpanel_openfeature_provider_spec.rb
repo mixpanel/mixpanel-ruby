@@ -12,7 +12,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
   let(:provider) { described_class.new(mock_flags) }
 
   def setup_flag(flag_key, value, variant_key: 'variant-key')
-    allow(mock_flags).to receive(:get_variant) do |key, fallback, _ctx|
+    allow(mock_flags).to receive(:get_variant) do |key, fallback, _ctx, **_kwargs|
       if key == flag_key
         Mixpanel::Flags::SelectedVariant.new(variant_key: variant_key, variant_value: value)
       else
@@ -22,7 +22,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
   end
 
   def setup_flag_not_found
-    allow(mock_flags).to receive(:get_variant) { |_key, fallback, _ctx| fallback }
+    allow(mock_flags).to receive(:get_variant) { |_key, fallback, _ctx, **_kwargs| fallback }
   end
 
   # --- Metadata ---
@@ -417,11 +417,77 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
     end
   end
 
+  # --- Nil variant value ---
+
+  describe 'nil variant value' do
+    it 'returns TYPE_MISMATCH for boolean when variant value is nil' do
+      setup_flag('nil-flag', nil)
+      result = provider.fetch_boolean_value(flag_key: 'nil-flag', default_value: false)
+      expect(result.value).to be false
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns TYPE_MISMATCH for string when variant value is nil' do
+      setup_flag('nil-flag', nil)
+      result = provider.fetch_string_value(flag_key: 'nil-flag', default_value: 'default')
+      expect(result.value).to eq('default')
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns TYPE_MISMATCH for integer when variant value is nil' do
+      setup_flag('nil-flag', nil)
+      result = provider.fetch_integer_value(flag_key: 'nil-flag', default_value: 0)
+      expect(result.value).to eq(0)
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns TYPE_MISMATCH for float when variant value is nil' do
+      setup_flag('nil-flag', nil)
+      result = provider.fetch_float_value(flag_key: 'nil-flag', default_value: 0.0)
+      expect(result.value).to eq(0.0)
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns TYPE_MISMATCH for number when variant value is nil' do
+      setup_flag('nil-flag', nil)
+      result = provider.fetch_number_value(flag_key: 'nil-flag', default_value: 0)
+      expect(result.value).to eq(0)
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'allows nil variant value for object type' do
+      setup_flag('nil-flag', nil)
+      result = provider.fetch_object_value(flag_key: 'nil-flag', default_value: {})
+      expect(result.value).to be_nil
+      expect(result.reason).to eq('STATIC')
+      expect(result.error_code).to be_nil
+    end
+  end
+
+  # --- Exposure reporting ---
+
+  describe 'exposure reporting' do
+    it 'calls get_variant with report_exposure: true' do
+      allow(mock_flags).to receive(:get_variant) do |_key, _fallback, _ctx, report_exposure:|
+        expect(report_exposure).to be true
+        Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+      end
+      provider.fetch_boolean_value(flag_key: 'flag', default_value: false)
+    end
+  end
+
   # --- Lifecycle ---
 
   describe '#shutdown' do
-    it 'is a no-op' do
-      expect { provider.shutdown }.not_to raise_error
+    it 'delegates to the flags provider' do
+      allow(mock_flags).to receive(:shutdown)
+      provider.shutdown
+      expect(mock_flags).to have_received(:shutdown)
     end
   end
 end

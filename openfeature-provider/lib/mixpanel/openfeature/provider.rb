@@ -62,6 +62,10 @@ module Mixpanel
 
         value = result.variant_value
 
+        if value.nil? && expected_type != :object
+          return error_result(default_value, ::OpenFeature::SDK::Provider::ErrorCode::TYPE_MISMATCH)
+        end
+
         coerced = coerce_value(value, expected_type)
         if coerced.nil? && !value.nil?
           return error_result(default_value, ::OpenFeature::SDK::Provider::ErrorCode::TYPE_MISMATCH)
