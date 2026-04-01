@@ -111,24 +111,17 @@ module Mixpanel
 
         context_value = context[context_key] || context[context_key.to_sym]
 
-        selected_variant = nil
+        selected_variant = get_variant_override_for_test_user(flag, context)
 
-        test_variant = get_variant_override_for_test_user(flag, context)
-        if test_variant
-          selected_variant = test_variant
-        else
+        unless selected_variant
           rollout = get_assigned_rollout(flag, context_value, context)
-          if rollout
-            selected_variant = get_assigned_variant(flag, context_value, flag_key, rollout)
-          end
+          selected_variant = get_assigned_variant(flag, context_value, flag_key, rollout) if rollout
         end
 
-        if selected_variant
-          track_exposure_event(flag_key, selected_variant, context) if report_exposure
-          return selected_variant
-        end
+        return fallback_variant unless selected_variant
 
-        fallback_variant
+        track_exposure_event(flag_key, selected_variant, context) if report_exposure
+        selected_variant
       end
 
       # Get all variants for user context
@@ -151,12 +144,9 @@ module Mixpanel
       def fetch_flag_definitions
         response = call_flags_endpoint
 
-        new_definitions = {}
-        (response['flags'] || []).each do |flag_data|
-          new_definitions[flag_data['key']] = flag_data
+        @flag_definitions = (response['flags'] || []).each_with_object({}) do |flag_data, definitions|
+          definitions[flag_data['key']] = flag_data
         end
-
-        @flag_definitions = new_definitions
 
         response
       end
@@ -179,9 +169,10 @@ module Mixpanel
       end
 
       def get_matching_variant(variant_key, flag)
-        return nil unless flag['ruleset'] && flag['ruleset']['variants']
+        variants = flag.dig('ruleset', 'variants')
+        return nil unless variants
 
-        flag['ruleset']['variants'].each do |v|
+        variants.each do |v|
           if variant_key.downcase == v['key'].downcase
             return SelectedVariant.new(
               variant_key: v['key'],
@@ -195,9 +186,10 @@ module Mixpanel
       end
 
       def get_assigned_rollout(flag, context_value, context)
-        return nil unless flag['ruleset'] && flag['ruleset']['rollout']
+        rollouts = flag.dig('ruleset', 'rollout')
+        return nil unless rollouts
 
-        flag['ruleset']['rollout'].each_with_index do |rollout, index|
+        rollouts.each_with_index do |rollout, index|
           salt = if flag['hash_salt']
                    "#{flag['key']}#{flag['hash_salt']}#{index}"
                  else
@@ -228,7 +220,7 @@ module Mixpanel
         salt = "#{flag_key}#{stored_salt}variant"
         variant_hash = Utils.normalized_hash(context_value.to_s, salt)
 
-        variants = flag['ruleset']['variants'].map { |v| v.dup }
+        variants = flag['ruleset']['variants'].map(&:dup)
         if rollout['variant_splits']
           variants.each do |v|
             v['split'] = rollout['variant_splits'][v['key']] if rollout['variant_splits'].key?(v['key'])

@@ -77,7 +77,7 @@ module Mixpanel
       def coerce_value(value, expected_type)
         case expected_type
         when :boolean
-          value.is_a?(TrueClass) || value.is_a?(FalseClass) ? value : nil
+          value == true || value == false ? value : nil
         when :string
           value.is_a?(String) ? value : nil
         when :integer
@@ -93,9 +93,7 @@ module Mixpanel
             value.to_f
           end
         when :number
-          if value.is_a?(Numeric)
-            value
-          end
+          value.is_a?(Numeric) ? value : nil
         when :object
           value
         end
