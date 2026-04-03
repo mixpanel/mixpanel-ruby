@@ -18,4 +18,6 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency 'mixpanel-ruby', '~> 3.0'
 
   spec.add_development_dependency 'rspec', '~> 3.0'
+  spec.add_development_dependency 'simplecov'
+  spec.add_development_dependency 'simplecov-cobertura'
 end
