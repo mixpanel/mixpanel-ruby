@@ -5,7 +5,24 @@ require 'open_feature/sdk'
 module Mixpanel
   module OpenFeature
     class Provider
-      attr_reader :metadata
+      attr_reader :metadata, :mixpanel
+
+      def self.from_local(token, config)
+        tracker = ::Mixpanel::Tracker.new(token, local_flags_config: config)
+        flags_provider = tracker.local_flags
+        flags_provider.start_polling_for_definitions!
+        provider = new(flags_provider)
+        provider.instance_variable_set(:@mixpanel, tracker)
+        provider
+      end
+
+      def self.from_remote(token, config)
+        tracker = ::Mixpanel::Tracker.new(token, remote_flags_config: config)
+        flags_provider = tracker.remote_flags
+        provider = new(flags_provider)
+        provider.instance_variable_set(:@mixpanel, tracker)
+        provider
+      end
 
       def initialize(flags_provider)
         @flags_provider = flags_provider
