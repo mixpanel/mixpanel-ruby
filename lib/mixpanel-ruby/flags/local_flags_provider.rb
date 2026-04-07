@@ -144,9 +144,10 @@ module Mixpanel
       def fetch_flag_definitions
         response = call_flags_endpoint
 
-        @flag_definitions = (response['flags'] || []).each_with_object({}) do |flag_data, definitions|
+        new_definitions = (response['flags'] || []).each_with_object({}) do |flag_data, definitions|
           definitions[flag_data['key']] = flag_data
         end
+        @flag_definitions = new_definitions
 
         response
       end

@@ -3,6 +3,43 @@
 require 'spec_helper'
 
 RSpec.describe Mixpanel::OpenFeature::Provider do
+  # --- Factory methods ---
+
+  describe '.from_local' do
+    it 'creates a provider with a local flags provider and starts polling' do
+      mock_local_flags = instance_double('LocalFlagsProvider')
+      allow(mock_local_flags).to receive(:start_polling_for_definitions!)
+
+      mock_tracker = instance_double('Mixpanel::Tracker', local_flags: mock_local_flags)
+      stub_const('Mixpanel::Tracker', class_double('Mixpanel::Tracker', new: mock_tracker))
+
+      config = { polling_interval: 300 }
+      provider = described_class.from_local('test-token', config)
+
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', local_flags_config: config)
+      expect(mock_local_flags).to have_received(:start_polling_for_definitions!)
+      expect(provider.mixpanel).to eq(mock_tracker)
+      expect(provider).to be_a(described_class)
+    end
+  end
+
+  describe '.from_remote' do
+    it 'creates a provider with a remote flags provider' do
+      mock_remote_flags = double('RemoteFlagsProvider')
+      mock_tracker = instance_double('Mixpanel::Tracker', remote_flags: mock_remote_flags)
+      stub_const('Mixpanel::Tracker', class_double('Mixpanel::Tracker', new: mock_tracker))
+
+      config = { endpoint: 'https://example.com' }
+      provider = described_class.from_remote('test-token', config)
+
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', remote_flags_config: config)
+      expect(provider.mixpanel).to eq(mock_tracker)
+      expect(provider).to be_a(described_class)
+    end
+  end
+
+  # --- Instance behavior ---
+
   let(:mock_flags) do
     instance_double('FlagsProvider').tap do |flags|
       allow(flags).to receive(:are_flags_ready).and_return(true)
@@ -349,6 +386,58 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       )
       allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
         expect(ctx).to eq({ 'distinct_id' => 'user-1', 'targetingKey' => 'tk-123' })
+        Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+      end
+
+      provider.fetch_boolean_value(flag_key: 'flag', default_value: false, evaluation_context: eval_context)
+    end
+
+    it 'coerces whole floats to integers in context' do
+      eval_context = double('EvaluationContext',
+        fields: { 'distinct_id' => 'user-1', 'age' => 30.0 },
+        targeting_key: nil
+      )
+      allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
+        expect(ctx).to eq({ 'distinct_id' => 'user-1', 'age' => 30 })
+        Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+      end
+
+      provider.fetch_boolean_value(flag_key: 'flag', default_value: false, evaluation_context: eval_context)
+    end
+
+    it 'preserves fractional floats in context' do
+      eval_context = double('EvaluationContext',
+        fields: { 'score' => 3.14 },
+        targeting_key: nil
+      )
+      allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
+        expect(ctx).to eq({ 'score' => 3.14 })
+        Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+      end
+
+      provider.fetch_boolean_value(flag_key: 'flag', default_value: false, evaluation_context: eval_context)
+    end
+
+    it 'recursively unwraps arrays in context' do
+      eval_context = double('EvaluationContext',
+        fields: { 'tags' => ['a', 'b', 'c'] },
+        targeting_key: nil
+      )
+      allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
+        expect(ctx).to eq({ 'tags' => ['a', 'b', 'c'] })
+        Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+      end
+
+      provider.fetch_boolean_value(flag_key: 'flag', default_value: false, evaluation_context: eval_context)
+    end
+
+    it 'recursively unwraps nested hashes in context' do
+      eval_context = double('EvaluationContext',
+        fields: { 'meta' => { 'nested_float' => 5.0, 'name' => 'test' } },
+        targeting_key: nil
+      )
+      allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
+        expect(ctx).to eq({ 'meta' => { 'nested_float' => 5, 'name' => 'test' } })
         Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
       end
 
