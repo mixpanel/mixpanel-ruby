@@ -7,8 +7,8 @@ module Mixpanel
     class Provider
       attr_reader :metadata, :mixpanel
 
-      def self.from_local(token, config)
-        tracker = ::Mixpanel::Tracker.new(token, local_flags_config: config)
+      def self.from_local(token, config, error_handler: nil)
+        tracker = ::Mixpanel::Tracker.new(token, error_handler, local_flags_config: config)
         flags_provider = tracker.local_flags
         flags_provider.start_polling_for_definitions!
         provider = new(flags_provider)
@@ -16,8 +16,8 @@ module Mixpanel
         provider
       end
 
-      def self.from_remote(token, config)
-        tracker = ::Mixpanel::Tracker.new(token, remote_flags_config: config)
+      def self.from_remote(token, config, error_handler: nil)
+        tracker = ::Mixpanel::Tracker.new(token, error_handler, remote_flags_config: config)
         flags_provider = tracker.remote_flags
         provider = new(flags_provider)
         provider.instance_variable_set(:@mixpanel, tracker)
@@ -74,7 +74,11 @@ module Mixpanel
         end
 
         if result.equal?(fallback)
-          return error_result(default_value, ::OpenFeature::SDK::Provider::ErrorCode::FLAG_NOT_FOUND)
+          return ::OpenFeature::SDK::Provider::ResolutionDetails.new(
+            value: default_value,
+            error_code: ::OpenFeature::SDK::Provider::ErrorCode::FLAG_NOT_FOUND,
+            reason: ::OpenFeature::SDK::Provider::Reason::DEFAULT
+          )
         end
 
         value = result.variant_value
@@ -91,7 +95,7 @@ module Mixpanel
         ::OpenFeature::SDK::Provider::ResolutionDetails.new(
           value: coerced.nil? ? value : coerced,
           variant: result.variant_key,
-          reason: ::OpenFeature::SDK::Provider::Reason::STATIC
+          reason: ::OpenFeature::SDK::Provider::Reason::TARGETING_MATCH
         )
       end
 

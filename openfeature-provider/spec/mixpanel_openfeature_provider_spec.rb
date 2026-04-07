@@ -16,10 +16,23 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       config = { polling_interval: 300 }
       provider = described_class.from_local('test-token', config)
 
-      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', local_flags_config: config)
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', nil, local_flags_config: config)
       expect(mock_local_flags).to have_received(:start_polling_for_definitions!)
       expect(provider.mixpanel).to eq(mock_tracker)
       expect(provider).to be_a(described_class)
+    end
+
+    it 'forwards error_handler to the tracker' do
+      mock_local_flags = instance_double('LocalFlagsProvider')
+      allow(mock_local_flags).to receive(:start_polling_for_definitions!)
+
+      mock_tracker = instance_double('Mixpanel::Tracker', local_flags: mock_local_flags)
+      stub_const('Mixpanel::Tracker', class_double('Mixpanel::Tracker', new: mock_tracker))
+
+      error_handler = double('ErrorHandler')
+      described_class.from_local('test-token', {}, error_handler: error_handler)
+
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', error_handler, local_flags_config: {})
     end
   end
 
@@ -32,9 +45,20 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       config = { endpoint: 'https://example.com' }
       provider = described_class.from_remote('test-token', config)
 
-      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', remote_flags_config: config)
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', nil, remote_flags_config: config)
       expect(provider.mixpanel).to eq(mock_tracker)
       expect(provider).to be_a(described_class)
+    end
+
+    it 'forwards error_handler to the tracker' do
+      mock_remote_flags = double('RemoteFlagsProvider')
+      mock_tracker = instance_double('Mixpanel::Tracker', remote_flags: mock_remote_flags)
+      stub_const('Mixpanel::Tracker', class_double('Mixpanel::Tracker', new: mock_tracker))
+
+      error_handler = double('ErrorHandler')
+      described_class.from_remote('test-token', {}, error_handler: error_handler)
+
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', error_handler, remote_flags_config: {})
     end
   end
 
@@ -77,7 +101,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       setup_flag('bool-flag', true)
       result = provider.fetch_boolean_value(flag_key: 'bool-flag', default_value: false)
       expect(result.value).to be true
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
       expect(result.error_code).to be_nil
     end
 
@@ -85,7 +109,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       setup_flag('bool-flag', false)
       result = provider.fetch_boolean_value(flag_key: 'bool-flag', default_value: true)
       expect(result.value).to be false
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
     end
 
     it 'returns TYPE_MISMATCH when value is not boolean' do
@@ -104,7 +128,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       setup_flag('string-flag', 'hello')
       result = provider.fetch_string_value(flag_key: 'string-flag', default_value: 'default')
       expect(result.value).to eq('hello')
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
       expect(result.error_code).to be_nil
     end
 
@@ -124,7 +148,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       setup_flag('int-flag', 42)
       result = provider.fetch_integer_value(flag_key: 'int-flag', default_value: 0)
       expect(result.value).to eq(42)
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
       expect(result.error_code).to be_nil
     end
 
@@ -133,7 +157,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       result = provider.fetch_integer_value(flag_key: 'int-flag', default_value: 0)
       expect(result.value).to eq(42)
       expect(result.value).to be_a(Integer)
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
     end
 
     it 'returns TYPE_MISMATCH for float with fraction' do
@@ -160,7 +184,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       setup_flag('float-flag', 3.14)
       result = provider.fetch_float_value(flag_key: 'float-flag', default_value: 0.0)
       expect(result.value).to be_within(0.001).of(3.14)
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
       expect(result.error_code).to be_nil
     end
 
@@ -169,7 +193,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       result = provider.fetch_float_value(flag_key: 'float-flag', default_value: 0.0)
       expect(result.value).to eq(42.0)
       expect(result.value).to be_a(Float)
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
     end
 
     it 'returns TYPE_MISMATCH when value is a string' do
@@ -188,14 +212,14 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       setup_flag('num-flag', 42)
       result = provider.fetch_number_value(flag_key: 'num-flag', default_value: 0)
       expect(result.value).to eq(42)
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
     end
 
     it 'resolves a float as number' do
       setup_flag('num-flag', 3.14)
       result = provider.fetch_number_value(flag_key: 'num-flag', default_value: 0.0)
       expect(result.value).to be_within(0.001).of(3.14)
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
     end
 
     it 'returns TYPE_MISMATCH when value is not numeric' do
@@ -214,7 +238,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       setup_flag('obj-flag', { 'key' => 'value' })
       result = provider.fetch_object_value(flag_key: 'obj-flag', default_value: {})
       expect(result.value).to eq({ 'key' => 'value' })
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
       expect(result.error_code).to be_nil
     end
 
@@ -222,21 +246,21 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       setup_flag('obj-flag', [1, 2, 3])
       result = provider.fetch_object_value(flag_key: 'obj-flag', default_value: [])
       expect(result.value).to eq([1, 2, 3])
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
     end
 
     it 'resolves a string as object' do
       setup_flag('obj-flag', 'hello')
       result = provider.fetch_object_value(flag_key: 'obj-flag', default_value: {})
       expect(result.value).to eq('hello')
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
     end
 
     it 'resolves a boolean as object' do
       setup_flag('obj-flag', true)
       result = provider.fetch_object_value(flag_key: 'obj-flag', default_value: {})
       expect(result.value).to be true
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
     end
   end
 
@@ -249,35 +273,35 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       result = provider.fetch_boolean_value(flag_key: 'missing', default_value: true)
       expect(result.value).to be true
       expect(result.error_code).to eq('FLAG_NOT_FOUND')
-      expect(result.reason).to eq('ERROR')
+      expect(result.reason).to eq('DEFAULT')
     end
 
     it 'returns FLAG_NOT_FOUND for string' do
       result = provider.fetch_string_value(flag_key: 'missing', default_value: 'fallback')
       expect(result.value).to eq('fallback')
       expect(result.error_code).to eq('FLAG_NOT_FOUND')
-      expect(result.reason).to eq('ERROR')
+      expect(result.reason).to eq('DEFAULT')
     end
 
     it 'returns FLAG_NOT_FOUND for integer' do
       result = provider.fetch_integer_value(flag_key: 'missing', default_value: 99)
       expect(result.value).to eq(99)
       expect(result.error_code).to eq('FLAG_NOT_FOUND')
-      expect(result.reason).to eq('ERROR')
+      expect(result.reason).to eq('DEFAULT')
     end
 
     it 'returns FLAG_NOT_FOUND for float' do
       result = provider.fetch_float_value(flag_key: 'missing', default_value: 1.5)
       expect(result.value).to eq(1.5)
       expect(result.error_code).to eq('FLAG_NOT_FOUND')
-      expect(result.reason).to eq('ERROR')
+      expect(result.reason).to eq('DEFAULT')
     end
 
     it 'returns FLAG_NOT_FOUND for object' do
       result = provider.fetch_object_value(flag_key: 'missing', default_value: { 'default' => true })
       expect(result.value).to eq({ 'default' => true })
       expect(result.error_code).to eq('FLAG_NOT_FOUND')
-      expect(result.reason).to eq('ERROR')
+      expect(result.reason).to eq('DEFAULT')
     end
   end
 
@@ -342,7 +366,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
     it 'treats provider as ready' do
       result = provider.fetch_boolean_value(flag_key: 'flag', default_value: false)
       expect(result.value).to be true
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
     end
   end
 
@@ -353,7 +377,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       setup_flag('flag', 'value', variant_key: 'my-variant')
       result = provider.fetch_string_value(flag_key: 'flag', default_value: 'default')
       expect(result.variant).to eq('my-variant')
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
     end
 
     it 'does not include variant on error' do
@@ -493,7 +517,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       result = provider.fetch_string_value(flag_key: 'flag', default_value: 'default')
       expect(result.value).to eq('hello')
       expect(result.variant).to be_nil
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
       expect(result.error_code).to be_nil
     end
 
@@ -502,7 +526,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       result = provider.fetch_boolean_value(flag_key: 'flag', default_value: false)
       expect(result.value).to be true
       expect(result.variant).to be_nil
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
     end
   end
 
@@ -553,7 +577,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       setup_flag('nil-flag', nil)
       result = provider.fetch_object_value(flag_key: 'nil-flag', default_value: {})
       expect(result.value).to be_nil
-      expect(result.reason).to eq('STATIC')
+      expect(result.reason).to eq('TARGETING_MATCH')
       expect(result.error_code).to be_nil
     end
   end
