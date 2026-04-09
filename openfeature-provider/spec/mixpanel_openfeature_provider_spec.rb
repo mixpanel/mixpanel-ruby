@@ -1,0 +1,606 @@
+# frozen_string_literal: true
+
+require 'spec_helper'
+
+RSpec.describe Mixpanel::OpenFeature::Provider do
+  # --- Factory methods ---
+
+  describe '.from_local' do
+    it 'creates a provider with a local flags provider and starts polling' do
+      mock_local_flags = instance_double('LocalFlagsProvider')
+      allow(mock_local_flags).to receive(:start_polling_for_definitions!)
+
+      mock_tracker = instance_double('Mixpanel::Tracker', local_flags: mock_local_flags)
+      stub_const('Mixpanel::Tracker', class_double('Mixpanel::Tracker', new: mock_tracker))
+
+      config = { polling_interval: 300 }
+      provider = described_class.from_local('test-token', config)
+
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', nil, local_flags_config: config)
+      expect(mock_local_flags).to have_received(:start_polling_for_definitions!)
+      expect(provider.mixpanel).to eq(mock_tracker)
+      expect(provider).to be_a(described_class)
+    end
+
+    it 'forwards error_handler to the tracker' do
+      mock_local_flags = instance_double('LocalFlagsProvider')
+      allow(mock_local_flags).to receive(:start_polling_for_definitions!)
+
+      mock_tracker = instance_double('Mixpanel::Tracker', local_flags: mock_local_flags)
+      stub_const('Mixpanel::Tracker', class_double('Mixpanel::Tracker', new: mock_tracker))
+
+      error_handler = double('ErrorHandler')
+      described_class.from_local('test-token', {}, error_handler: error_handler)
+
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', error_handler, local_flags_config: {})
+    end
+  end
+
+  describe '.from_remote' do
+    it 'creates a provider with a remote flags provider' do
+      mock_remote_flags = double('RemoteFlagsProvider')
+      mock_tracker = instance_double('Mixpanel::Tracker', remote_flags: mock_remote_flags)
+      stub_const('Mixpanel::Tracker', class_double('Mixpanel::Tracker', new: mock_tracker))
+
+      config = { endpoint: 'https://example.com' }
+      provider = described_class.from_remote('test-token', config)
+
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', nil, remote_flags_config: config)
+      expect(provider.mixpanel).to eq(mock_tracker)
+      expect(provider).to be_a(described_class)
+    end
+
+    it 'forwards error_handler to the tracker' do
+      mock_remote_flags = double('RemoteFlagsProvider')
+      mock_tracker = instance_double('Mixpanel::Tracker', remote_flags: mock_remote_flags)
+      stub_const('Mixpanel::Tracker', class_double('Mixpanel::Tracker', new: mock_tracker))
+
+      error_handler = double('ErrorHandler')
+      described_class.from_remote('test-token', {}, error_handler: error_handler)
+
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', error_handler, remote_flags_config: {})
+    end
+  end
+
+  # --- Instance behavior ---
+
+  let(:mock_flags) do
+    instance_double('FlagsProvider').tap do |flags|
+      allow(flags).to receive(:are_flags_ready).and_return(true)
+    end
+  end
+
+  let(:provider) { described_class.new(mock_flags) }
+
+  def setup_flag(flag_key, value, variant_key: 'variant-key')
+    allow(mock_flags).to receive(:get_variant) do |key, fallback, _ctx, **_kwargs|
+      if key == flag_key
+        Mixpanel::Flags::SelectedVariant.new(variant_key: variant_key, variant_value: value)
+      else
+        fallback
+      end
+    end
+  end
+
+  def setup_flag_not_found
+    allow(mock_flags).to receive(:get_variant) { |_key, fallback, _ctx, **_kwargs| fallback }
+  end
+
+  # --- Metadata ---
+
+  describe '#metadata' do
+    it 'returns mixpanel-provider as the name' do
+      expect(provider.metadata.name).to eq('mixpanel-provider')
+    end
+  end
+
+  # --- Boolean evaluation ---
+
+  describe '#fetch_boolean_value' do
+    it 'resolves true' do
+      setup_flag('bool-flag', true)
+      result = provider.fetch_boolean_value(flag_key: 'bool-flag', default_value: false)
+      expect(result.value).to be true
+      expect(result.reason).to eq('TARGETING_MATCH')
+      expect(result.error_code).to be_nil
+    end
+
+    it 'resolves false' do
+      setup_flag('bool-flag', false)
+      result = provider.fetch_boolean_value(flag_key: 'bool-flag', default_value: true)
+      expect(result.value).to be false
+      expect(result.reason).to eq('TARGETING_MATCH')
+    end
+
+    it 'returns TYPE_MISMATCH when value is not boolean' do
+      setup_flag('string-flag', 'not-a-bool')
+      result = provider.fetch_boolean_value(flag_key: 'string-flag', default_value: false)
+      expect(result.value).to be false
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+  end
+
+  # --- String evaluation ---
+
+  describe '#fetch_string_value' do
+    it 'resolves a string' do
+      setup_flag('string-flag', 'hello')
+      result = provider.fetch_string_value(flag_key: 'string-flag', default_value: 'default')
+      expect(result.value).to eq('hello')
+      expect(result.reason).to eq('TARGETING_MATCH')
+      expect(result.error_code).to be_nil
+    end
+
+    it 'returns TYPE_MISMATCH when value is not string' do
+      setup_flag('bool-flag', true)
+      result = provider.fetch_string_value(flag_key: 'bool-flag', default_value: 'default')
+      expect(result.value).to eq('default')
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+  end
+
+  # --- Integer evaluation ---
+
+  describe '#fetch_integer_value' do
+    it 'resolves an integer' do
+      setup_flag('int-flag', 42)
+      result = provider.fetch_integer_value(flag_key: 'int-flag', default_value: 0)
+      expect(result.value).to eq(42)
+      expect(result.reason).to eq('TARGETING_MATCH')
+      expect(result.error_code).to be_nil
+    end
+
+    it 'coerces float with no fraction to integer' do
+      setup_flag('int-flag', 42.0)
+      result = provider.fetch_integer_value(flag_key: 'int-flag', default_value: 0)
+      expect(result.value).to eq(42)
+      expect(result.value).to be_a(Integer)
+      expect(result.reason).to eq('TARGETING_MATCH')
+    end
+
+    it 'returns TYPE_MISMATCH for float with fraction' do
+      setup_flag('float-flag', 3.14)
+      result = provider.fetch_integer_value(flag_key: 'float-flag', default_value: 0)
+      expect(result.value).to eq(0)
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns TYPE_MISMATCH when value is a string' do
+      setup_flag('string-flag', 'not-a-number')
+      result = provider.fetch_integer_value(flag_key: 'string-flag', default_value: 0)
+      expect(result.value).to eq(0)
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+  end
+
+  # --- Float evaluation ---
+
+  describe '#fetch_float_value' do
+    it 'resolves a float' do
+      setup_flag('float-flag', 3.14)
+      result = provider.fetch_float_value(flag_key: 'float-flag', default_value: 0.0)
+      expect(result.value).to be_within(0.001).of(3.14)
+      expect(result.reason).to eq('TARGETING_MATCH')
+      expect(result.error_code).to be_nil
+    end
+
+    it 'coerces integer to float' do
+      setup_flag('float-flag', 42)
+      result = provider.fetch_float_value(flag_key: 'float-flag', default_value: 0.0)
+      expect(result.value).to eq(42.0)
+      expect(result.value).to be_a(Float)
+      expect(result.reason).to eq('TARGETING_MATCH')
+    end
+
+    it 'returns TYPE_MISMATCH when value is a string' do
+      setup_flag('string-flag', 'not-a-number')
+      result = provider.fetch_float_value(flag_key: 'string-flag', default_value: 0.0)
+      expect(result.value).to eq(0.0)
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+  end
+
+  # --- Number evaluation ---
+
+  describe '#fetch_number_value' do
+    it 'resolves an integer as number' do
+      setup_flag('num-flag', 42)
+      result = provider.fetch_number_value(flag_key: 'num-flag', default_value: 0)
+      expect(result.value).to eq(42)
+      expect(result.reason).to eq('TARGETING_MATCH')
+    end
+
+    it 'resolves a float as number' do
+      setup_flag('num-flag', 3.14)
+      result = provider.fetch_number_value(flag_key: 'num-flag', default_value: 0.0)
+      expect(result.value).to be_within(0.001).of(3.14)
+      expect(result.reason).to eq('TARGETING_MATCH')
+    end
+
+    it 'returns TYPE_MISMATCH when value is not numeric' do
+      setup_flag('string-flag', 'hello')
+      result = provider.fetch_number_value(flag_key: 'string-flag', default_value: 0)
+      expect(result.value).to eq(0)
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+  end
+
+  # --- Object evaluation ---
+
+  describe '#fetch_object_value' do
+    it 'resolves a hash' do
+      setup_flag('obj-flag', { 'key' => 'value' })
+      result = provider.fetch_object_value(flag_key: 'obj-flag', default_value: {})
+      expect(result.value).to eq({ 'key' => 'value' })
+      expect(result.reason).to eq('TARGETING_MATCH')
+      expect(result.error_code).to be_nil
+    end
+
+    it 'resolves an array' do
+      setup_flag('obj-flag', [1, 2, 3])
+      result = provider.fetch_object_value(flag_key: 'obj-flag', default_value: [])
+      expect(result.value).to eq([1, 2, 3])
+      expect(result.reason).to eq('TARGETING_MATCH')
+    end
+
+    it 'resolves a string as object' do
+      setup_flag('obj-flag', 'hello')
+      result = provider.fetch_object_value(flag_key: 'obj-flag', default_value: {})
+      expect(result.value).to eq('hello')
+      expect(result.reason).to eq('TARGETING_MATCH')
+    end
+
+    it 'resolves a boolean as object' do
+      setup_flag('obj-flag', true)
+      result = provider.fetch_object_value(flag_key: 'obj-flag', default_value: {})
+      expect(result.value).to be true
+      expect(result.reason).to eq('TARGETING_MATCH')
+    end
+  end
+
+  # --- FLAG_NOT_FOUND ---
+
+  describe 'flag not found' do
+    before { setup_flag_not_found }
+
+    it 'returns FLAG_NOT_FOUND for boolean' do
+      result = provider.fetch_boolean_value(flag_key: 'missing', default_value: true)
+      expect(result.value).to be true
+      expect(result.error_code).to eq('FLAG_NOT_FOUND')
+      expect(result.reason).to eq('DEFAULT')
+    end
+
+    it 'returns FLAG_NOT_FOUND for string' do
+      result = provider.fetch_string_value(flag_key: 'missing', default_value: 'fallback')
+      expect(result.value).to eq('fallback')
+      expect(result.error_code).to eq('FLAG_NOT_FOUND')
+      expect(result.reason).to eq('DEFAULT')
+    end
+
+    it 'returns FLAG_NOT_FOUND for integer' do
+      result = provider.fetch_integer_value(flag_key: 'missing', default_value: 99)
+      expect(result.value).to eq(99)
+      expect(result.error_code).to eq('FLAG_NOT_FOUND')
+      expect(result.reason).to eq('DEFAULT')
+    end
+
+    it 'returns FLAG_NOT_FOUND for float' do
+      result = provider.fetch_float_value(flag_key: 'missing', default_value: 1.5)
+      expect(result.value).to eq(1.5)
+      expect(result.error_code).to eq('FLAG_NOT_FOUND')
+      expect(result.reason).to eq('DEFAULT')
+    end
+
+    it 'returns FLAG_NOT_FOUND for object' do
+      result = provider.fetch_object_value(flag_key: 'missing', default_value: { 'default' => true })
+      expect(result.value).to eq({ 'default' => true })
+      expect(result.error_code).to eq('FLAG_NOT_FOUND')
+      expect(result.reason).to eq('DEFAULT')
+    end
+  end
+
+  # --- PROVIDER_NOT_READY ---
+
+  describe 'provider not ready' do
+    let(:mock_flags) do
+      instance_double('FlagsProvider').tap do |flags|
+        allow(flags).to receive(:are_flags_ready).and_return(false)
+      end
+    end
+
+    it 'returns PROVIDER_NOT_READY for boolean' do
+      result = provider.fetch_boolean_value(flag_key: 'any', default_value: true)
+      expect(result.value).to be true
+      expect(result.error_code).to eq('PROVIDER_NOT_READY')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns PROVIDER_NOT_READY for string' do
+      result = provider.fetch_string_value(flag_key: 'any', default_value: 'default')
+      expect(result.value).to eq('default')
+      expect(result.error_code).to eq('PROVIDER_NOT_READY')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns PROVIDER_NOT_READY for integer' do
+      result = provider.fetch_integer_value(flag_key: 'any', default_value: 5)
+      expect(result.value).to eq(5)
+      expect(result.error_code).to eq('PROVIDER_NOT_READY')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns PROVIDER_NOT_READY for float' do
+      result = provider.fetch_float_value(flag_key: 'any', default_value: 2.5)
+      expect(result.value).to eq(2.5)
+      expect(result.error_code).to eq('PROVIDER_NOT_READY')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns PROVIDER_NOT_READY for object' do
+      result = provider.fetch_object_value(flag_key: 'any', default_value: { 'default' => true })
+      expect(result.value).to eq({ 'default' => true })
+      expect(result.error_code).to eq('PROVIDER_NOT_READY')
+      expect(result.reason).to eq('ERROR')
+    end
+  end
+
+  # --- Remote provider (no are_flags_ready) is always ready ---
+
+  describe 'remote provider without are_flags_ready' do
+    let(:remote_flags) do
+      double('RemoteFlagsProvider').tap do |flags|
+        allow(flags).to receive(:get_variant) do |_key, _fallback, _ctx|
+          Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+        end
+      end
+    end
+
+    let(:provider) { described_class.new(remote_flags) }
+
+    it 'treats provider as ready' do
+      result = provider.fetch_boolean_value(flag_key: 'flag', default_value: false)
+      expect(result.value).to be true
+      expect(result.reason).to eq('TARGETING_MATCH')
+    end
+  end
+
+  # --- Variant key passthrough ---
+
+  describe 'variant key' do
+    it 'includes variant key in successful resolution' do
+      setup_flag('flag', 'value', variant_key: 'my-variant')
+      result = provider.fetch_string_value(flag_key: 'flag', default_value: 'default')
+      expect(result.variant).to eq('my-variant')
+      expect(result.reason).to eq('TARGETING_MATCH')
+    end
+
+    it 'does not include variant on error' do
+      setup_flag_not_found
+      result = provider.fetch_string_value(flag_key: 'missing', default_value: 'default')
+      expect(result.variant).to be_nil
+    end
+  end
+
+  # --- Context forwarding ---
+
+  describe 'evaluation context forwarding' do
+    it 'forwards evaluation_context fields to get_variant' do
+      eval_context = double('EvaluationContext',
+        fields: { 'distinct_id' => 'user-1', 'plan' => 'premium' },
+        targeting_key: nil
+      )
+      allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
+        expect(ctx).to eq({ 'distinct_id' => 'user-1', 'plan' => 'premium' })
+        Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+      end
+
+      provider.fetch_boolean_value(flag_key: 'flag', default_value: false, evaluation_context: eval_context)
+    end
+
+    it 'includes targeting_key in context when present' do
+      eval_context = double('EvaluationContext',
+        fields: { 'distinct_id' => 'user-1' },
+        targeting_key: 'tk-123'
+      )
+      allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
+        expect(ctx).to eq({ 'distinct_id' => 'user-1', 'targetingKey' => 'tk-123' })
+        Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+      end
+
+      provider.fetch_boolean_value(flag_key: 'flag', default_value: false, evaluation_context: eval_context)
+    end
+
+    it 'coerces whole floats to integers in context' do
+      eval_context = double('EvaluationContext',
+        fields: { 'distinct_id' => 'user-1', 'age' => 30.0 },
+        targeting_key: nil
+      )
+      allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
+        expect(ctx).to eq({ 'distinct_id' => 'user-1', 'age' => 30 })
+        Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+      end
+
+      provider.fetch_boolean_value(flag_key: 'flag', default_value: false, evaluation_context: eval_context)
+    end
+
+    it 'preserves fractional floats in context' do
+      eval_context = double('EvaluationContext',
+        fields: { 'score' => 3.14 },
+        targeting_key: nil
+      )
+      allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
+        expect(ctx).to eq({ 'score' => 3.14 })
+        Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+      end
+
+      provider.fetch_boolean_value(flag_key: 'flag', default_value: false, evaluation_context: eval_context)
+    end
+
+    it 'recursively unwraps arrays in context' do
+      eval_context = double('EvaluationContext',
+        fields: { 'tags' => ['a', 'b', 'c'] },
+        targeting_key: nil
+      )
+      allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
+        expect(ctx).to eq({ 'tags' => ['a', 'b', 'c'] })
+        Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+      end
+
+      provider.fetch_boolean_value(flag_key: 'flag', default_value: false, evaluation_context: eval_context)
+    end
+
+    it 'recursively unwraps nested hashes in context' do
+      eval_context = double('EvaluationContext',
+        fields: { 'meta' => { 'nested_float' => 5.0, 'name' => 'test' } },
+        targeting_key: nil
+      )
+      allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
+        expect(ctx).to eq({ 'meta' => { 'nested_float' => 5, 'name' => 'test' } })
+        Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+      end
+
+      provider.fetch_boolean_value(flag_key: 'flag', default_value: false, evaluation_context: eval_context)
+    end
+
+    it 'passes empty hash when evaluation_context is nil' do
+      allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
+        expect(ctx).to eq({})
+        Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+      end
+
+      provider.fetch_boolean_value(flag_key: 'flag', default_value: false)
+    end
+  end
+
+  # --- SDK exception handling ---
+
+  describe 'SDK exception handling' do
+    it 'returns default value with GENERAL error when get_variant raises' do
+      allow(mock_flags).to receive(:get_variant).and_raise(RuntimeError, 'unexpected SDK error')
+
+      result = provider.fetch_boolean_value(flag_key: 'flag', default_value: true)
+      expect(result.value).to be true
+      expect(result.error_code).to eq('GENERAL')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns default value for string when get_variant raises' do
+      allow(mock_flags).to receive(:get_variant).and_raise(StandardError, 'connection failed')
+
+      result = provider.fetch_string_value(flag_key: 'flag', default_value: 'fallback')
+      expect(result.value).to eq('fallback')
+      expect(result.error_code).to eq('GENERAL')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns default value for integer when get_variant raises' do
+      allow(mock_flags).to receive(:get_variant).and_raise(StandardError, 'timeout')
+
+      result = provider.fetch_integer_value(flag_key: 'flag', default_value: 42)
+      expect(result.value).to eq(42)
+      expect(result.error_code).to eq('GENERAL')
+      expect(result.reason).to eq('ERROR')
+    end
+  end
+
+  # --- Null variant key ---
+
+  describe 'null variant key' do
+    it 'resolves successfully with nil variant when variant_key is nil' do
+      setup_flag('flag', 'hello', variant_key: nil)
+      result = provider.fetch_string_value(flag_key: 'flag', default_value: 'default')
+      expect(result.value).to eq('hello')
+      expect(result.variant).to be_nil
+      expect(result.reason).to eq('TARGETING_MATCH')
+      expect(result.error_code).to be_nil
+    end
+
+    it 'resolves boolean with nil variant key' do
+      setup_flag('flag', true, variant_key: nil)
+      result = provider.fetch_boolean_value(flag_key: 'flag', default_value: false)
+      expect(result.value).to be true
+      expect(result.variant).to be_nil
+      expect(result.reason).to eq('TARGETING_MATCH')
+    end
+  end
+
+  # --- Nil variant value ---
+
+  describe 'nil variant value' do
+    it 'returns TYPE_MISMATCH for boolean when variant value is nil' do
+      setup_flag('nil-flag', nil)
+      result = provider.fetch_boolean_value(flag_key: 'nil-flag', default_value: false)
+      expect(result.value).to be false
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns TYPE_MISMATCH for string when variant value is nil' do
+      setup_flag('nil-flag', nil)
+      result = provider.fetch_string_value(flag_key: 'nil-flag', default_value: 'default')
+      expect(result.value).to eq('default')
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns TYPE_MISMATCH for integer when variant value is nil' do
+      setup_flag('nil-flag', nil)
+      result = provider.fetch_integer_value(flag_key: 'nil-flag', default_value: 0)
+      expect(result.value).to eq(0)
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns TYPE_MISMATCH for float when variant value is nil' do
+      setup_flag('nil-flag', nil)
+      result = provider.fetch_float_value(flag_key: 'nil-flag', default_value: 0.0)
+      expect(result.value).to eq(0.0)
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns TYPE_MISMATCH for number when variant value is nil' do
+      setup_flag('nil-flag', nil)
+      result = provider.fetch_number_value(flag_key: 'nil-flag', default_value: 0)
+      expect(result.value).to eq(0)
+      expect(result.error_code).to eq('TYPE_MISMATCH')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'allows nil variant value for object type' do
+      setup_flag('nil-flag', nil)
+      result = provider.fetch_object_value(flag_key: 'nil-flag', default_value: {})
+      expect(result.value).to be_nil
+      expect(result.reason).to eq('TARGETING_MATCH')
+      expect(result.error_code).to be_nil
+    end
+  end
+
+  # --- Exposure reporting ---
+
+  describe 'exposure reporting' do
+    it 'calls get_variant with report_exposure: true' do
+      allow(mock_flags).to receive(:get_variant) do |_key, _fallback, _ctx, report_exposure:|
+        expect(report_exposure).to be true
+        Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+      end
+      provider.fetch_boolean_value(flag_key: 'flag', default_value: false)
+    end
+  end
+
+  # --- Lifecycle ---
+
+  describe '#shutdown' do
+    it 'delegates to the flags provider' do
+      allow(mock_flags).to receive(:shutdown)
+      provider.shutdown
+      expect(mock_flags).to have_received(:shutdown)
+    end
+  end
+end
