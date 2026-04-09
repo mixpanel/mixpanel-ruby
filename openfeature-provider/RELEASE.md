@@ -2,6 +2,16 @@
 
 The OpenFeature provider (`mixpanel-ruby-openfeature`) is published to RubyGems independently from the core SDK.
 
+## Release Order
+
+The OpenFeature provider depends on features added to `mixpanel-ruby` in version 3.1.0+ (e.g., `shutdown` methods on flags providers). You **must** publish the core SDK first:
+
+1. Publish `mixpanel-ruby` (bump version in `lib/mixpanel-ruby/version.rb`, build, push)
+2. Verify the new version is live on https://rubygems.org/gems/mixpanel-ruby
+3. Then publish `mixpanel-ruby-openfeature` (steps below)
+
+If you update the core SDK version, update the dependency constraint in `mixpanel-ruby-openfeature.gemspec` to match.
+
 ## Prerequisites
 
 - Ruby 3.1+
