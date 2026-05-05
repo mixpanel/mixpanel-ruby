@@ -56,24 +56,28 @@ module Mixpanel
         request.basic_auth(@provider_config[:token], '')
 
         request['Content-Type'] = 'application/json'
-        request['traceparent'] = Utils.generate_traceparent()
+        request['traceparent'] = Utils.generate_traceparent
 
         begin
           response = http.request(request)
-
-          unless response.code.to_i == 200
-            raise ServerError.new("HTTP #{response.code}: #{response.body}")
-          end
-
-          JSON.parse(response.body)
         rescue Net::OpenTimeout, Net::ReadTimeout => e
           raise ConnectionError.new("Request timeout: #{e.message}")
-        rescue JSON::ParserError => e
-          raise ServerError.new("Invalid JSON response: #{e.message}")
         rescue StandardError => e
           raise ConnectionError.new("Network error: #{e.message}")
         end
+
+        unless response.code == '200'
+          raise ServerError.new("HTTP #{response.code}: #{response.body}")
+        end
+
+        begin
+          JSON.parse(response.body)
+        rescue JSON::ParserError => e
+          raise ServerError.new("Invalid JSON response: #{e.message}")
+        end
       end
+
+      def shutdown; end
 
       # Track exposure event to Mixpanel
       # @param flag_key [String] Feature flag key
