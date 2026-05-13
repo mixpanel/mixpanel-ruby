@@ -155,24 +155,20 @@ jobs:
           TAG: ${{ github.ref_name }}
           CHANGELOG: ${{ steps.module.outputs.changelog }}
         run: |
-          # Match the section header `## [${TAG}](...)` and stop at the next `## ` header.
-          # Falls back to a placeholder if no matching section is found.
-          python3 - <<'PY' > release_notes.md
-          import os, re, sys
-          tag = os.environ["TAG"]
-          changelog_path = os.environ["CHANGELOG"]
-          try:
-              content = open(changelog_path).read()
-          except FileNotFoundError:
-              print(f"Release {tag}")
-              sys.exit(0)
-          pattern = r'^## \[' + re.escape(tag) + r'\].*?\n(.*?)(?=^## |\Z)'
-          match = re.search(pattern, content, re.DOTALL | re.MULTILINE)
-          if match:
-              print(match.group(1).strip())
-          else:
-              print(f"Release {tag}")
-          PY
+          # Extract this tag's section from CHANGELOG.md via a sed range.
+          # The address `\@^## \[TAG\]@,\@^## \[@` selects from the version
+          # header through the next `## [` line; the inner block deletes
+          # both markers and prints the body. sed range patterns don't test
+          # the end pattern against the start line, so the start doesn't
+          # self-terminate. `\@...@` switches the address delimiter from
+          # `/` to `@` so tags containing `/` (e.g. `openfeature/v0.1.0`)
+          # don't conflict with the default `/`. Mirrors the deployed
+          # mixpanel-android extraction logic. Falls back to a placeholder
+          # if the section is missing or empty.
+          sed -n '\@^## \['"${TAG}"'\]@,\@^## \[@{\@^## \['"${TAG}"'\]@d;\@^## \[@d;p;}' "$CHANGELOG" 2>/dev/null > release_notes.md || true
+          if [ ! -s release_notes.md ]; then
+            echo "Release $TAG" > release_notes.md
+          fi
           echo "--- release_notes.md ---"
           cat release_notes.md
 
