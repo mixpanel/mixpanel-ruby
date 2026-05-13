@@ -23,8 +23,10 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           MODULE_LIST=$(jq -r 'keys | join("|")' .github/modules.json)
-          # Scope is optional. Bare or scoped to a known module both pass.
-          MAIN_PATTERN="^(feat|fix|chore)(\((${MODULE_LIST})\))?: .+"
+          # Scope is optional. Bare, scoped to a known module, or scoped to
+          # `all` (cross-cutting changes that appear in every module's
+          # changelog) all pass.
+          MAIN_PATTERN="^(feat|fix|chore)(\((${MODULE_LIST}|all)\))?: .+"
           RELEASE_PATTERN="^release: .+"
 
           if [[ "$PR_TITLE" =~ $MAIN_PATTERN ]] || [[ "$PR_TITLE" =~ $RELEASE_PATTERN ]]; then
@@ -40,10 +42,10 @@ jobs:
           echo "  feat: description"
           echo "  fix: description"
           echo "  chore: description"
-          echo "  feat(<module>): description"
-          echo "  fix(<module>): description"
-          echo "  chore(<module>): description"
+          echo "  feat(<module>|all): description"
+          echo "  fix(<module>|all): description"
+          echo "  chore(<module>|all): description"
           echo "  release: description"
           echo ""
-          echo "Valid modules: ${MODULE_LIST//|/, }"
+          echo "Valid scopes: ${MODULE_LIST//|/, }, all"
           exit 1
