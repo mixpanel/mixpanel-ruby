@@ -1,5 +1,7 @@
 # mixpanel-ruby-openfeature
 
+##### _May 13, 2026_ - [openfeature/v0.1.0](https://github.com/mixpanel/mixpanel-ruby/releases/tag/openfeature/v0.1.0)
+
 [![Gem Version](https://img.shields.io/gem/v/mixpanel-ruby-openfeature.svg)](https://rubygems.org/gems/mixpanel-ruby-openfeature)
 [![OpenFeature](https://img.shields.io/badge/OpenFeature-compatible-green)](https://openfeature.dev/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/mixpanel/mixpanel-ruby/blob/master/LICENSE)

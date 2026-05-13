@@ -1,0 +1,18 @@
+{
+  "analytics": {
+    "tag_prefix": "v",
+    "gemspec": "mixpanel-ruby.gemspec",
+    "version_file": "lib/mixpanel-ruby/version.rb",
+    "changelog": "CHANGELOG.md",
+    "readme": "Readme.rdoc",
+    "package_name": "mixpanel-ruby"
+  },
+  "openfeature": {
+    "tag_prefix": "openfeature/v",
+    "gemspec": "openfeature-provider/mixpanel-ruby-openfeature.gemspec",
+    "version_file": "openfeature-provider/lib/mixpanel-ruby-openfeature/version.rb",
+    "changelog": "openfeature-provider/CHANGELOG.md",
+    "readme": "openfeature-provider/README.md",
+    "package_name": "mixpanel-ruby-openfeature"
+  }
+}
