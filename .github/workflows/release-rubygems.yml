@@ -42,7 +42,7 @@ jobs:
         run: |
           MODULE=$(jq -r --arg t "$TAG" '
             to_entries
-            | map(select($t | startswith(.value.tag_prefix)))
+            | map(select(.value.tag_prefix as $p | $t | startswith($p)))
             | max_by(.value.tag_prefix | length)
             | .key // empty
           ' .github/modules.json)
