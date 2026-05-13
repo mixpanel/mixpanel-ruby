@@ -10,7 +10,7 @@
   "openfeature": {
     "tag_prefix": "openfeature/v",
     "gemspec": "openfeature-provider/mixpanel-ruby-openfeature.gemspec",
-    "version_file": "openfeature-provider/lib/mixpanel-ruby-openfeature/version.rb",
+    "version_file": "openfeature-provider/lib/mixpanel/openfeature/version.rb",
     "changelog": "openfeature-provider/CHANGELOG.md",
     "readme": "openfeature-provider/README.md",
     "package_name": "mixpanel-ruby-openfeature"

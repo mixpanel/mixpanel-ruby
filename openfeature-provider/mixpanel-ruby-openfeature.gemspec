@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require File.join(File.dirname(__FILE__), 'lib/mixpanel-ruby-openfeature/version.rb')
+require File.join(File.dirname(__FILE__), 'lib/mixpanel/openfeature/version.rb')
 
 Gem::Specification.new do |spec|
   spec.name = 'mixpanel-ruby-openfeature'
