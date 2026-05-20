@@ -34,17 +34,24 @@ while IFS= read -r line; do
   [ -z "$line" ] && continue
   MSG=$(echo "$line" | cut -d' ' -f2-)
 
-  if [[ "$MSG" =~ ^(feat|fix|chore)\((${MODULE}|all)\):\ (.+) ]]; then
+  # feat / fix: include whether bare, scoped to our module, or scoped to
+  # `all` (cross-cutting changes that appear in every module's changelog).
+  # chore: include only when explicitly scoped to our module or `all` —
+  # bare `chore:` is the convention for changes intentionally hidden from
+  # the changelog (release prep PRs, CI tweaks, lockfile bumps, internal
+  # docs).
+  if [[ "$MSG" =~ ^(feat|fix)(\((${MODULE}|all)\))?:\ (.+) ]]; then
     TYPE="${BASH_REMATCH[1]}"
-    DESC="${BASH_REMATCH[3]}"
-
+    DESC="${BASH_REMATCH[4]}"
     DESC=$(echo "$DESC" | sed -E "s|\(#([0-9]+)\)|([#\1](${SAFE_URL}/pull/\1))|g")
-
     case "$TYPE" in
       feat) FEATURES+=("$DESC") ;;
       fix) FIXES+=("$DESC") ;;
-      chore) CHORES+=("$DESC") ;;
     esac
+  elif [[ "$MSG" =~ ^chore\((${MODULE}|all)\):\ (.+) ]]; then
+    DESC="${BASH_REMATCH[2]}"
+    DESC=$(echo "$DESC" | sed -E "s|\(#([0-9]+)\)|([#\1](${SAFE_URL}/pull/\1))|g")
+    CHORES+=("$DESC")
   fi
 done < <(git log --oneline "$RANGE")
 
