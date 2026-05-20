@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
+require File.join(File.dirname(__FILE__), 'lib/mixpanel/openfeature/version.rb')
+
 Gem::Specification.new do |spec|
   spec.name = 'mixpanel-ruby-openfeature'
-  spec.version = '0.1.0'
+  spec.version = Mixpanel::OpenFeature::VERSION
   spec.authors = ['Mixpanel']
   spec.email = 'support@mixpanel.com'
   spec.summary = 'OpenFeature provider for Mixpanel feature flags'
