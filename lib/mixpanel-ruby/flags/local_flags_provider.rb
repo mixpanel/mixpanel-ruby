@@ -32,6 +32,8 @@ module Mixpanel
         @flag_definitions = {}
         @polling_thread = nil
         @stop_polling = false
+        @polling_mutex = Mutex.new
+        @polling_condition = ConditionVariable.new
       end
 
       # Start polling for flag definitions
@@ -43,7 +45,9 @@ module Mixpanel
           @stop_polling = false
           @polling_thread = Thread.new do
             loop do
-              sleep @config[:polling_interval_in_seconds]
+              @polling_mutex.synchronize do
+                @polling_condition.wait(@polling_mutex, @config[:polling_interval_in_seconds])
+              end
               break if @stop_polling
 
               begin
@@ -59,7 +63,10 @@ module Mixpanel
       end
 
       def stop_polling_for_definitions!
-        @stop_polling = true
+        @polling_mutex.synchronize do
+          @stop_polling = true
+          @polling_condition.broadcast
+        end
         @polling_thread&.join
         @polling_thread = nil
       end
