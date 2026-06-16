@@ -45,10 +45,17 @@ module Mixpanel
           @stop_polling = false
           @polling_thread = Thread.new do
             loop do
-              @polling_mutex.synchronize do
+              # Check @stop_polling INSIDE the mutex (before and after wait) so a
+              # broadcast from stop_polling_for_definitions! can't be lost if it
+              # arrives while we're outside the synchronized region (e.g. during
+              # fetch_flag_definitions below).
+              stopped = @polling_mutex.synchronize do
+                next true if @stop_polling
+
                 @polling_condition.wait(@polling_mutex, @config[:polling_interval_in_seconds])
+                @stop_polling
               end
-              break if @stop_polling
+              break if stopped
 
               begin
                 fetch_flag_definitions
