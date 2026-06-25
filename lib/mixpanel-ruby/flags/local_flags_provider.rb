@@ -41,26 +41,32 @@ module Mixpanel
       def start_polling_for_definitions!
         fetch_flag_definitions
 
-        if @config[:enable_polling] && !@polling_thread
-          @stop_polling = false
-          @polling_thread = Thread.new do
-            loop do
-              # Check @stop_polling INSIDE the mutex (before and after wait) so a
-              # broadcast from stop_polling_for_definitions! can't be lost if it
-              # arrives while we're outside the synchronized region (e.g. during
-              # fetch_flag_definitions below).
-              stopped = @polling_mutex.synchronize do
-                next true if @stop_polling
+        # Take @polling_mutex so the @stop_polling reset and @polling_thread
+        # assignment can't race with a concurrent stop_polling_for_definitions!
+        # — otherwise an in-flight stop's @stop_polling = true could be
+        # clobbered, leaving the polling thread running and stop's join hanging.
+        @polling_mutex.synchronize do
+          if @config[:enable_polling] && !@polling_thread
+            @stop_polling = false
+            @polling_thread = Thread.new do
+              loop do
+                # Check @stop_polling INSIDE the mutex (before and after wait)
+                # so a broadcast from stop_polling_for_definitions! can't be
+                # lost if it arrives while we're outside the synchronized region
+                # (e.g. during fetch_flag_definitions below).
+                stopped = @polling_mutex.synchronize do
+                  next true if @stop_polling
 
-                @polling_condition.wait(@polling_mutex, @config[:polling_interval_in_seconds])
-                @stop_polling
-              end
-              break if stopped
+                  @polling_condition.wait(@polling_mutex, @config[:polling_interval_in_seconds])
+                  @stop_polling
+                end
+                break if stopped
 
-              begin
-                fetch_flag_definitions
-              rescue StandardError => e
-                @error_handler.handle(e) if @error_handler
+                begin
+                  fetch_flag_definitions
+                rescue StandardError => e
+                  @error_handler.handle(e) if @error_handler
+                end
               end
             end
           end
@@ -70,12 +76,14 @@ module Mixpanel
       end
 
       def stop_polling_for_definitions!
+        thread = nil
         @polling_mutex.synchronize do
           @stop_polling = true
           @polling_condition.broadcast
+          thread = @polling_thread
+          @polling_thread = nil
         end
-        @polling_thread&.join
-        @polling_thread = nil
+        thread&.join
       end
 
       def shutdown
