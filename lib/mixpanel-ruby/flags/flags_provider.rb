@@ -32,18 +32,11 @@ module Mixpanel
       # @raise [Mixpanel::ConnectionError] on network errors
       # @raise [Mixpanel::ServerError] on HTTP errors
       def call_flags_endpoint(additional_params = nil)
-        # Use project_id for service accounts, token otherwise
-        if @credentials
-          common_params = Utils.prepare_common_query_params(
-            @credentials.project_id,
-            Mixpanel::VERSION
-          )
-        else
-          common_params = Utils.prepare_common_query_params(
-            @provider_config[:token],
-            Mixpanel::VERSION
-          )
-        end
+        # Always use token in query params
+        common_params = Utils.prepare_common_query_params(
+          @provider_config[:token],
+          Mixpanel::VERSION
+        )
 
         params = common_params.merge(additional_params || {})
         query_string = URI.encode_www_form(params)
@@ -62,7 +55,7 @@ module Mixpanel
 
         request = Net::HTTP::Get.new(uri.request_uri)
 
-        # Use service account credentials or token for basic auth
+        # Use service account credentials for basic auth if provided, otherwise use token
         if @credentials
           request.basic_auth(@credentials.username, @credentials.secret)
         else
