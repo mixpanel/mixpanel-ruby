@@ -34,20 +34,22 @@ module Mixpanel
         @stop_polling = false
         @polling_mutex = Mutex.new
         @polling_condition = ConditionVariable.new
+        # Separate from @polling_mutex: serializes the full start/stop lifecycle
+        # (including the join inside stop) so a concurrent start can't observe a
+        # mid-stop state and spawn a new polling thread before the old one
+        # finishes exiting. We can't hold @polling_mutex across the join — the
+        # polling thread needs it to wake from the condition wait.
+        @lifecycle_mutex = Mutex.new
       end
 
       # Start polling for flag definitions
       # Fetches immediately, then at regular intervals if polling enabled
       def start_polling_for_definitions!
-        fetch_flag_definitions
+        @lifecycle_mutex.synchronize do
+          fetch_flag_definitions
 
-        # Take @polling_mutex so the @stop_polling reset and @polling_thread
-        # assignment can't race with a concurrent stop_polling_for_definitions!
-        # — otherwise an in-flight stop's @stop_polling = true could be
-        # clobbered, leaving the polling thread running and stop's join hanging.
-        @polling_mutex.synchronize do
           if @config[:enable_polling] && !@polling_thread
-            @stop_polling = false
+            @polling_mutex.synchronize { @stop_polling = false }
             @polling_thread = Thread.new do
               loop do
                 # Check @stop_polling INSIDE the mutex (before and after wait)
@@ -76,14 +78,14 @@ module Mixpanel
       end
 
       def stop_polling_for_definitions!
-        thread = nil
-        @polling_mutex.synchronize do
-          @stop_polling = true
-          @polling_condition.broadcast
-          thread = @polling_thread
+        @lifecycle_mutex.synchronize do
+          @polling_mutex.synchronize do
+            @stop_polling = true
+            @polling_condition.broadcast
+          end
+          @polling_thread&.join
           @polling_thread = nil
         end
-        thread&.join
       end
 
       def shutdown
