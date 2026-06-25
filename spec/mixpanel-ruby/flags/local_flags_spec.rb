@@ -101,6 +101,34 @@ describe Mixpanel::Flags::LocalFlagsProvider do
     }
   end
 
+  describe '#initialize' do
+    it 'raises ArgumentError when polling_interval_in_seconds is not a positive number' do
+      [0, -1, 'sixty', :foo].each do |bad_value|
+        expect do
+          Mixpanel::Flags::LocalFlagsProvider.new(
+            test_token,
+            { polling_interval_in_seconds: bad_value },
+            mock_tracker,
+            mock_error_handler
+          )
+        end.to raise_error(ArgumentError, /polling_interval_in_seconds/)
+      end
+    end
+
+    it 'falls back to the default polling_interval_in_seconds when caller passes nil' do
+      # nil must not silently override the default — CV#wait treats a nil
+      # timeout as "wait forever", which would disable polling.
+      expect do
+        Mixpanel::Flags::LocalFlagsProvider.new(
+          test_token,
+          { polling_interval_in_seconds: nil },
+          mock_tracker,
+          mock_error_handler
+        )
+      end.not_to raise_error
+    end
+  end
+
   describe '#get_variant_value' do
     it 'returns fallback when no flag definitions' do
       stub_flag_definitions([])

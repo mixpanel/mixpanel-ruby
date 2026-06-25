@@ -26,6 +26,12 @@ module Mixpanel
         # previous sleep(nil) did.
         @config = DEFAULT_CONFIG.merge((config || {}).compact)
 
+        interval = @config[:polling_interval_in_seconds]
+        unless interval.is_a?(Numeric) && interval > 0
+          raise ArgumentError,
+                "polling_interval_in_seconds must be a positive number, got: #{interval.inspect}"
+        end
+
         provider_config = {
           token: token,
           api_host: @config[:api_host],
@@ -50,10 +56,17 @@ module Mixpanel
       # Start polling for flag definitions
       # Fetches immediately, then at regular intervals if polling enabled
       def start_polling_for_definitions!
-        @lifecycle_mutex.synchronize do
-          fetch_flag_definitions
+        # Initial fetch is intentionally outside @lifecycle_mutex: it's a
+        # blocking HTTP call, and holding the lifecycle lock across it would
+        # block a concurrent stop_polling_for_definitions! for the full request
+        # timeout.
+        fetch_flag_definitions
 
-          if @config[:enable_polling] && !@polling_thread
+        @lifecycle_mutex.synchronize do
+          # .alive? guards against a prior polling thread that died abnormally
+          # (e.g. error_handler itself raised); without it @polling_thread would
+          # be non-nil-but-dead and we'd silently refuse to restart polling.
+          if @config[:enable_polling] && (@polling_thread.nil? || !@polling_thread.alive?)
             @polling_mutex.synchronize { @stop_polling = false }
             @polling_thread = Thread.new do
               loop do
@@ -72,14 +85,14 @@ module Mixpanel
                 begin
                   fetch_flag_definitions
                 rescue StandardError => e
-                  @error_handler.handle(e) if @error_handler
+                  safe_handle_error(e)
                 end
               end
             end
           end
         end
       rescue StandardError => e
-        @error_handler.handle(e) if @error_handler
+        safe_handle_error(e)
       end
 
       def stop_polling_for_definitions!
@@ -169,6 +182,16 @@ module Mixpanel
       end
 
       private
+
+      # Wrap @error_handler.handle so a misbehaving handler can't kill the
+      # polling thread mid-loop — that would leave @polling_thread non-nil but
+      # dead, and (without the .alive? check in start) silently prevent restart.
+      def safe_handle_error(error)
+        @error_handler.handle(error) if @error_handler
+      rescue StandardError
+        # Swallow: keeping the polling loop alive is more important than
+        # propagating a broken handler's failure.
+      end
 
       def fetch_flag_definitions
         response = call_flags_endpoint
