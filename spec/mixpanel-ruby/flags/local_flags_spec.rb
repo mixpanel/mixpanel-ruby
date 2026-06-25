@@ -882,5 +882,51 @@ describe Mixpanel::Flags::LocalFlagsProvider do
         polling_provider.stop_polling_for_definitions!
       end
     end
+
+    it 'stop arriving during the initial fetch wins; start does not spawn a thread' do
+      fetch_in_progress = Queue.new
+      fetch_release = Queue.new
+
+      stub_request(:get, endpoint_url_regex).to_return do |_req|
+        fetch_in_progress << true
+        fetch_release.pop
+        {
+          status: 200,
+          body: { code: 200, flags: [] }.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        }
+      end
+
+      polling_provider = Mixpanel::Flags::LocalFlagsProvider.new(
+        test_token,
+        { enable_polling: true, polling_interval_in_seconds: 30 },
+        mock_tracker,
+        mock_error_handler
+      )
+
+      starter = Thread.new { polling_provider.start_polling_for_definitions! }
+      begin
+        # Wait until start is blocked inside the initial fetch.
+        Timeout.timeout(5) { fetch_in_progress.pop }
+
+        # Stop arrives while start is mid-fetch (start has already cleared
+        # @stop_polling, so this is the bad case where stop's set must "win"
+        # despite happening between start's clear and start's spawn-decision).
+        polling_provider.stop_polling_for_definitions!
+
+        # Let start finish its fetch and reach the lifecycle check.
+        fetch_release << true
+        starter.join
+
+        # No polling thread should have been spawned — stop's postcondition
+        # (polling is off when stop returns) must hold even when start was
+        # mid-fetch at the time of the stop call.
+        expect(polling_provider.instance_variable_get(:@polling_thread)).to be_nil
+      ensure
+        fetch_release << true
+        starter&.join
+        polling_provider.stop_polling_for_definitions!
+      end
+    end
   end
 end

@@ -56,6 +56,15 @@ module Mixpanel
       # Start polling for flag definitions
       # Fetches immediately, then at regular intervals if polling enabled
       def start_polling_for_definitions!
+        # Clear @stop_polling BEFORE the initial fetch so a concurrent
+        # stop_polling_for_definitions! arriving during the fetch can flip it
+        # back to true and signal "abandon start". Under @polling_mutex, writes
+        # to @stop_polling are linearized: whichever of {start's clear, stop's
+        # set} happened latest is what we observe under the lifecycle lock
+        # below — i.e. last-writer-wins semantics preserve stop's postcondition
+        # (polling is off when stop returns) even across the unguarded fetch.
+        @polling_mutex.synchronize { @stop_polling = false }
+
         # Initial fetch is intentionally outside @lifecycle_mutex: it's a
         # blocking HTTP call, and holding the lifecycle lock across it would
         # block a concurrent stop_polling_for_definitions! for the full request
@@ -63,11 +72,15 @@ module Mixpanel
         fetch_flag_definitions
 
         @lifecycle_mutex.synchronize do
+          # If a stop arrived during/after our @stop_polling clear above, abort
+          # — the user's stop "wins" because it's the most recent intent.
+          stop_requested = @polling_mutex.synchronize { @stop_polling }
+
           # .alive? guards against a prior polling thread that died abnormally
           # (e.g. error_handler itself raised); without it @polling_thread would
           # be non-nil-but-dead and we'd silently refuse to restart polling.
-          if @config[:enable_polling] && (@polling_thread.nil? || !@polling_thread.alive?)
-            @polling_mutex.synchronize { @stop_polling = false }
+          if !stop_requested && @config[:enable_polling] &&
+             (@polling_thread.nil? || !@polling_thread.alive?)
             @polling_thread = Thread.new do
               loop do
                 # Check @stop_polling INSIDE the mutex (before and after wait)
