@@ -1,4 +1,5 @@
 require 'json'
+require 'timeout'
 require 'mixpanel-ruby/flags/local_flags_provider'
 require 'mixpanel-ruby/flags/types'
 require 'webmock/rspec'
@@ -771,7 +772,10 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       )
 
       polling_provider.start_polling_for_definitions!
-      sleep 0.1 # let the polling thread enter the condition wait
+      # Wait until the polling thread is parked on the condition variable (status
+      # 'sleep') so the spec deterministically exercises the CV-wakeup path.
+      polling_thread = polling_provider.instance_variable_get(:@polling_thread)
+      Timeout.timeout(2) { sleep 0.01 until polling_thread.status == 'sleep' }
 
       t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       polling_provider.stop_polling_for_definitions!
@@ -811,13 +815,18 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       )
 
       polling_provider.start_polling_for_definitions!
-      second_fetch_started.pop # 2nd fetch is now blocked in the polling thread
+      # Bounded wait: if a regression keeps the polling thread from reaching the
+      # second fetch, fail fast rather than hanging the suite.
+      Timeout.timeout(5) { second_fetch_started.pop }
 
       # Trigger shutdown while the polling thread is mid-fetch (NOT on the CV),
       # so the broadcast goes to no waiter. Run it in a thread so we can release
       # the fetch afterwards.
       stopper = Thread.new { polling_provider.stop_polling_for_definitions! }
-      sleep 0.05 # give stopper time to set @stop_polling + broadcast
+      # Wait until the stopper has set @stop_polling and broadcast, so releasing
+      # the fetch deterministically lands in the lost-wakeup window this spec
+      # targets.
+      Timeout.timeout(2) { sleep 0.01 until polling_provider.instance_variable_get(:@stop_polling) }
 
       t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       second_fetch_release << true
