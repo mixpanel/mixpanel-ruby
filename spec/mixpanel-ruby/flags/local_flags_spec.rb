@@ -772,15 +772,20 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       )
 
       polling_provider.start_polling_for_definitions!
-      # Wait until the polling thread is parked on the condition variable (status
-      # 'sleep') so the spec deterministically exercises the CV-wakeup path.
-      polling_thread = polling_provider.instance_variable_get(:@polling_thread)
-      Timeout.timeout(2) { sleep 0.01 until polling_thread.status == 'sleep' }
+      begin
+        # Wait until the polling thread is parked on the condition variable
+        # (status 'sleep') so the spec deterministically exercises the CV-wakeup
+        # path.
+        polling_thread = polling_provider.instance_variable_get(:@polling_thread)
+        Timeout.timeout(2) { sleep 0.01 until polling_thread.status == 'sleep' }
 
-      t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      polling_provider.stop_polling_for_definitions!
-      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
-      expect(elapsed).to be < 1.0
+        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        polling_provider.stop_polling_for_definitions!
+        elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
+        expect(elapsed).to be < 1.0
+      ensure
+        polling_provider.stop_polling_for_definitions!
+      end
     end
 
     it 'shuts down promptly when stop races an in-flight fetch' do
@@ -815,29 +820,39 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       )
 
       polling_provider.start_polling_for_definitions!
-      # Bounded wait: if a regression keeps the polling thread from reaching the
-      # second fetch, fail fast rather than hanging the suite.
-      Timeout.timeout(5) { second_fetch_started.pop }
+      begin
+        # Bounded wait: if a regression keeps the polling thread from reaching
+        # the second fetch, fail fast rather than hanging the suite.
+        Timeout.timeout(5) { second_fetch_started.pop }
 
-      # Trigger shutdown while the polling thread is mid-fetch (NOT on the CV),
-      # so the broadcast goes to no waiter. Run it in a thread so we can release
-      # the fetch afterwards.
-      stopper = Thread.new { polling_provider.stop_polling_for_definitions! }
-      # Wait until the stopper has set @stop_polling and broadcast, so releasing
-      # the fetch deterministically lands in the lost-wakeup window this spec
-      # targets.
-      Timeout.timeout(2) { sleep 0.01 until polling_provider.instance_variable_get(:@stop_polling) }
+        # Trigger shutdown while the polling thread is mid-fetch (NOT on the
+        # CV), so the broadcast goes to no waiter. Run it in a thread so we can
+        # release the fetch afterwards.
+        stopper = Thread.new { polling_provider.stop_polling_for_definitions! }
+        # Wait until the stopper has set @stop_polling and broadcast, so
+        # releasing the fetch deterministically lands in the lost-wakeup window
+        # this spec targets.
+        Timeout.timeout(2) { sleep 0.01 until polling_provider.instance_variable_get(:@stop_polling) }
 
-      t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      second_fetch_release << true
-      stopper.join
-      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
+        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        second_fetch_release << true
+        stopper.join
+        elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
 
-      # With the predicate-inside-mutex check, the polling thread re-enters the
-      # mutex after fetch, sees @stop_polling = true, skips the wait, and breaks
-      # immediately. Without it, the thread would call wait(1.0 s), ride out the
-      # full interval, and only then break — elapsed would be ~1 s.
-      expect(elapsed).to be < 0.5
+        # With the predicate-inside-mutex check, the polling thread re-enters
+        # the mutex after fetch, sees @stop_polling = true, skips the wait, and
+        # breaks immediately. Without it, the thread would call wait(1.0 s),
+        # ride out the full interval, and only then break — elapsed would be
+        # ~1 s.
+        expect(elapsed).to be < 0.5
+      ensure
+        # Unblock any in-flight stub fetch in case we raised before releasing
+        # it normally — otherwise the polling thread stays blocked at
+        # second_fetch_release.pop and stop_polling_for_definitions!'s join
+        # would hang the suite.
+        second_fetch_release << true
+        polling_provider.stop_polling_for_definitions!
+      end
     end
   end
 end
