@@ -85,10 +85,19 @@ module Mixpanel
 
       decoded_message = JSON.load(message)
       api_key = decoded_message["api_key"]
+      credentials = decoded_message["credentials"]
       data = Base64.encode64(decoded_message["data"].to_json).gsub("\n", '')
 
       form_data = {"data" => data, "verbose" => 1}
-      form_data.merge!("api_key" => api_key) if api_key
+
+      # Use service account credentials if provided, otherwise fall back to API key
+      if credentials
+        form_data.merge!("username" => credentials["username"])
+        form_data.merge!("secret" => credentials["secret"])
+        form_data.merge!("project_id" => credentials["project_id"])
+      elsif api_key
+        form_data.merge!("api_key" => api_key)
+      end
 
       begin
         response_code, response_body = request(endpoint, form_data)

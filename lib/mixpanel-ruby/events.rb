@@ -89,17 +89,17 @@ module Mixpanel
     #
     #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #
-    #     # Track that user "12345"'s credit card was declined
+    #     # Using deprecated API key (still supported)
     #     tracker.import("API_KEY", "12345", "Credit Card Declined")
     #
-    #     # Properties describe the circumstances of the event,
-    #     # or aspects of the source or user associated with the event
-    #     tracker.import("API_KEY", "12345", "Welcome Email Sent", {
+    #     # Using service account credentials (recommended)
+    #     credentials = Mixpanel::ServiceAccountCredentials.new(username, secret, project_id)
+    #     tracker.import(credentials, "12345", "Welcome Email Sent", {
     #         'Email Template' => 'Pretty Pink Welcome',
     #         'User Sign-up Cohort' => 'July 2013',
     #         'time' => 1369353600,
     #     })
-    def import(api_key, distinct_id, event, properties={}, ip=nil)
+    def import(api_key_or_credentials, distinct_id, event, properties={}, ip=nil)
       properties = {
         'distinct_id' => distinct_id,
         'token' => @token,
@@ -116,8 +116,14 @@ module Mixpanel
 
       message = {
         'data' => data,
-        'api_key' => api_key,
       }
+
+      # Support both service account credentials and legacy API key
+      if api_key_or_credentials.is_a?(ServiceAccountCredentials)
+        message['credentials'] = api_key_or_credentials
+      else
+        message['api_key'] = api_key_or_credentials
+      end
 
       ret = true
       begin

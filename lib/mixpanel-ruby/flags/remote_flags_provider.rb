@@ -11,7 +11,7 @@ module Mixpanel
       }.freeze
 
       # @param token [String] Mixpanel project token
-      # @param config [Hash] Remote flags configuration
+      # @param config [Hash] Remote flags configuration (may include :credentials)
       # @param tracker_callback [Proc] Callback to track events
       # @param error_handler [Mixpanel::ErrorHandler] Error handler
       def initialize(token, config, tracker_callback, error_handler)
@@ -22,6 +22,9 @@ module Mixpanel
           api_host: merged_config[:api_host],
           request_timeout_in_seconds: merged_config[:request_timeout_in_seconds]
         }
+
+        # Pass credentials if provided in config
+        provider_config[:credentials] = merged_config[:credentials] if merged_config[:credentials]
 
         super(provider_config, '/flags', tracker_callback, 'remote', error_handler)
       end

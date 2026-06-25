@@ -73,4 +73,29 @@ describe Mixpanel::Events do
         }
     } ]])
   end
+
+  it 'should send a well formed import/ message with service account credentials' do
+    credentials = Mixpanel::ServiceAccountCredentials.new('test-user', 'test-secret', 'test-project-123')
+    @events.import(credentials, 'TEST ID', 'Test Event', {
+        'Circumstances' => 'During a test'
+    })
+
+    expect(@log.length).to eq(1)
+    expect(@log[0][0]).to eq(:import)
+
+    message = @log[0][1]
+    expect(message['credentials']).to eq(credentials)
+    expect(message['api_key']).to be_nil
+    expect(message['data']).to eq({
+        'event' => 'Test Event',
+        'properties' => {
+            'Circumstances' => 'During a test',
+            'distinct_id' => 'TEST ID',
+            'mp_lib' => 'ruby',
+            '$lib_version' => Mixpanel::VERSION,
+            'token' => 'TEST TOKEN',
+            'time' => @time_now.to_i * 1000
+        }
+    })
+  end
 end
