@@ -19,7 +19,12 @@ module Mixpanel
       # @param tracker_callback [Proc] Callback to track events
       # @param error_handler [Mixpanel::ErrorHandler] Error handler
       def initialize(token, config, tracker_callback, error_handler)
-        @config = DEFAULT_CONFIG.merge(config || {})
+        # compact: an explicit nil from the caller (e.g.
+        # polling_interval_in_seconds: nil) must not override a sane default —
+        # ConditionVariable#wait treats a nil timeout as "wait forever", which
+        # would silently disable polling instead of failing loudly like the
+        # previous sleep(nil) did.
+        @config = DEFAULT_CONFIG.merge((config || {}).compact)
 
         provider_config = {
           token: token,
