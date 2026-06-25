@@ -116,8 +116,8 @@ describe Mixpanel::Flags::LocalFlagsProvider do
     end
 
     it 'falls back to the default polling_interval_in_seconds when caller passes nil' do
-      # nil must not silently override the default — CV#wait treats a nil
-      # timeout as "wait forever", which would disable polling.
+      # nil must not silently override the default — CV#wait(mutex, nil) blocks
+      # indefinitely, which would silently disable polling.
       expect do
         Mixpanel::Flags::LocalFlagsProvider.new(
           test_token,

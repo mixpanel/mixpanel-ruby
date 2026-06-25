@@ -20,10 +20,10 @@ module Mixpanel
       # @param error_handler [Mixpanel::ErrorHandler] Error handler
       def initialize(token, config, tracker_callback, error_handler)
         # compact: an explicit nil from the caller (e.g.
-        # polling_interval_in_seconds: nil) must not override a sane default —
-        # ConditionVariable#wait treats a nil timeout as "wait forever", which
-        # would silently disable polling instead of failing loudly like the
-        # previous sleep(nil) did.
+        # polling_interval_in_seconds: nil) must not override a sane default.
+        # Both the previous sleep(nil) and the current
+        # ConditionVariable#wait(mutex, nil) block indefinitely, which would
+        # silently disable polling — fall back to the default instead.
         @config = DEFAULT_CONFIG.merge((config || {}).compact)
 
         interval = @config[:polling_interval_in_seconds]
