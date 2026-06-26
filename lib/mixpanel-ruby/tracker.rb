@@ -62,7 +62,12 @@ module Mixpanel
     # If a block is provided, it is passed a type (one of :event or :profile_update)
     # and a string message. This same format is accepted by Mixpanel::Consumer#send!
     # and Mixpanel::BufferedConsumer#send!
-    def initialize(token, error_handler=nil, local_flags_config: nil, remote_flags_config: nil, &block)
+    #
+    # Optional parameters:
+    # - credentials: ServiceAccountCredentials for feature flags authentication
+    # - local_flags_config: Configuration hash for local feature flags
+    # - remote_flags_config: Configuration hash for remote feature flags
+    def initialize(token, error_handler=nil, credentials: nil, local_flags_config: nil, remote_flags_config: nil, &block)
       super(token, error_handler, &block)
       @token = token
       @people = People.new(token, error_handler, &block)
@@ -70,9 +75,13 @@ module Mixpanel
 
       # Initialize local flags if config provided
       if local_flags_config
+        # Inject credentials into config if provided
+        config = local_flags_config.dup
+        config[:credentials] ||= credentials if credentials
+
         @local_flags = Flags::LocalFlagsProvider.new(
           token,
-          local_flags_config,
+          config,
           method(:track),  # Pass bound method as callback
           error_handler || ErrorHandler.new
         )
@@ -80,9 +89,13 @@ module Mixpanel
 
       # Initialize remote flags if config provided
       if remote_flags_config
+        # Inject credentials into config if provided
+        config = remote_flags_config.dup
+        config[:credentials] ||= credentials if credentials
+
         @remote_flags = Flags::RemoteFlagsProvider.new(
           token,
-          remote_flags_config,
+          config,
           method(:track),  # Pass bound method as callback
           error_handler || ErrorHandler.new
         )

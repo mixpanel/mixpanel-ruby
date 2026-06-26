@@ -63,6 +63,16 @@ API keys for import operations and feature flags.
         'your-project-id'
     )
 
+    # Pass credentials directly to the tracker
+    tracker = Mixpanel::Tracker.new(
+        YOUR_MIXPANEL_TOKEN,
+        nil,
+        credentials: credentials,
+        local_flags_config: {},
+        remote_flags_config: {}
+    )
+
+    # Or pass credentials in the config if you need different credentials per provider
     tracker = Mixpanel::Tracker.new(
         YOUR_MIXPANEL_TOKEN,
         nil,
