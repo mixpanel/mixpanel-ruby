@@ -26,5 +26,10 @@ module Mixpanel
         'project_id' => @project_id
       }
     end
+
+    # Explicit to_json method for direct .to_json calls
+    def to_json(*args)
+      as_json.to_json(*args)
+    end
   end
 end
