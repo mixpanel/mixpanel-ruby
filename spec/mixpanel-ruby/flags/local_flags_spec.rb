@@ -15,6 +15,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
     Mixpanel::Flags::LocalFlagsProvider.new(
       test_token,
       config,
+      nil,  # credentials
       mock_tracker,
       mock_error_handler
     )

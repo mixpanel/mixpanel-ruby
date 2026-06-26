@@ -15,6 +15,7 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
     Mixpanel::Flags::RemoteFlagsProvider.new(
       test_token,
       config,
+      nil,  # credentials
       mock_tracker,
       mock_error_handler
     )
