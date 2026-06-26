@@ -72,14 +72,6 @@ API keys for import operations and feature flags.
         remote_flags_config: {}
     )
 
-    # Or pass credentials in the config if you need different credentials per provider
-    tracker = Mixpanel::Tracker.new(
-        YOUR_MIXPANEL_TOKEN,
-        nil,
-        local_flags_config: { credentials: credentials },
-        remote_flags_config: { credentials: credentials }
-    )
-
     # Use feature flags
     is_enabled = tracker.remote_flags.is_enabled?('my-flag', { 'distinct_id' => 'User1' })
 

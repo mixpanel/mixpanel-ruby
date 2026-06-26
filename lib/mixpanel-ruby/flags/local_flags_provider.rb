@@ -15,20 +15,19 @@ module Mixpanel
       }.freeze
 
       # @param token [String] Mixpanel project token
-      # @param config [Hash] Local flags configuration (may include :credentials)
+      # @param config [Hash] Local flags configuration
+      # @param credentials [ServiceAccountCredentials, nil] Optional service account credentials
       # @param tracker_callback [Proc] Callback to track events
       # @param error_handler [Mixpanel::ErrorHandler] Error handler
-      def initialize(token, config, tracker_callback, error_handler)
+      def initialize(token, config, credentials, tracker_callback, error_handler)
         @config = DEFAULT_CONFIG.merge(config || {})
 
         provider_config = {
           token: token,
           api_host: @config[:api_host],
-          request_timeout_in_seconds: @config[:request_timeout_in_seconds]
+          request_timeout_in_seconds: @config[:request_timeout_in_seconds],
+          credentials: credentials
         }
-
-        # Pass credentials if provided in config
-        provider_config[:credentials] = @config[:credentials] if @config[:credentials]
 
         super(provider_config, '/flags/definitions', tracker_callback, 'local', error_handler)
 

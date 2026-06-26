@@ -145,23 +145,8 @@ describe Mixpanel::Tracker do
       )
 
       # Verify credentials were passed to providers by checking internal state
-      expect(tracker.local_flags.instance_variable_get(:@config)[:credentials]).to eq(credentials)
-      expect(tracker.remote_flags.instance_variable_get(:@config)[:credentials]).to eq(credentials)
-    end
-
-    it 'should prefer credentials in config over direct credentials parameter' do
-      direct_credentials = Mixpanel::ServiceAccountCredentials.new('user1', 'secret1', 'project1')
-      config_credentials = Mixpanel::ServiceAccountCredentials.new('user2', 'secret2', 'project2')
-
-      tracker = Mixpanel::Tracker.new(
-        'TEST TOKEN',
-        nil,
-        credentials: direct_credentials,
-        local_flags_config: { credentials: config_credentials }
-      )
-
-      # Config credentials should take precedence
-      expect(tracker.local_flags.instance_variable_get(:@config)[:credentials]).to eq(config_credentials)
+      expect(tracker.local_flags.instance_variable_get(:@credentials)).to eq(credentials)
+      expect(tracker.remote_flags.instance_variable_get(:@credentials)).to eq(credentials)
     end
   end
 end

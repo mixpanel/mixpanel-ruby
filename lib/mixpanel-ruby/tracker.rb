@@ -75,13 +75,10 @@ module Mixpanel
 
       # Initialize local flags if config provided
       if local_flags_config
-        # Inject credentials into config if provided
-        config = local_flags_config.dup
-        config[:credentials] ||= credentials if credentials
-
         @local_flags = Flags::LocalFlagsProvider.new(
           token,
-          config,
+          local_flags_config,
+          credentials,
           method(:track),  # Pass bound method as callback
           error_handler || ErrorHandler.new
         )
@@ -89,13 +86,10 @@ module Mixpanel
 
       # Initialize remote flags if config provided
       if remote_flags_config
-        # Inject credentials into config if provided
-        config = remote_flags_config.dup
-        config[:credentials] ||= credentials if credentials
-
         @remote_flags = Flags::RemoteFlagsProvider.new(
           token,
-          config,
+          remote_flags_config,
+          credentials,
           method(:track),  # Pass bound method as callback
           error_handler || ErrorHandler.new
         )
