@@ -741,6 +741,7 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       polling_provider = Mixpanel::Flags::LocalFlagsProvider.new(
         test_token,
         { enable_polling: true, polling_interval_in_seconds: 0.1 },
+        nil,  # credentials
         mock_tracker,
         mock_error_handler
       )
