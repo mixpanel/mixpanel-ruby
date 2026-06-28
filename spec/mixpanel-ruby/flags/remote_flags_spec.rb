@@ -439,4 +439,38 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
       provider.send(:track_exposure_event, 'test_flag', variant, test_context)
     end
   end
+
+  describe 'service account credentials' do
+    it 'uses service account credentials for authentication' do
+      credentials = Mixpanel::ServiceAccountCredentials.new('test-user', 'test-secret', 'test-project')
+
+      response = create_success_response({
+        'test_flag' => {
+          'variant_key' => 'treatment',
+          'variant_value' => 'treatment'
+        }
+      })
+
+      stub_request(:get, endpoint_url_regex)
+        .with(
+          basic_auth: ['test-user', 'test-secret']
+        )
+        .to_return(
+          status: 200,
+          body: response.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+
+      credentials_provider = Mixpanel::Flags::RemoteFlagsProvider.new(
+        test_token,
+        config,
+        credentials,
+        mock_tracker,
+        mock_error_handler
+      )
+
+      result = credentials_provider.get_variant_value('test_flag', 'fallback', test_context, report_exposure: false)
+      expect(result).to eq('treatment')
+    end
+  end
 end
