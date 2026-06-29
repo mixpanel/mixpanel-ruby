@@ -81,7 +81,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
           variant_source: Mixpanel::Flags::VariantSource::LOCAL
         )
       else
-        fallback.as_fallback(Mixpanel::Flags::FallbackReason::FLAG_NOT_FOUND)
+        fallback.as_fallback(Mixpanel::Flags::FallbackReason.flag_not_found)
       end
     end
   end
@@ -93,7 +93,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
   end
 
   def setup_flag_not_found
-    setup_fallback(Mixpanel::Flags::FallbackReason::FLAG_NOT_FOUND)
+    setup_fallback(Mixpanel::Flags::FallbackReason.flag_not_found)
   end
 
   # --- Metadata ---
@@ -318,7 +318,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
   # --- NO_ROLLOUT_MATCH (flag exists, no rollout matched) ---
 
   describe 'no rollout match' do
-    before { setup_fallback(Mixpanel::Flags::FallbackReason::NO_ROLLOUT_MATCH) }
+    before { setup_fallback(Mixpanel::Flags::FallbackReason.no_rollout_match) }
 
     it 'returns DEFAULT reason without an error code' do
       result = provider.fetch_boolean_value(flag_key: 'flag', default_value: true)
@@ -338,7 +338,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
   # --- MISSING_CONTEXT_KEY ---
 
   describe 'missing context key' do
-    before { setup_fallback(Mixpanel::Flags::FallbackReason::MISSING_CONTEXT_KEY) }
+    before { setup_fallback(Mixpanel::Flags::FallbackReason.missing_context_key('distinct_id')) }
 
     it 'returns TARGETING_KEY_MISSING for boolean' do
       result = provider.fetch_boolean_value(flag_key: 'flag', default_value: false)
@@ -347,31 +347,39 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       expect(result.reason).to eq('ERROR')
     end
 
-    it 'returns TARGETING_KEY_MISSING for string' do
+    it 'returns TARGETING_KEY_MISSING for string and forwards the missing key as error_message' do
       result = provider.fetch_string_value(flag_key: 'flag', default_value: 'default')
       expect(result.value).to eq('default')
       expect(result.error_code).to eq('TARGETING_KEY_MISSING')
+      expect(result.error_message).to eq('distinct_id')
       expect(result.reason).to eq('ERROR')
     end
   end
 
-  # --- BACKEND_ERROR ---
+  # --- BACKEND_ERROR (SDK-83: forwards the backend's response message) ---
 
   describe 'backend error' do
-    before { setup_fallback(Mixpanel::Flags::FallbackReason::BACKEND_ERROR) }
+    before do
+      setup_fallback(
+        Mixpanel::Flags::FallbackReason.backend_error(
+          'HTTP 400: distinct_id must be provided in evalContext as a string'
+        )
+      )
+    end
 
-    it 'maps to GENERAL' do
+    it 'maps to GENERAL and forwards the backend message as error_message' do
       result = provider.fetch_string_value(flag_key: 'flag', default_value: 'default')
       expect(result.value).to eq('default')
       expect(result.error_code).to eq('GENERAL')
       expect(result.reason).to eq('ERROR')
+      expect(result.error_message).to include('distinct_id must be provided')
     end
   end
 
   # --- NOT_READY ---
 
   describe 'not ready' do
-    before { setup_fallback(Mixpanel::Flags::FallbackReason::NOT_READY) }
+    before { setup_fallback(Mixpanel::Flags::FallbackReason.not_ready) }
 
     it 'maps to PROVIDER_NOT_READY' do
       result = provider.fetch_boolean_value(flag_key: 'flag', default_value: true)

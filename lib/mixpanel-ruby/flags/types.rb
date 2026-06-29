@@ -10,16 +10,50 @@ module Mixpanel
     end
 
     # Why the SDK returned the developer fallback. Only meaningful when
-    # SelectedVariant#variant_source == VariantSource::FALLBACK. Matches the
-    # constant set used by mixpanel-php so the OpenFeature wrapper can map to
-    # the spec-correct error code instead of collapsing every fallback to
-    # FLAG_NOT_FOUND.
-    module FallbackReason
-      FLAG_NOT_FOUND      = 'FLAG_NOT_FOUND'.freeze
-      MISSING_CONTEXT_KEY = 'MISSING_CONTEXT_KEY'.freeze
-      NO_ROLLOUT_MATCH    = 'NO_ROLLOUT_MATCH'.freeze
-      BACKEND_ERROR       = 'BACKEND_ERROR'.freeze
-      NOT_READY           = 'NOT_READY'.freeze
+    # SelectedVariant#variant_source == VariantSource::FALLBACK.
+    #
+    # `kind` is the discriminator (matches the PHP constant set). `message`
+    # is set on the reasons that carry useful detail (BACKEND_ERROR with the
+    # backend's response, MISSING_CONTEXT_KEY with the missing attribute);
+    # nil otherwise. The OpenFeature wrapper dispatches on kind and forwards
+    # message into ResolutionDetails#error_message.
+    class FallbackReason
+      KINDS = %i[flag_not_found missing_context_key no_rollout_match backend_error not_ready].freeze
+
+      attr_reader :kind, :message
+
+      def initialize(kind, message: nil)
+        raise ArgumentError, "Unknown FallbackReason kind: #{kind.inspect}" unless KINDS.include?(kind)
+
+        @kind = kind
+        @message = message
+        freeze
+      end
+
+      def ==(other)
+        other.is_a?(FallbackReason) && other.kind == @kind && other.message == @message
+      end
+      alias_method :eql?, :==
+
+      def hash
+        [self.class, @kind, @message].hash
+      end
+
+      def to_h
+        { kind: @kind, message: @message }.compact
+      end
+
+      # Factory methods. Reasons without meaningful detail return a frozen
+      # singleton; reasons with detail allocate per call.
+      def self.flag_not_found;      FLAG_NOT_FOUND;   end
+      def self.no_rollout_match;    NO_ROLLOUT_MATCH; end
+      def self.not_ready;           NOT_READY;        end
+      def self.missing_context_key(key = nil); new(:missing_context_key, message: key); end
+      def self.backend_error(message); new(:backend_error, message: message); end
+
+      FLAG_NOT_FOUND   = new(:flag_not_found)
+      NO_ROLLOUT_MATCH = new(:no_rollout_match)
+      NOT_READY        = new(:not_ready)
     end
 
     # Selected variant returned from flag evaluation

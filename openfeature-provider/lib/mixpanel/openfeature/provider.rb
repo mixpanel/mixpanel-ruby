@@ -69,37 +69,42 @@ module Mixpanel
 
         begin
           result = @flags_provider.get_variant(flag_key, fallback, context, report_exposure: true)
-        rescue StandardError
-          return error_result(default_value, ::OpenFeature::SDK::Provider::ErrorCode::GENERAL)
+        rescue StandardError => e
+          return error_result(default_value, ::OpenFeature::SDK::Provider::ErrorCode::GENERAL, e.message)
         end
 
         # variant_source distinguishes local / remote / fallback. When fallback,
         # fallback_reason carries the specific reason (PHP-aligned constants)
         # so we can map each to the spec-correct OpenFeature response instead
-        # of collapsing every fallback to FLAG_NOT_FOUND.
-        case result.fallback_reason
-        when ::Mixpanel::Flags::FallbackReason::FLAG_NOT_FOUND
+        # of collapsing every fallback to FLAG_NOT_FOUND. SDK-83: BACKEND_ERROR
+        # also carries the backend message, forwarded as error_message.
+        case result.fallback_reason&.kind
+        when :flag_not_found
           return ::OpenFeature::SDK::Provider::ResolutionDetails.new(
             value: default_value,
             error_code: ::OpenFeature::SDK::Provider::ErrorCode::FLAG_NOT_FOUND,
             reason: ::OpenFeature::SDK::Provider::Reason::DEFAULT
           )
-        when ::Mixpanel::Flags::FallbackReason::MISSING_CONTEXT_KEY
-          return ::OpenFeature::SDK::Provider::ResolutionDetails.new(
-            value: default_value,
-            error_code: ::OpenFeature::SDK::Provider::ErrorCode::TARGETING_KEY_MISSING,
-            reason: ::OpenFeature::SDK::Provider::Reason::ERROR
+        when :missing_context_key
+          return error_result(
+            default_value,
+            ::OpenFeature::SDK::Provider::ErrorCode::TARGETING_KEY_MISSING,
+            result.fallback_reason.message
           )
-        when ::Mixpanel::Flags::FallbackReason::NO_ROLLOUT_MATCH
+        when :no_rollout_match
           # Flag exists, user just didn't match any rollout — per the
           # OpenFeature spec this is `reason: DEFAULT` with no error.
           return ::OpenFeature::SDK::Provider::ResolutionDetails.new(
             value: default_value,
             reason: ::OpenFeature::SDK::Provider::Reason::DEFAULT
           )
-        when ::Mixpanel::Flags::FallbackReason::BACKEND_ERROR
-          return error_result(default_value, ::OpenFeature::SDK::Provider::ErrorCode::GENERAL)
-        when ::Mixpanel::Flags::FallbackReason::NOT_READY
+        when :backend_error
+          return error_result(
+            default_value,
+            ::OpenFeature::SDK::Provider::ErrorCode::GENERAL,
+            result.fallback_reason.message
+          )
+        when :not_ready
           return error_result(default_value, ::OpenFeature::SDK::Provider::ErrorCode::PROVIDER_NOT_READY)
         end
 
@@ -180,10 +185,11 @@ module Mixpanel
         end
       end
 
-      def error_result(default_value, error_code)
+      def error_result(default_value, error_code, error_message = nil)
         ::OpenFeature::SDK::Provider::ResolutionDetails.new(
           value: default_value,
           error_code: error_code,
+          error_message: error_message,
           reason: ::OpenFeature::SDK::Provider::Reason::ERROR
         )
       end

@@ -734,34 +734,36 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       expect(result.variant_key).not_to be_nil
     end
 
-    it 'tags missing flag as FALLBACK / FLAG_NOT_FOUND' do
+    it 'tags missing flag as FALLBACK / flag_not_found' do
       stub_flag_definitions([])
       provider.start_polling_for_definitions!
 
       result = provider.get_variant('missing', fallback, test_context)
       expect(result.variant_source).to eq(Mixpanel::Flags::VariantSource::FALLBACK)
-      expect(result.fallback_reason).to eq(Mixpanel::Flags::FallbackReason::FLAG_NOT_FOUND)
+      expect(result.fallback_reason.kind).to eq(:flag_not_found)
+      expect(result.fallback_reason.message).to be_nil
       expect(result.variant_value).to eq('fb')
     end
 
-    it 'tags missing context as FALLBACK / MISSING_CONTEXT_KEY' do
+    it 'tags missing context as FALLBACK / missing_context_key with the missing attribute' do
       flag = create_test_flag(context: 'distinct_id')
       stub_flag_definitions([flag])
       provider.start_polling_for_definitions!
 
       result = provider.get_variant('test_flag', fallback, {})
       expect(result.variant_source).to eq(Mixpanel::Flags::VariantSource::FALLBACK)
-      expect(result.fallback_reason).to eq(Mixpanel::Flags::FallbackReason::MISSING_CONTEXT_KEY)
+      expect(result.fallback_reason.kind).to eq(:missing_context_key)
+      expect(result.fallback_reason.message).to eq('distinct_id')
     end
 
-    it 'tags no-rollout-match as FALLBACK / NO_ROLLOUT_MATCH' do
+    it 'tags no-rollout-match as FALLBACK / no_rollout_match' do
       flag = create_test_flag(rollout_percentage: 0.0)
       stub_flag_definitions([flag])
       provider.start_polling_for_definitions!
 
       result = provider.get_variant('test_flag', fallback, test_context)
       expect(result.variant_source).to eq(Mixpanel::Flags::VariantSource::FALLBACK)
-      expect(result.fallback_reason).to eq(Mixpanel::Flags::FallbackReason::NO_ROLLOUT_MATCH)
+      expect(result.fallback_reason.kind).to eq(:no_rollout_match)
     end
   end
 

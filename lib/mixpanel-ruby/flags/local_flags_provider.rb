@@ -102,11 +102,11 @@ module Mixpanel
       def get_variant(flag_key, fallback_variant, context, report_exposure: true)
         flag = @flag_definitions[flag_key]
 
-        return fallback_variant.as_fallback(FallbackReason::FLAG_NOT_FOUND) unless flag
+        return fallback_variant.as_fallback(FallbackReason.flag_not_found) unless flag
 
         context_key = flag['context']
         unless context.key?(context_key) || context.key?(context_key.to_sym)
-          return fallback_variant.as_fallback(FallbackReason::MISSING_CONTEXT_KEY)
+          return fallback_variant.as_fallback(FallbackReason.missing_context_key(context_key))
         end
 
         context_value = context[context_key] || context[context_key.to_sym]
@@ -118,7 +118,7 @@ module Mixpanel
           selected_variant = get_assigned_variant(flag, context_value, flag_key, rollout) if rollout
         end
 
-        return fallback_variant.as_fallback(FallbackReason::NO_ROLLOUT_MATCH) unless selected_variant
+        return fallback_variant.as_fallback(FallbackReason.no_rollout_match) unless selected_variant
 
         track_exposure_event(flag_key, selected_variant, context) if report_exposure
         selected_variant.with_source(VariantSource::LOCAL)

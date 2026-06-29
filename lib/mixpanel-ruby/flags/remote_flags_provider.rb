@@ -63,7 +63,7 @@ module Mixpanel
         # so a missing key could mean the flag doesn't exist OR the user
         # isn't in any rollout. The remote SDK can't tell them apart without
         # server-side help — surface as FLAG_NOT_FOUND for now.
-        return fallback_variant.as_fallback(FallbackReason::FLAG_NOT_FOUND) unless selected_variant_data
+        return fallback_variant.as_fallback(FallbackReason.flag_not_found) unless selected_variant_data
 
         selected_variant = SelectedVariant.new(
           variant_key: selected_variant_data['variant_key'],
@@ -78,7 +78,12 @@ module Mixpanel
         return selected_variant
       rescue MixpanelError => e
         @error_handler.handle(e)
-        return fallback_variant.as_fallback(FallbackReason::BACKEND_ERROR)
+        # Attach the backend's message so the OpenFeature wrapper can forward
+        # it into ResolutionDetails#error_message — without this the caller
+        # sees a bare GENERAL error and has to dig through logs to find out
+        # the backend rejected the request (e.g. "distinct_id must be
+        # provided in evalContext as a string"). SDK-83.
+        return fallback_variant.as_fallback(FallbackReason.backend_error(e.message))
       end
 
       # Check if flag is enabled (for boolean flags)
