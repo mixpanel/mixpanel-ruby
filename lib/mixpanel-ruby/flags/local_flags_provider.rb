@@ -49,13 +49,13 @@ module Mixpanel
               begin
                 fetch_flag_definitions
               rescue StandardError => e
-                @error_handler.handle(e) if @error_handler
+                log_polling_error(e)
               end
             end
           end
         end
       rescue StandardError => e
-        @error_handler.handle(e) if @error_handler
+        log_polling_error(e)
       end
 
       def stop_polling_for_definitions!
@@ -140,6 +140,19 @@ module Mixpanel
       end
 
       private
+
+      # Surface polling-loop failures unconditionally. The default
+      # Mixpanel::ErrorHandler is a no-op, so dispatching only via
+      # @error_handler swallows schema drift (NoMethodError,
+      # JSON::ParserError, etc.) — the loop runs forever undetected.
+      # Always warn so the failure is visible without an error_handler
+      # being configured. Matches the convention in mixpanel-python /
+      # mixpanel-java / mixpanel-go / mixpanel-node, all of which log
+      # unconditionally and keep polling.
+      def log_polling_error(error)
+        warn "[Mixpanel] Failed to fetch flag definitions: #{error.class}: #{error.message}"
+        @error_handler.handle(error) if @error_handler
+      end
 
       def fetch_flag_definitions
         response = call_flags_endpoint

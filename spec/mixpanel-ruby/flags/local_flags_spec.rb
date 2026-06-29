@@ -755,5 +755,39 @@ describe Mixpanel::Flags::LocalFlagsProvider do
         polling_provider.stop_polling_for_definitions!
       end
     end
+
+    it 'warns to stderr when fetch raises and no error_handler is configured' do
+      stub_request(:get, endpoint_url_regex).to_return(status: 500, body: 'server down')
+
+      polling_provider = Mixpanel::Flags::LocalFlagsProvider.new(
+        test_token,
+        { enable_polling: false },
+        mock_tracker,
+        nil
+      )
+
+      expect { polling_provider.start_polling_for_definitions! }
+        .to output(/\[Mixpanel\] Failed to fetch flag definitions: Mixpanel::ServerError/).to_stderr
+    end
+
+    it 'surfaces unexpected errors (schema drift) instead of swallowing them silently' do
+      stub_flag_definitions([create_test_flag])
+
+      polling_provider = Mixpanel::Flags::LocalFlagsProvider.new(
+        test_token,
+        { enable_polling: false },
+        mock_tracker,
+        mock_error_handler
+      )
+
+      # Simulate schema drift: server returns a payload the parser doesn't expect.
+      # Without this fix the error would be dispatched only to @error_handler (whose
+      # default ErrorHandler#handle is a no-op) — operators would never notice.
+      allow(polling_provider).to receive(:fetch_flag_definitions).and_raise(NoMethodError, "undefined method `[]' for nil:NilClass")
+
+      expect(mock_error_handler).to receive(:handle).with(an_instance_of(NoMethodError))
+      expect { polling_provider.start_polling_for_definitions! }
+        .to output(/\[Mixpanel\] Failed to fetch flag definitions: NoMethodError/).to_stderr
+    end
   end
 end
