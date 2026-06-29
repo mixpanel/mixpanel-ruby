@@ -75,15 +75,25 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
   def setup_flag(flag_key, value, variant_key: 'variant-key')
     allow(mock_flags).to receive(:get_variant) do |key, fallback, _ctx, **_kwargs|
       if key == flag_key
-        Mixpanel::Flags::SelectedVariant.new(variant_key: variant_key, variant_value: value)
+        Mixpanel::Flags::SelectedVariant.new(
+          variant_key: variant_key,
+          variant_value: value,
+          variant_source: Mixpanel::Flags::VariantSource::LOCAL
+        )
       else
-        fallback
+        fallback.as_fallback(Mixpanel::Flags::FallbackReason::FLAG_NOT_FOUND)
       end
     end
   end
 
+  def setup_fallback(reason)
+    allow(mock_flags).to receive(:get_variant) do |_key, fallback, _ctx, **_kwargs|
+      fallback.as_fallback(reason)
+    end
+  end
+
   def setup_flag_not_found
-    allow(mock_flags).to receive(:get_variant) { |_key, fallback, _ctx, **_kwargs| fallback }
+    setup_fallback(Mixpanel::Flags::FallbackReason::FLAG_NOT_FOUND)
   end
 
   # --- Metadata ---
@@ -302,6 +312,72 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       expect(result.value).to eq({ 'default' => true })
       expect(result.error_code).to eq('FLAG_NOT_FOUND')
       expect(result.reason).to eq('DEFAULT')
+    end
+  end
+
+  # --- NO_ROLLOUT_MATCH (flag exists, no rollout matched) ---
+
+  describe 'no rollout match' do
+    before { setup_fallback(Mixpanel::Flags::FallbackReason::NO_ROLLOUT_MATCH) }
+
+    it 'returns DEFAULT reason without an error code' do
+      result = provider.fetch_boolean_value(flag_key: 'flag', default_value: true)
+      expect(result.value).to be true
+      expect(result.reason).to eq('DEFAULT')
+      expect(result.error_code).to be_nil
+    end
+
+    it 'works for strings' do
+      result = provider.fetch_string_value(flag_key: 'flag', default_value: 'default')
+      expect(result.value).to eq('default')
+      expect(result.reason).to eq('DEFAULT')
+      expect(result.error_code).to be_nil
+    end
+  end
+
+  # --- MISSING_CONTEXT_KEY ---
+
+  describe 'missing context key' do
+    before { setup_fallback(Mixpanel::Flags::FallbackReason::MISSING_CONTEXT_KEY) }
+
+    it 'returns TARGETING_KEY_MISSING for boolean' do
+      result = provider.fetch_boolean_value(flag_key: 'flag', default_value: false)
+      expect(result.value).to be false
+      expect(result.error_code).to eq('TARGETING_KEY_MISSING')
+      expect(result.reason).to eq('ERROR')
+    end
+
+    it 'returns TARGETING_KEY_MISSING for string' do
+      result = provider.fetch_string_value(flag_key: 'flag', default_value: 'default')
+      expect(result.value).to eq('default')
+      expect(result.error_code).to eq('TARGETING_KEY_MISSING')
+      expect(result.reason).to eq('ERROR')
+    end
+  end
+
+  # --- BACKEND_ERROR ---
+
+  describe 'backend error' do
+    before { setup_fallback(Mixpanel::Flags::FallbackReason::BACKEND_ERROR) }
+
+    it 'maps to GENERAL' do
+      result = provider.fetch_string_value(flag_key: 'flag', default_value: 'default')
+      expect(result.value).to eq('default')
+      expect(result.error_code).to eq('GENERAL')
+      expect(result.reason).to eq('ERROR')
+    end
+  end
+
+  # --- NOT_READY ---
+
+  describe 'not ready' do
+    before { setup_fallback(Mixpanel::Flags::FallbackReason::NOT_READY) }
+
+    it 'maps to PROVIDER_NOT_READY' do
+      result = provider.fetch_boolean_value(flag_key: 'flag', default_value: true)
+      expect(result.value).to be true
+      expect(result.error_code).to eq('PROVIDER_NOT_READY')
+      expect(result.reason).to eq('ERROR')
     end
   end
 

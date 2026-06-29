@@ -73,12 +73,34 @@ module Mixpanel
           return error_result(default_value, ::OpenFeature::SDK::Provider::ErrorCode::GENERAL)
         end
 
-        if result.equal?(fallback)
+        # variant_source distinguishes local / remote / fallback. When fallback,
+        # fallback_reason carries the specific reason (PHP-aligned constants)
+        # so we can map each to the spec-correct OpenFeature response instead
+        # of collapsing every fallback to FLAG_NOT_FOUND.
+        case result.fallback_reason
+        when ::Mixpanel::Flags::FallbackReason::FLAG_NOT_FOUND
           return ::OpenFeature::SDK::Provider::ResolutionDetails.new(
             value: default_value,
             error_code: ::OpenFeature::SDK::Provider::ErrorCode::FLAG_NOT_FOUND,
             reason: ::OpenFeature::SDK::Provider::Reason::DEFAULT
           )
+        when ::Mixpanel::Flags::FallbackReason::MISSING_CONTEXT_KEY
+          return ::OpenFeature::SDK::Provider::ResolutionDetails.new(
+            value: default_value,
+            error_code: ::OpenFeature::SDK::Provider::ErrorCode::TARGETING_KEY_MISSING,
+            reason: ::OpenFeature::SDK::Provider::Reason::ERROR
+          )
+        when ::Mixpanel::Flags::FallbackReason::NO_ROLLOUT_MATCH
+          # Flag exists, user just didn't match any rollout — per the
+          # OpenFeature spec this is `reason: DEFAULT` with no error.
+          return ::OpenFeature::SDK::Provider::ResolutionDetails.new(
+            value: default_value,
+            reason: ::OpenFeature::SDK::Provider::Reason::DEFAULT
+          )
+        when ::Mixpanel::Flags::FallbackReason::BACKEND_ERROR
+          return error_result(default_value, ::OpenFeature::SDK::Provider::ErrorCode::GENERAL)
+        when ::Mixpanel::Flags::FallbackReason::NOT_READY
+          return error_result(default_value, ::OpenFeature::SDK::Provider::ErrorCode::PROVIDER_NOT_READY)
         end
 
         value = result.variant_value
