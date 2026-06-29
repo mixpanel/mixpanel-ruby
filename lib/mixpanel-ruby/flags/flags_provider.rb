@@ -88,6 +88,14 @@ module Mixpanel
         distinct_id = context['distinct_id'] || context[:distinct_id]
 
         unless distinct_id
+          # Local eval succeeds when the flag's Variant Assignment Key is
+          # something other than distinct_id (e.g., device_id), but the
+          # exposure event still needs distinct_id to attribute the user.
+          # Surface the drop instead of silently returning so callers can
+          # see they need to include distinct_id in the context.
+          @error_handler&.handle(MixpanelError.new(
+            "Cannot track exposure event for flag '#{flag_key}' without a distinct_id in the context"
+          ))
           return
         end
 
