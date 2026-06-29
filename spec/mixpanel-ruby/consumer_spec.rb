@@ -36,6 +36,24 @@ describe Mixpanel::Consumer do
         with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'api_key' => 'API_KEY', 'verbose' => '1' })
     end
 
+    it 'should send a request to api.mixpanel.com/import with service account credentials' do
+      stub_request(:any, 'https://api.mixpanel.com/import').to_return({:body => '{"status": 1, "error": null}'})
+      credentials = {
+        'username' => 'test-user',
+        'secret' => 'test-secret',
+        'project_id' => 'test-project-123'
+      }
+      subject.send!(:import, {'data' => 'TEST EVENT MESSAGE', 'credentials' => credentials}.to_json)
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import').
+        with(:body => {
+          'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=',
+          'username' => 'test-user',
+          'secret' => 'test-secret',
+          'project_id' => 'test-project-123',
+          'verbose' => '1'
+        })
+    end
+
     it 'should encode long messages without newlines' do
       stub_request(:any, 'https://api.mixpanel.com/track').to_return({:body => '{"status": 1, "error": null}'})
       subject.send!(:event, {'data' => 'BASE64-ENCODED VERSION OF BIN. THIS METHOD COMPLIES WITH RFC 2045. LINE FEEDS ARE ADDED TO EVERY 60 ENCODED CHARACTORS. IN RUBY 1.8 WE NEED TO JUST CALL ENCODE64 AND REMOVE THE LINE FEEDS, IN RUBY 1.9 WE CALL STRIC_ENCODED64 METHOD INSTEAD'}.to_json)
