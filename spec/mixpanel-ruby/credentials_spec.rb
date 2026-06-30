@@ -51,20 +51,22 @@ describe Mixpanel::ServiceAccountCredentials do
       credentials = Mixpanel::ServiceAccountCredentials.new('user', 'secret', 'project123')
       json_str = credentials.to_json
       parsed = JSON.parse(json_str)
+      # Secret should NOT be serialized for security
       expect(parsed).to eq({
         'username' => 'user',
-        'secret' => 'secret',
         'project_id' => 'project123'
       })
+      # But secret is still accessible on the object
+      expect(credentials.secret).to eq('secret')
     end
 
     it 'survives JSON round-trip' do
       credentials = Mixpanel::ServiceAccountCredentials.new('user', 'secret', 'project123')
       message = {'credentials' => credentials}.to_json
       decoded = JSON.load(message)
+      # Secret should NOT be in serialized JSON for security
       expect(decoded['credentials']).to eq({
         'username' => 'user',
-        'secret' => 'secret',
         'project_id' => 'project123'
       })
     end

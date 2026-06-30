@@ -87,9 +87,9 @@ describe Mixpanel::Events do
     expect(@log[0][0]).to eq(:import)
 
     message = @log[0][1]
+    # Secret should NOT be in serialized JSON for security
     expect(message['credentials']).to eq({
         'username' => 'test-user',
-        'secret' => 'test-secret',
         'project_id' => 'test-project-123'
     })
     expect(message['api_key']).to be_nil
