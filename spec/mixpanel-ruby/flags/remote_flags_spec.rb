@@ -116,6 +116,23 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
       provider.get_variant_value('test_flag', 'control', test_context)
     end
 
+    it 'runs the tracker inline by default (no executor configured)' do
+      response = create_success_response({
+        'test_flag' => {
+          'variant_key' => 'treatment',
+          'variant_value' => 'treatment'
+        }
+      })
+      stub_flags_request(response)
+
+      calling_thread = Thread.current
+      tracker_thread = nil
+      allow(mock_tracker).to receive(:call) { tracker_thread = Thread.current }
+
+      provider.get_variant_value('test_flag', 'control', test_context)
+      expect(tracker_thread).to be(calling_thread)
+    end
+
     it 'dispatches the tracker via the configured exposure_executor off the calling thread' do
       response = create_success_response({
         'test_flag' => {

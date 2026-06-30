@@ -718,6 +718,52 @@ describe Mixpanel::Flags::LocalFlagsProvider do
 
       provider.send(:track_exposure_event, 'test_flag', variant, test_context)
     end
+
+    it 'runs the tracker inline by default (no executor configured)' do
+      flag = create_test_flag
+      stub_flag_definitions([flag])
+      provider.start_polling_for_definitions!
+
+      variant = Mixpanel::Flags::SelectedVariant.new(
+        variant_key: 'treatment', variant_value: 'treatment'
+      )
+
+      calling_thread = Thread.current
+      tracker_thread = nil
+      allow(mock_tracker).to receive(:call) { tracker_thread = Thread.current }
+
+      provider.send(:track_exposure_event, 'test_flag', variant, test_context)
+      expect(tracker_thread).to be(calling_thread)
+    end
+
+    it 'dispatches the tracker via :exposure_executor when configured' do
+      executor = Object.new
+      def executor.post(&block)
+        Thread.new(&block)
+      end
+
+      tracker_thread = nil
+      tracker_ran = Queue.new
+      tracker = ->(_distinct_id, _event, _properties) {
+        tracker_thread = Thread.current
+        tracker_ran << :done
+      }
+
+      provider = Mixpanel::Flags::LocalFlagsProvider.new(
+        test_token,
+        { enable_polling: false, exposure_executor: executor },
+        tracker,
+        mock_error_handler
+      )
+
+      variant = Mixpanel::Flags::SelectedVariant.new(
+        variant_key: 'treatment', variant_value: 'treatment'
+      )
+      provider.send(:track_exposure_event, 'test_flag', variant, test_context)
+
+      tracker_ran.pop
+      expect(tracker_thread).not_to be(Thread.current)
+    end
   end
 
   describe 'polling' do
