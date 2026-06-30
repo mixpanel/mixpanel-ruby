@@ -19,10 +19,11 @@ module Mixpanel
     end
 
     # JSON serialization support - called automatically by JSON.generate/to_json
+    # Note: secret is intentionally excluded from serialization to prevent
+    # exposure in logs, queues, or custom consumer implementations
     def as_json(options = nil)
       {
         'username' => @username,
-        'secret' => @secret,
         'project_id' => @project_id
       }
     end
