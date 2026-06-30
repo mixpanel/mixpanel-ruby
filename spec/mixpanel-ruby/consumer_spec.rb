@@ -37,7 +37,7 @@ describe Mixpanel::Consumer do
     end
 
     it 'should send a request to api.mixpanel.com/import with service account credentials' do
-      stub_request(:any, 'https://api.mixpanel.com/import').to_return({:body => '{"status": 1, "error": null}'})
+      stub_request(:any, 'https://api.mixpanel.com/import?project_id=test-project-123').to_return({:body => '{"status": 1, "error": null}'})
       credentials = {
         'username' => 'test-user',
         'secret' => 'test-secret',
