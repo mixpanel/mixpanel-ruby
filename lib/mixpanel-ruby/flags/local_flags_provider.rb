@@ -11,7 +11,8 @@ module Mixpanel
         api_host: 'api.mixpanel.com',
         request_timeout_in_seconds: 10,
         enable_polling: true,
-        polling_interval_in_seconds: 60
+        polling_interval_in_seconds: 60,
+        exposure_executor: nil
       }.freeze
 
       # @param token [String] Mixpanel project token
@@ -24,7 +25,8 @@ module Mixpanel
         provider_config = {
           token: token,
           api_host: @config[:api_host],
-          request_timeout_in_seconds: @config[:request_timeout_in_seconds]
+          request_timeout_in_seconds: @config[:request_timeout_in_seconds],
+          exposure_executor: @config[:exposure_executor]
         }
 
         super(provider_config, '/flags/definitions', tracker_callback, 'local', error_handler)

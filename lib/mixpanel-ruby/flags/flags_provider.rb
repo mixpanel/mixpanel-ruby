@@ -12,7 +12,7 @@ module Mixpanel
     # Base class for feature flags providers
     # Provides common HTTP handling and exposure event tracking
     class FlagsProvider
-      # @param provider_config [Hash] Configuration with :token, :api_host, :request_timeout_in_seconds
+      # @param provider_config [Hash] Configuration with :token, :api_host, :request_timeout_in_seconds, :exposure_executor
       # @param endpoint [String] API endpoint path (e.g., '/flags' or '/flags/definitions')
       # @param tracker_callback [Proc] Function used to track events (bound tracker.track method)
       # @param evaluation_mode [String] The feature flag evaluation mode. This is either 'local' or 'remote'
@@ -23,6 +23,7 @@ module Mixpanel
         @tracker_callback = tracker_callback
         @evaluation_mode = evaluation_mode
         @error_handler = error_handler
+        @exposure_executor = provider_config[:exposure_executor]
       end
 
       # Make HTTP request to flags API endpoint
@@ -104,11 +105,30 @@ module Mixpanel
         properties['$is_experiment_active'] = selected_variant.is_experiment_active unless selected_variant.is_experiment_active.nil?
         properties['$is_qa_tester'] = selected_variant.is_qa_tester unless selected_variant.is_qa_tester.nil?
 
-        begin
-          @tracker_callback.call(distinct_id, Utils::EXPOSURE_EVENT, properties)
-        rescue MixpanelError => e
-          @error_handler.handle(e)
+        dispatch_exposure(distinct_id, properties)
+      end
+
+      private
+
+      # Dispatch the tracker call inline or via the configured executor.
+      # The executor is duck-typed — anything that responds to #post(&block)
+      # works (Concurrent::ExecutorService, or a Thread.new wrapper).
+      def dispatch_exposure(distinct_id, properties)
+        if @exposure_executor
+          begin
+            @exposure_executor.post { invoke_tracker(distinct_id, properties) }
+          rescue StandardError => e
+            @error_handler.handle(MixpanelError.new("Exposure event dropped — executor refused to accept task: #{e.message}")) if @error_handler
+          end
+        else
+          invoke_tracker(distinct_id, properties)
         end
+      end
+
+      def invoke_tracker(distinct_id, properties)
+        @tracker_callback.call(distinct_id, Utils::EXPOSURE_EVENT, properties)
+      rescue MixpanelError => e
+        @error_handler.handle(e)
       end
     end
   end

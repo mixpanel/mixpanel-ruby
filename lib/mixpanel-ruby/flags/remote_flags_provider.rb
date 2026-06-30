@@ -7,7 +7,8 @@ module Mixpanel
     class RemoteFlagsProvider < FlagsProvider
       DEFAULT_CONFIG = {
         api_host: 'api.mixpanel.com',
-        request_timeout_in_seconds: 10
+        request_timeout_in_seconds: 10,
+        exposure_executor: nil
       }.freeze
 
       # @param token [String] Mixpanel project token
@@ -20,7 +21,8 @@ module Mixpanel
         provider_config = {
           token: token,
           api_host: merged_config[:api_host],
-          request_timeout_in_seconds: merged_config[:request_timeout_in_seconds]
+          request_timeout_in_seconds: merged_config[:request_timeout_in_seconds],
+          exposure_executor: merged_config[:exposure_executor]
         }
 
         super(provider_config, '/flags', tracker_callback, 'remote', error_handler)

@@ -116,6 +116,42 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
       provider.get_variant_value('test_flag', 'control', test_context)
     end
 
+    it 'dispatches the tracker via the configured exposure_executor off the calling thread' do
+      response = create_success_response({
+        'test_flag' => {
+          'variant_key' => 'treatment',
+          'variant_value' => 'treatment'
+        }
+      })
+      stub_flags_request(response)
+
+      calling_thread = Thread.current
+      tracker_thread = nil
+      tracker_ran = Queue.new
+      tracker = ->(_distinct_id, _event, _properties) {
+        tracker_thread = Thread.current
+        tracker_ran << :done
+      }
+
+      # Minimal duck-typed executor: spawn a thread per call.
+      executor = Object.new
+      def executor.post(&block)
+        Thread.new(&block)
+      end
+
+      provider = Mixpanel::Flags::RemoteFlagsProvider.new(
+        test_token,
+        { exposure_executor: executor },
+        tracker,
+        mock_error_handler
+      )
+
+      provider.get_variant_value('test_flag', 'control', test_context)
+
+      tracker_ran.pop
+      expect(tracker_thread).not_to be(calling_thread)
+    end
+
     it 'does not track exposure event when report_exposure is false' do
       response = create_success_response({
         'test_flag' => {
