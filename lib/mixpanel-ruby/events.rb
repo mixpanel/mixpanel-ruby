@@ -122,6 +122,7 @@ module Mixpanel
       if api_key_or_credentials.is_a?(ServiceAccountCredentials)
         message['credentials'] = api_key_or_credentials
       else
+        warn '[DEPRECATION] Using API key for import is deprecated. Please use ServiceAccountCredentials instead. See https://developer.mixpanel.com/reference/service-accounts for more information.'
         message['api_key'] = api_key_or_credentials
       end
 

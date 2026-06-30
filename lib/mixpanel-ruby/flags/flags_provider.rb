@@ -39,6 +39,12 @@ module Mixpanel
         )
 
         params = common_params.merge(additional_params || {})
+
+        # Add project_id as query parameter when using service account credentials
+        if @credentials
+          params['project_id'] = @credentials.project_id
+        end
+
         query_string = URI.encode_www_form(params)
 
         uri = URI::HTTPS.build(

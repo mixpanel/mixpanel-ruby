@@ -44,14 +44,20 @@ describe Mixpanel::Consumer do
         'project_id' => 'test-project-123'
       }
       subject.send!(:import, {'data' => 'TEST EVENT MESSAGE', 'credentials' => credentials}.to_json)
-      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import').
-        with(:body => {
-          'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=',
-          'username' => 'test-user',
-          'secret' => 'test-secret',
-          'project_id' => 'test-project-123',
-          'verbose' => '1'
-        })
+
+      # Should use Basic Auth header with username:secret
+      # Should add project_id as query parameter
+      # Should NOT include credentials in POST body
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import?project_id=test-project-123').
+        with(
+          :body => {
+            'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=',
+            'verbose' => '1'
+          },
+          :headers => {
+            'Authorization' => 'Basic ' + Base64.strict_encode64('test-user:test-secret')
+          }
+        )
     end
 
     it 'should encode long messages without newlines' do

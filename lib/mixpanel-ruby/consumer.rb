@@ -90,17 +90,13 @@ module Mixpanel
 
       form_data = {"data" => data, "verbose" => 1}
 
-      # Use service account credentials if provided, otherwise fall back to API key
-      if credentials
-        form_data.merge!("username" => credentials["username"])
-        form_data.merge!("secret" => credentials["secret"])
-        form_data.merge!("project_id" => credentials["project_id"])
-      elsif api_key
+      # Only add api_key to form data if using legacy API key (not service account credentials)
+      if api_key && !credentials
         form_data.merge!("api_key" => api_key)
       end
 
       begin
-        response_code, response_body = request(endpoint, form_data)
+        response_code, response_body = request(endpoint, form_data, credentials, type)
       rescue => e
         raise ConnectionError.new("Could not connect to Mixpanel, with error \"#{e.message}\".")
       end
@@ -132,10 +128,23 @@ module Mixpanel
     #
     # as the result of the response. Response code should be nil if
     # the request never receives a response for some reason.
-    def request(endpoint, form_data)
+    def request(endpoint, form_data, credentials = nil, type = nil)
       uri = URI(endpoint)
+
+      # Add project_id as query parameter for import endpoint with service account credentials
+      if credentials && type == :import
+        query_params = URI.decode_www_form(uri.query || '').to_h
+        query_params['project_id'] = credentials['project_id']
+        uri.query = URI.encode_www_form(query_params)
+      end
+
       request = Net::HTTP::Post.new(uri.request_uri)
       request.set_form_data(form_data)
+
+      # Use Basic Auth with service account credentials for import endpoint
+      if credentials && type == :import
+        request.basic_auth(credentials['username'], credentials['secret'])
+      end
 
       client = Net::HTTP.new(uri.host, uri.port)
       client.use_ssl = true

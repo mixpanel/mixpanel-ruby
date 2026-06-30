@@ -3,6 +3,7 @@ require 'time'
 
 require 'mixpanel-ruby/events.rb'
 require 'mixpanel-ruby/version.rb'
+require 'mixpanel-ruby/credentials.rb'
 
 describe Mixpanel::Events do
   before(:each) do
@@ -33,9 +34,11 @@ describe Mixpanel::Events do
   end
 
   it 'should send a well formed import/ message' do
-    @events.import('API_KEY', 'TEST ID', 'Test Event', {
-        'Circumstances' => 'During a test'
-    })
+    expect {
+      @events.import('API_KEY', 'TEST ID', 'Test Event', {
+          'Circumstances' => 'During a test'
+      })
+    }.to output(/DEPRECATION.*API key for import is deprecated/).to_stderr
     expect(@log).to eq([[:import, {
         'api_key' => 'API_KEY',
         'data' => {
