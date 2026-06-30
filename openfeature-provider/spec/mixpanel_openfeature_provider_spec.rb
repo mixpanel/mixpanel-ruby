@@ -376,18 +376,10 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
     end
   end
 
-  # --- NOT_READY ---
-
-  describe 'not ready' do
-    before { setup_fallback(Mixpanel::Flags::FallbackReason.not_ready) }
-
-    it 'maps to PROVIDER_NOT_READY' do
-      result = provider.fetch_boolean_value(flag_key: 'flag', default_value: true)
-      expect(result.value).to be true
-      expect(result.error_code).to eq('PROVIDER_NOT_READY')
-      expect(result.reason).to eq('ERROR')
-    end
-  end
+  # Not-ready handling is covered by the `provider not ready` describe block
+  # below, which exercises the wrapper's flags_ready? short-circuit. The
+  # provider never stamps a :not_ready fallback reason, so there is no
+  # producer-side dispatch to test here.
 
   # --- PROVIDER_NOT_READY ---
 

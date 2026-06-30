@@ -104,9 +104,10 @@ module Mixpanel
             ::OpenFeature::SDK::Provider::ErrorCode::GENERAL,
             result.fallback_reason.message
           )
-        when :not_ready
-          return error_result(default_value, ::OpenFeature::SDK::Provider::ErrorCode::PROVIDER_NOT_READY)
         end
+        # PROVIDER_NOT_READY is handled at the top of resolve via flags_ready?;
+        # no producer constructs a :not_ready FallbackReason, so there's no
+        # dispatch arm for it here.
 
         value = result.variant_value
 
