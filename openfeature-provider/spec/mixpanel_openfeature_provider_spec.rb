@@ -376,11 +376,6 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
     end
   end
 
-  # Not-ready handling is covered by the `provider not ready` describe block
-  # below, which exercises the wrapper's flags_ready? short-circuit. The
-  # provider never stamps a :not_ready fallback reason, so there is no
-  # producer-side dispatch to test here.
-
   # --- PROVIDER_NOT_READY ---
 
   describe 'provider not ready' do

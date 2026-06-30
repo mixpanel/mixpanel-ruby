@@ -17,10 +17,6 @@ module Mixpanel
     # backend's response, MISSING_CONTEXT_KEY with the missing attribute);
     # nil otherwise. The OpenFeature wrapper dispatches on kind and forwards
     # message into ResolutionDetails#error_message.
-    #
-    # Note: the wrapper handles PROVIDER_NOT_READY by short-circuiting before
-    # invoking the provider (see flags_ready? check), so there is no :not_ready
-    # kind here — no producer would ever construct it.
     class FallbackReason
       KINDS = %i[flag_not_found missing_context_key no_rollout_match backend_error].freeze
 
