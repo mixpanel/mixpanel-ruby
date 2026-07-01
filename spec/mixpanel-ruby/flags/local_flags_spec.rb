@@ -1,4 +1,5 @@
 require 'json'
+require 'timeout'
 require 'mixpanel-ruby/flags/local_flags_provider'
 require 'mixpanel-ruby/flags/types'
 require 'webmock/rspec'
@@ -98,6 +99,34 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       'distinct_id' => 'user123',
       'custom_properties' => properties
     }
+  end
+
+  describe '#initialize' do
+    it 'raises ArgumentError when polling_interval_in_seconds is not a positive number' do
+      [0, -1, 'sixty', :foo].each do |bad_value|
+        expect do
+          Mixpanel::Flags::LocalFlagsProvider.new(
+            test_token,
+            { polling_interval_in_seconds: bad_value },
+            mock_tracker,
+            mock_error_handler
+          )
+        end.to raise_error(ArgumentError, /polling_interval_in_seconds/)
+      end
+    end
+
+    it 'falls back to the default polling_interval_in_seconds when caller passes nil' do
+      # nil must not silently override the default — CV#wait(mutex, nil) blocks
+      # indefinitely, which would silently disable polling.
+      expect do
+        Mixpanel::Flags::LocalFlagsProvider.new(
+          test_token,
+          { polling_interval_in_seconds: nil },
+          mock_tracker,
+          mock_error_handler
+        )
+      end.not_to raise_error
+    end
   end
 
   describe '#get_variant_value' do
@@ -752,6 +781,150 @@ describe Mixpanel::Flags::LocalFlagsProvider do
         result = polling_provider.get_variant_value('test_flag', 'fallback', test_context, report_exposure: false)
         expect(result).not_to eq('fallback')
       ensure
+        polling_provider.stop_polling_for_definitions!
+      end
+    end
+
+    it 'shuts down promptly while the polling thread is waiting on the interval' do
+      flag = create_test_flag
+      stub_flag_definitions([flag])
+
+      polling_provider = Mixpanel::Flags::LocalFlagsProvider.new(
+        test_token,
+        # A long interval ensures the polling thread is parked on the wait when
+        # shutdown is requested — pre-fix, the join would have to ride out the
+        # full interval before the thread checked @stop_polling.
+        { enable_polling: true, polling_interval_in_seconds: 30 },
+        mock_tracker,
+        mock_error_handler
+      )
+
+      polling_provider.start_polling_for_definitions!
+      begin
+        # Wait until the polling thread is parked on the condition variable
+        # (status 'sleep') so the spec deterministically exercises the CV-wakeup
+        # path.
+        polling_thread = polling_provider.instance_variable_get(:@polling_thread)
+        Timeout.timeout(2) { sleep 0.01 until polling_thread.status == 'sleep' }
+
+        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        polling_provider.stop_polling_for_definitions!
+        elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
+        expect(elapsed).to be < 1.0
+      ensure
+        polling_provider.stop_polling_for_definitions!
+      end
+    end
+
+    it 'shuts down promptly when stop races an in-flight fetch' do
+      flag = create_test_flag
+      fetch_count = 0
+      fetch_count_mutex = Mutex.new
+      second_fetch_started = Queue.new
+      second_fetch_release = Queue.new
+
+      stub_request(:get, endpoint_url_regex)
+        .to_return do |_request|
+          this_call = fetch_count_mutex.synchronize { fetch_count += 1 }
+          if this_call == 2
+            second_fetch_started << true
+            second_fetch_release.pop
+          end
+          {
+            status: 200,
+            body: { code: 200, flags: [flag] }.to_json,
+            headers: { 'Content-Type' => 'application/json' }
+          }
+        end
+
+      polling_provider = Mixpanel::Flags::LocalFlagsProvider.new(
+        test_token,
+        # 1 s interval — large enough that the lost-wakeup race (if reintroduced)
+        # would be detectable as ~1 s of extra teardown after the fetch finishes,
+        # but small enough that the second polling-thread fetch starts quickly.
+        { enable_polling: true, polling_interval_in_seconds: 1.0 },
+        mock_tracker,
+        mock_error_handler
+      )
+
+      polling_provider.start_polling_for_definitions!
+      begin
+        # Bounded wait: if a regression keeps the polling thread from reaching
+        # the second fetch, fail fast rather than hanging the suite.
+        Timeout.timeout(5) { second_fetch_started.pop }
+
+        # Trigger shutdown while the polling thread is mid-fetch (NOT on the
+        # CV), so the broadcast goes to no waiter. Run it in a thread so we can
+        # release the fetch afterwards.
+        stopper = Thread.new { polling_provider.stop_polling_for_definitions! }
+        # Wait until the stopper has set @stop_polling and broadcast, so
+        # releasing the fetch deterministically lands in the lost-wakeup window
+        # this spec targets.
+        Timeout.timeout(2) { sleep 0.01 until polling_provider.instance_variable_get(:@stop_polling) }
+
+        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        second_fetch_release << true
+        stopper.join
+        elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
+
+        # With the predicate-inside-mutex check, the polling thread re-enters
+        # the mutex after fetch, sees @stop_polling = true, skips the wait, and
+        # breaks immediately. Without it, the thread would call wait(1.0 s),
+        # ride out the full interval, and only then break — elapsed would be
+        # ~1 s.
+        expect(elapsed).to be < 0.5
+      ensure
+        # Unblock any in-flight stub fetch in case we raised before releasing
+        # it normally — otherwise the polling thread stays blocked at
+        # second_fetch_release.pop and stop_polling_for_definitions!'s join
+        # would hang the suite.
+        second_fetch_release << true
+        polling_provider.stop_polling_for_definitions!
+      end
+    end
+
+    it 'stop arriving during the initial fetch wins; start does not spawn a thread' do
+      fetch_in_progress = Queue.new
+      fetch_release = Queue.new
+
+      stub_request(:get, endpoint_url_regex).to_return do |_req|
+        fetch_in_progress << true
+        fetch_release.pop
+        {
+          status: 200,
+          body: { code: 200, flags: [] }.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        }
+      end
+
+      polling_provider = Mixpanel::Flags::LocalFlagsProvider.new(
+        test_token,
+        { enable_polling: true, polling_interval_in_seconds: 30 },
+        mock_tracker,
+        mock_error_handler
+      )
+
+      starter = Thread.new { polling_provider.start_polling_for_definitions! }
+      begin
+        # Wait until start is blocked inside the initial fetch.
+        Timeout.timeout(5) { fetch_in_progress.pop }
+
+        # Stop arrives while start is mid-fetch (start has already cleared
+        # @stop_polling, so this is the bad case where stop's set must "win"
+        # despite happening between start's clear and start's spawn-decision).
+        polling_provider.stop_polling_for_definitions!
+
+        # Let start finish its fetch and reach the lifecycle check.
+        fetch_release << true
+        starter.join
+
+        # No polling thread should have been spawned — stop's postcondition
+        # (polling is off when stop returns) must hold even when start was
+        # mid-fetch at the time of the stop call.
+        expect(polling_provider.instance_variable_get(:@polling_thread)).to be_nil
+      ensure
+        fetch_release << true
+        starter&.join
         polling_provider.stop_polling_for_definitions!
       end
     end
