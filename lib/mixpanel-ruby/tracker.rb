@@ -78,9 +78,9 @@ module Mixpanel
         @local_flags = Flags::LocalFlagsProvider.new(
           token,
           local_flags_config,
-          credentials,
           method(:track),  # Pass bound method as callback
-          error_handler || ErrorHandler.new
+          error_handler || ErrorHandler.new,
+          credentials
         )
       end
 

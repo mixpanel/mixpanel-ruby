@@ -2,6 +2,7 @@ require 'json'
 require 'timeout'
 require 'mixpanel-ruby/flags/local_flags_provider'
 require 'mixpanel-ruby/flags/types'
+require 'mixpanel-ruby/credentials'
 require 'webmock/rspec'
 
 describe Mixpanel::Flags::LocalFlagsProvider do
@@ -16,9 +17,9 @@ describe Mixpanel::Flags::LocalFlagsProvider do
     Mixpanel::Flags::LocalFlagsProvider.new(
       test_token,
       config,
-      nil,  # credentials
       mock_tracker,
-      mock_error_handler
+      mock_error_handler,
+      nil  # credentials
     )
   end
 
@@ -770,9 +771,9 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       polling_provider = Mixpanel::Flags::LocalFlagsProvider.new(
         test_token,
         { enable_polling: true, polling_interval_in_seconds: 0.1 },
-        nil,  # credentials
         mock_tracker,
-        mock_error_handler
+        mock_error_handler,
+        nil  # credentials
       )
 
       begin
@@ -950,9 +951,9 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       credentials_provider = Mixpanel::Flags::LocalFlagsProvider.new(
         test_token,
         config,
-        credentials,
         mock_tracker,
-        mock_error_handler
+        mock_error_handler,
+        credentials
       )
 
       credentials_provider.start_polling_for_definitions!

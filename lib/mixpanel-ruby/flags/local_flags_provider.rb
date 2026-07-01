@@ -16,10 +16,10 @@ module Mixpanel
 
       # @param token [String] Mixpanel project token
       # @param config [Hash] Local flags configuration
-      # @param credentials [ServiceAccountCredentials, nil] Optional service account credentials
       # @param tracker_callback [Proc] Callback to track events
       # @param error_handler [Mixpanel::ErrorHandler] Error handler
-      def initialize(token, config, tracker_callback, error_handler)
+      # @param credentials [ServiceAccountCredentials, nil] Optional service account credentials
+      def initialize(token, config, tracker_callback, error_handler, credentials = nil)
         # compact: an explicit nil from the caller (e.g.
         # polling_interval_in_seconds: nil) must not override a sane default.
         # Both the previous sleep(nil) and the current
