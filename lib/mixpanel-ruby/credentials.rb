@@ -7,11 +7,15 @@ module Mixpanel
     # Create service account credentials
     # @param username [String] Service account username
     # @param secret [String] Service account secret
-    # @param project_id [String] Mixpanel project ID
+    # @param project_id [String, Integer] Mixpanel project ID (accepts string or integer)
     def initialize(username, secret, project_id)
       raise ArgumentError, 'username is required' if username.nil? || username.empty?
       raise ArgumentError, 'secret is required' if secret.nil? || secret.empty?
-      raise ArgumentError, 'project_id is required' if project_id.nil? || project_id.empty?
+      raise ArgumentError, 'project_id is required' if project_id.nil?
+
+      # Convert project_id to string if it's an integer (Mixpanel dashboard shows numeric IDs)
+      project_id = project_id.to_s if project_id.is_a?(Integer)
+      raise ArgumentError, 'project_id is required' if project_id.empty?
 
       @username = username
       @secret = secret
@@ -19,11 +23,11 @@ module Mixpanel
     end
 
     # JSON serialization support - called automatically by JSON.generate/to_json
-    # Note: secret is intentionally excluded from serialization to prevent
-    # exposure in logs, queues, or custom consumer implementations
+    # Note: secret IS included because it's needed by the Consumer for HTTP Basic Auth
     def as_json(options = nil)
       {
         'username' => @username,
+        'secret' => @secret,
         'project_id' => @project_id
       }
     end
