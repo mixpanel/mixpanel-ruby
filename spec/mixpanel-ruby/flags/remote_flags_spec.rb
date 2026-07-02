@@ -1,4 +1,5 @@
 require 'json'
+require 'timeout'
 require 'mixpanel-ruby/flags/remote_flags_provider'
 require 'mixpanel-ruby/flags/types'
 require 'webmock/rspec'
@@ -165,7 +166,9 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
 
       provider.get_variant_value('test_flag', 'control', test_context)
 
-      tracker_ran.pop
+      # Bounded wait — a bare Queue#pop would hang CI forever if the
+      # tracker block raised before pushing :done.
+      Timeout.timeout(2) { tracker_ran.pop }
       expect(tracker_thread).not_to be(calling_thread)
     end
 

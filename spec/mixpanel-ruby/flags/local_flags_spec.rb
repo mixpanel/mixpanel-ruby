@@ -1,4 +1,5 @@
 require 'json'
+require 'timeout'
 require 'mixpanel-ruby/flags/local_flags_provider'
 require 'mixpanel-ruby/flags/types'
 require 'webmock/rspec'
@@ -761,8 +762,40 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       )
       provider.send(:track_exposure_event, 'test_flag', variant, test_context)
 
-      tracker_ran.pop
+      # Bounded wait — a bare Queue#pop would hang CI forever if the
+      # tracker block raised before pushing :done.
+      Timeout.timeout(2) { tracker_ran.pop }
       expect(tracker_thread).not_to be(Thread.current)
+    end
+
+    it 'reports non-MixpanelError exceptions from the async tracker to error_handler' do
+      handler_called = Queue.new
+      handler = double('error_handler')
+      allow(handler).to receive(:handle) { |e| handler_called << e }
+
+      executor = Object.new
+      def executor.post(&block)
+        Thread.new(&block)
+      end
+
+      tracker = ->(_distinct_id, _event, _properties) { raise NoMethodError, 'boom' }
+
+      provider = Mixpanel::Flags::LocalFlagsProvider.new(
+        test_token,
+        { enable_polling: false, exposure_executor: executor },
+        tracker,
+        handler
+      )
+
+      variant = Mixpanel::Flags::SelectedVariant.new(
+        variant_key: 'treatment', variant_value: 'treatment'
+      )
+      provider.send(:track_exposure_event, 'test_flag', variant, test_context)
+
+      err = Timeout.timeout(2) { handler_called.pop }
+      expect(err).to be_a(Mixpanel::MixpanelError)
+      expect(err.message).to include('NoMethodError')
+      expect(err.message).to include('boom')
     end
   end
 

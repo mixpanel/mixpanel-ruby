@@ -128,7 +128,12 @@ module Mixpanel
       def invoke_tracker(distinct_id, properties)
         @tracker_callback.call(distinct_id, Utils::EXPOSURE_EVENT, properties)
       rescue MixpanelError => e
-        @error_handler.handle(e)
+        @error_handler.handle(e) if @error_handler
+      rescue StandardError => e
+        # On the async path a bare `rescue MixpanelError` would let any
+        # other exception terminate the executor thread silently. Wrap
+        # into MixpanelError so error_handler sees a consistent type.
+        @error_handler.handle(MixpanelError.new("Exposure event failed: #{e.class}: #{e.message}")) if @error_handler
       end
     end
   end
