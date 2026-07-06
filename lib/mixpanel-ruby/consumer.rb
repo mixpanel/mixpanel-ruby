@@ -40,6 +40,12 @@ module Mixpanel
   #        @kestrel.set(ANALYTICS_QUEUE, [type, message].to_json)
   #    end
   #
+  # IMPORTANT SECURITY NOTE: When using service account credentials,
+  # the message payload contains the service account secret in plaintext.
+  # Do not log or persist raw message JSON in production environments
+  # (e.g., logger.info(message), queue storage, etc.). The secret is
+  # needed by Consumer for HTTP Basic Auth but should never be logged.
+  #
   # You can also instantiate the library consumers yourself, and use
   # them wherever you would like. For example, the working that
   # consumes the above queue might work like this:
@@ -49,13 +55,6 @@ module Mixpanel
   #         message_json = @kestrel.get(ANALYTICS_QUEUE)
   #         mixpanel.send!(*JSON.load(message_json))
   #     end
-  #
-  # IMPORTANT SECURITY NOTE: When using service account credentials,
-  # the message payload contains the service account secret in plaintext.
-  # Do not log or persist raw message JSON in production environments.
-  # The secret is stripped from the HTTP request body but remains in the
-  # serialized message that custom sinks, BufferedConsumer, or async
-  # executors receive.
   #
   # Mixpanel::Consumer is the default consumer. It sends each message,
   # as the message is recieved, directly to Mixpanel.
