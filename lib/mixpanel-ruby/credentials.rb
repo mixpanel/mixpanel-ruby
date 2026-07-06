@@ -23,7 +23,11 @@ module Mixpanel
     end
 
     # JSON serialization support - called automatically by JSON.generate/to_json
-    # Note: secret IS included because it's needed by the Consumer for HTTP Basic Auth
+    #
+    # SECURITY NOTE: The secret IS included in the serialized output because it's
+    # needed by the Consumer for HTTP Basic Auth. This means the secret will be
+    # present in message payloads passed to custom sinks, BufferedConsumer, or
+    # async executors. Do not log or persist these messages in plaintext.
     def as_json(options = nil)
       {
         'username' => @username,

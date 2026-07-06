@@ -50,6 +50,13 @@ module Mixpanel
   #         mixpanel.send!(*JSON.load(message_json))
   #     end
   #
+  # IMPORTANT SECURITY NOTE: When using service account credentials,
+  # the message payload contains the service account secret in plaintext.
+  # Do not log or persist raw message JSON in production environments.
+  # The secret is stripped from the HTTP request body but remains in the
+  # serialized message that custom sinks, BufferedConsumer, or async
+  # executors receive.
+  #
   # Mixpanel::Consumer is the default consumer. It sends each message,
   # as the message is recieved, directly to Mixpanel.
   class Consumer
@@ -96,7 +103,15 @@ module Mixpanel
       end
 
       begin
-        response_code, response_body = request(endpoint, form_data, credentials, type)
+        # Only widen the request() call for service-account import path to preserve
+        # backward-compatibility with 2-arg custom Consumer#request overrides.
+        # Credentials are only used for imports, so only pass them for that type.
+        response_code, response_body =
+          if credentials && type == :import
+            request(endpoint, form_data, credentials, type)
+          else
+            request(endpoint, form_data)
+          end
       rescue => e
         raise ConnectionError.new("Could not connect to Mixpanel, with error \"#{e.message}\".")
       end
@@ -128,6 +143,9 @@ module Mixpanel
     #
     # as the result of the response. Response code should be nil if
     # the request never receives a response for some reason.
+    #
+    # For service account authentication, pass credentials (hash with
+    # 'username', 'secret', 'project_id') and type (:import).
     def request(endpoint, form_data, credentials = nil, type = nil)
       uri = URI(endpoint)
 
