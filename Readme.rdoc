@@ -49,8 +49,13 @@ API keys for import operations and feature flags.
     # Credentials are stored securely and never serialized to JSON
     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, credentials: credentials)
 
-    # Import historical events - pass nil for api_key (first parameter)
-    # Consumer uses credentials from constructor for authentication
+    # Import historical events using import_events (recommended)
+    tracker.import_events('User1', 'Past Event', {
+        'time' => 1369353600,
+        'Source' => 'Import'
+    })
+
+    # Alternative: use import() with nil as first parameter
     tracker.import(nil, 'User1', 'Past Event', {
         'time' => 1369353600,
         'Source' => 'Import'

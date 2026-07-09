@@ -148,6 +148,28 @@ module Mixpanel
       super
     end
 
+    # Import an event using service account credentials from the constructor.
+    # This is the recommended method for importing historical events with service accounts.
+    #
+    # Service account credentials must be provided when creating the Tracker.
+    # This method provides a cleaner API than import() as it doesn't require
+    # passing nil as the first parameter.
+    #
+    #     credentials = Mixpanel::ServiceAccountCredentials.new(username, secret, project_id)
+    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, credentials: credentials)
+    #
+    #     # Import a historical event
+    #     tracker.import_events('user123', 'Past Event', {
+    #         'Email Template' => 'Welcome Email',
+    #         'time' => 1369353600
+    #     })
+    #
+    def import_events(distinct_id, event, properties={}, ip=nil)
+      # This is here strictly to allow rdoc to include the relevant
+      # documentation
+      super
+    end
+
     # Creates a distinct_id alias. \Events and updates with an alias
     # will be considered by mixpanel to have the same source, and
     # refer to the same profile.
