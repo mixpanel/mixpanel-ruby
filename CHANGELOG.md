@@ -2,22 +2,18 @@
 
 ## [Unreleased]
 
-### Changed
-
-- `Tracker.new()` now accepts `credentials:` parameter for service account authentication
-- `Consumer.new()` and `BufferedConsumer.new()` now accept `credentials:` parameter
-- `Tracker.new()` now accepts `consumer:` parameter to provide a custom consumer instance
-- When using service account credentials, pass `nil` as the first parameter to `import()`: `tracker.import(nil, distinct_id, event, ...)` instead of passing credentials
-
 ### Added
 
-- New secure API pattern: credentials passed to constructor are stored as instance variables and used only for HTTP Basic Auth headers, never serialized to JSON
-- Warning when both `consumer` and `credentials` parameters are provided to `Tracker.new()` (credentials are ignored in this case - pass them to the consumer instead)
-- Comprehensive test coverage for secure credential handling in `spec/mixpanel-ruby/credentials_security_spec.rb`
+- Service account authentication support via `ServiceAccountCredentials` class
+- `Tracker.new()`, `Events.new()`, `Consumer.new()`, and `BufferedConsumer.new()` now accept `credentials:` parameter
+- Credentials are passed to feature flags providers (local and remote) for authenticated API access
+- Authentication validation: `import()` now raises `ArgumentError` when called without either `api_key` or `credentials`
+- Comprehensive test coverage for credential handling and security in `spec/mixpanel-ruby/credentials_spec.rb` and `spec/mixpanel-ruby/credentials_security_spec.rb`
 
-### Fixed
+### Changed
 
-- `BufferedConsumer` now properly preserves `api_key` when flushing batched messages (previously it was dropped during flush)
+- When using service account credentials, pass `nil` as the first parameter to `import()`: `tracker.import(nil, distinct_id, event, properties)` instead of passing an API key
+- Credentials are stored as instance variables and used only for HTTP Basic Auth headers, never serialized to JSON payloads
 
 ## [v3.1.0](https://github.com/mixpanel/mixpanel-ruby/tree/v3.1.0) (2026-05-13)
 
