@@ -22,23 +22,5 @@ module Mixpanel
       @project_id = project_id
     end
 
-    # JSON serialization support - called automatically by JSON.generate/to_json
-    #
-    # SECURITY NOTE: The secret IS included in the serialized output for internal
-    # use (e.g., debugging, testing). However, credentials should NEVER be included
-    # in message payloads sent to Consumer - they are stored as instance variables
-    # in Consumer/Tracker and used only for HTTP Basic Auth headers.
-    def as_json(options = nil)
-      {
-        'username' => @username,
-        'secret' => @secret,
-        'project_id' => @project_id
-      }
-    end
-
-    # Explicit to_json method for direct .to_json calls
-    def to_json(*args)
-      as_json.to_json(*args)
-    end
   end
 end

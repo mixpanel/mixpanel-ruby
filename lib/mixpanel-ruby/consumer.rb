@@ -107,12 +107,11 @@ module Mixpanel
       end
 
       begin
-        # Only widen the request() call for service-account import path to preserve
-        # backward-compatibility with 2-arg custom Consumer#request overrides.
-        # Credentials are only used for imports, so only pass them for that type.
+        # Use keyword arguments for credentials to maintain backward compatibility
+        # with custom Consumer subclasses that override request(endpoint, form_data)
         response_code, response_body =
           if @credentials && type == :import
-            request(endpoint, form_data, @credentials, type)
+            request(endpoint, form_data, credentials: @credentials, type: type)
           else
             request(endpoint, form_data)
           end
@@ -149,15 +148,32 @@ module Mixpanel
     # the request never receives a response for some reason.
     #
     # For service account authentication, pass credentials (ServiceAccountCredentials object
-    # or hash with 'username', 'secret', 'project_id') and type (:import).
-    def request(endpoint, form_data, credentials = nil, type = nil)
+    # or hash with 'username', 'secret', 'project_id') and type (:import) as keyword arguments.
+    # The positional parameters are preserved for backward compatibility with custom Consumer subclasses.
+    def request(endpoint, form_data, credentials: nil, type: nil)
       uri = URI(endpoint)
 
       # Add project_id as query parameter for import endpoint with service account credentials
       if credentials && type == :import
         query_params = URI.decode_www_form(uri.query || '').to_h
-        # Support both ServiceAccountCredentials object and hash (for backward compatibility)
-        project_id = credentials.is_a?(ServiceAccountCredentials) ? credentials.project_id : credentials['project_id']
+
+        # Extract and validate credentials
+        if credentials.is_a?(ServiceAccountCredentials)
+          username = credentials.username
+          secret = credentials.secret
+          project_id = credentials.project_id
+        elsif credentials.is_a?(Hash)
+          username = credentials['username'] || credentials[:username]
+          secret = credentials['secret'] || credentials[:secret]
+          project_id = credentials['project_id'] || credentials[:project_id]
+
+          raise ArgumentError, "credentials hash missing 'username'" unless username
+          raise ArgumentError, "credentials hash missing 'secret'" unless secret
+          raise ArgumentError, "credentials hash missing 'project_id'" unless project_id
+        else
+          raise ArgumentError, "credentials must be ServiceAccountCredentials or Hash, got #{credentials.class}"
+        end
+
         query_params['project_id'] = project_id
         uri.query = URI.encode_www_form(query_params)
       end
@@ -167,12 +183,8 @@ module Mixpanel
 
       # Use Basic Auth with service account credentials for import endpoint
       if credentials && type == :import
-        # Support both ServiceAccountCredentials object and hash (for backward compatibility)
-        if credentials.is_a?(ServiceAccountCredentials)
-          request.basic_auth(credentials.username, credentials.secret)
-        else
-          request.basic_auth(credentials['username'], credentials['secret'])
-        end
+        # username and secret were already extracted and validated above
+        request.basic_auth(username, secret)
       end
 
       client = Net::HTTP.new(uri.host, uri.port)

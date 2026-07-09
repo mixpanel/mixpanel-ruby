@@ -157,12 +157,13 @@ module Mixpanel
     #
     #     # Using service account credentials (recommended)
     #     credentials = Mixpanel::ServiceAccountCredentials.new(username, secret, project_id)
-    #     tracker.import(credentials, "12345", "Welcome Email Sent", {
+    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, credentials: credentials)
+    #     tracker.import(nil, "12345", "Welcome Email Sent", {
     #         'Email Template' => 'Pretty Pink Welcome',
     #         'User Sign-up Cohort' => 'July 2013',
     #         'time' => 1310111365
     #     })
-    def import(api_key_or_credentials, distinct_id, event, properties={}, ip=nil)
+    def import(api_key, distinct_id, event, properties={}, ip=nil)
       # This is here strictly to allow rdoc to include the relevant
       # documentation
       super
