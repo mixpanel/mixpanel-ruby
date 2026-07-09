@@ -3,6 +3,7 @@ require 'spec_helper'
 require 'webmock'
 
 require 'mixpanel-ruby/consumer'
+require 'mixpanel-ruby/credentials'
 
 describe Mixpanel::Consumer do
   before { WebMock.reset! }
@@ -114,6 +115,90 @@ describe Mixpanel::Consumer do
           },
           :headers => {
             'Authorization' => 'Basic ' + Base64.strict_encode64('test-user:test-secret')
+          }
+        )
+    end
+
+    it 'should accept credentials as a hash with string keys' do
+      stub_request(:any, 'https://api.mixpanel.com/import?project_id=proj-456').to_return({:body => '{"status": 1, "error": null}'})
+      consumer = Mixpanel::Consumer.new
+
+      credentials_hash = {'username' => 'hash-user', 'secret' => 'hash-secret', 'project_id' => 'proj-456'}
+      # Directly call request with credentials hash to test hash handling
+      consumer.request('https://api.mixpanel.com/import', {'data' => 'test', 'verbose' => '1'}, credentials: credentials_hash, type: :import)
+
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import?project_id=proj-456').
+        with(
+          :headers => {
+            'Authorization' => 'Basic ' + Base64.strict_encode64('hash-user:hash-secret')
+          }
+        )
+    end
+
+    it 'should accept credentials as a hash with symbol keys' do
+      stub_request(:any, 'https://api.mixpanel.com/import?project_id=proj-789').to_return({:body => '{"status": 1, "error": null}'})
+      consumer = Mixpanel::Consumer.new
+
+      credentials_hash = {username: 'sym-user', secret: 'sym-secret', project_id: 'proj-789'}
+      consumer.request('https://api.mixpanel.com/import', {'data' => 'test', 'verbose' => '1'}, credentials: credentials_hash, type: :import)
+
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import?project_id=proj-789').
+        with(
+          :headers => {
+            'Authorization' => 'Basic ' + Base64.strict_encode64('sym-user:sym-secret')
+          }
+        )
+    end
+
+    it 'should raise ArgumentError when credentials hash is missing username' do
+      consumer = Mixpanel::Consumer.new
+      credentials_hash = {secret: 'secret', project_id: 'proj'}
+
+      expect {
+        consumer.request('https://api.mixpanel.com/import', {'data' => 'test', 'verbose' => '1'}, credentials: credentials_hash, type: :import)
+      }.to raise_error(ArgumentError, "credentials hash missing 'username'")
+    end
+
+    it 'should raise ArgumentError when credentials hash is missing secret' do
+      consumer = Mixpanel::Consumer.new
+      credentials_hash = {username: 'user', project_id: 'proj'}
+
+      expect {
+        consumer.request('https://api.mixpanel.com/import', {'data' => 'test', 'verbose' => '1'}, credentials: credentials_hash, type: :import)
+      }.to raise_error(ArgumentError, "credentials hash missing 'secret'")
+    end
+
+    it 'should raise ArgumentError when credentials hash is missing project_id' do
+      consumer = Mixpanel::Consumer.new
+      credentials_hash = {username: 'user', secret: 'secret'}
+
+      expect {
+        consumer.request('https://api.mixpanel.com/import', {'data' => 'test', 'verbose' => '1'}, credentials: credentials_hash, type: :import)
+      }.to raise_error(ArgumentError, "credentials hash missing 'project_id'")
+    end
+
+    it 'should raise ArgumentError when credentials is not ServiceAccountCredentials or Hash' do
+      consumer = Mixpanel::Consumer.new
+
+      expect {
+        consumer.request('https://api.mixpanel.com/import', {'data' => 'test', 'verbose' => '1'}, credentials: 'invalid', type: :import)
+      }.to raise_error(ArgumentError, /credentials must be ServiceAccountCredentials or Hash, got String/)
+    end
+
+    it 'should not include api_key when credentials are present' do
+      stub_request(:any, 'https://api.mixpanel.com/import?project_id=test-project').to_return({:body => '{"status": 1, "error": null}'})
+      credentials = Mixpanel::ServiceAccountCredentials.new('user', 'secret', 'test-project')
+      consumer = Mixpanel::Consumer.new(nil, nil, nil, nil, credentials: credentials)
+
+      # Message includes api_key but it should be ignored when credentials are present
+      consumer.send!(:import, {'data' => 'TEST EVENT MESSAGE', 'api_key' => 'SHOULD_BE_IGNORED'}.to_json)
+
+      # api_key should NOT be in the request body (only data and verbose)
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import?project_id=test-project').
+        with(
+          :body => {
+            'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=',
+            'verbose' => '1'
           }
         )
     end
@@ -229,4 +314,34 @@ describe Mixpanel::BufferedConsumer do
     end
   end
 
+  context 'with service account credentials' do
+    it 'should pass credentials to consumer when using BufferedConsumer' do
+      stub_request(:any, 'https://api.mixpanel.com/import?project_id=buffered-project').to_return({:body => '{"status": 1, "error": null}'})
+      credentials = Mixpanel::ServiceAccountCredentials.new('buffered-user', 'buffered-secret', 'buffered-project')
+      consumer = Mixpanel::BufferedConsumer.new(nil, nil, nil, 2, credentials: credentials)
+
+      # Import messages are not buffered - they're sent immediately
+      consumer.send!(:import, {'data' => 'EVENT 1'}.to_json)
+
+      # Verify credentials were used in the request
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import?project_id=buffered-project').
+        with(
+          :headers => {
+            'Authorization' => 'Basic ' + Base64.strict_encode64('buffered-user:buffered-secret')
+          }
+        ).once
+    end
+  end
+
+end
+
+describe 'Connection error handling' do
+  it 'should raise ConnectionError when network error occurs' do
+    stub_request(:any, 'https://api.mixpanel.com/track').to_raise(StandardError.new('Network timeout'))
+    consumer = Mixpanel::Consumer.new
+
+    expect {
+      consumer.send!(:event, {'data' => 'TEST EVENT MESSAGE'}.to_json)
+    }.to raise_error(Mixpanel::ConnectionError, /Could not connect to Mixpanel, with error "Network timeout"/)
+  end
 end
