@@ -64,11 +64,29 @@ module Mixpanel
     # and Mixpanel::BufferedConsumer#send!
     #
     # Optional parameters:
-    # - credentials: ServiceAccountCredentials for feature flags authentication
+    # - credentials: ServiceAccountCredentials for authentication (used for import and feature flags)
+    # - consumer: A custom consumer instance (Mixpanel::Consumer or Mixpanel::BufferedConsumer).
+    #   If provided, credentials passed here are ignored - pass them to the consumer constructor instead.
     # - local_flags_config: Configuration hash for local feature flags
     # - remote_flags_config: Configuration hash for remote feature flags
-    def initialize(token, error_handler=nil, credentials: nil, local_flags_config: nil, remote_flags_config: nil, &block)
-      super(token, error_handler, &block)
+    def initialize(token, error_handler=nil, credentials: nil, consumer: nil, local_flags_config: nil, remote_flags_config: nil, &block)
+      # Warn if both consumer and credentials provided
+      if consumer && credentials
+        warn "[Mixpanel] Credentials passed to Tracker are ignored when a custom consumer is provided. " \
+             "Pass credentials to your consumer's constructor instead: " \
+             "Consumer.new(credentials: ...)"
+      end
+
+      # Use provided consumer or fall back to block/default behavior from parent
+      if consumer
+        # Override parent's default behavior - use the provided consumer
+        @sink = consumer.method(:send!)
+      else
+        # Pass credentials to parent (Events) if no consumer provided
+        # Parent will create default Consumer with credentials
+        super(token, error_handler, credentials: credentials, &block)
+      end
+
       @token = token
       @people = People.new(token, error_handler, &block)
       @groups = Groups.new(token, error_handler, &block)

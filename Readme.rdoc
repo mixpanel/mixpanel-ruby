@@ -34,7 +34,7 @@ right away.
 Service accounts provide secure server-to-server authentication and are recommended over
 API keys for import operations and feature flags.
 
-=== Import with Service Account
+=== Import with Service Account (Recommended)
 
     require 'mixpanel-ruby'
 
@@ -45,10 +45,22 @@ API keys for import operations and feature flags.
         'your-project-id'
     )
 
-    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
+    # Pass credentials to tracker constructor
+    # Credentials are stored securely and never serialized to JSON
+    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, credentials: credentials)
 
-    # Import historical events using service account
-    tracker.import(credentials, 'User1', 'Past Event', {
+    # Import historical events - pass nil for api_key (first parameter)
+    # Consumer uses credentials from constructor for authentication
+    tracker.import(nil, 'User1', 'Past Event', {
+        'time' => 1369353600,
+        'Source' => 'Import'
+    })
+
+=== Import with API Key (Legacy)
+
+    # Legacy approach with API key string
+    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
+    tracker.import("API_KEY", 'User1', 'Past Event', {
         'time' => 1369353600,
         'Source' => 'Import'
     })
