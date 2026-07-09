@@ -281,16 +281,8 @@ module Mixpanel
       sent_messages = 0
       begin
         @buffers[type].each_slice(@max_length) do |chunk|
-          # Extract data from all messages in chunk
-          parsed_messages = chunk.map {|message| JSON.load(message) }
-          data = parsed_messages.map {|msg| msg['data'] }
-
-          # Preserve api_key from first message (if present)
-          first_message = parsed_messages.first
-          batch_message = {'data' => data}
-          batch_message['api_key'] = first_message['api_key'] if first_message['api_key']
-
-          @sink.call(type, batch_message.to_json)
+          data = chunk.map {|message| JSON.load(message)['data'] }
+          @sink.call(type, {'data' => data}.to_json)
           sent_messages += chunk.length
         end
       rescue
