@@ -163,7 +163,7 @@ module Mixpanel
     #         'User Sign-up Cohort' => 'July 2013',
     #         'time' => 1310111365
     #     })
-    def import(api_key_or_credentials, distinct_id, event, properties={}, ip=nil)
+    def import(api_key, distinct_id, event, properties={}, ip=nil)
       # This is here strictly to allow rdoc to include the relevant
       # documentation
       super

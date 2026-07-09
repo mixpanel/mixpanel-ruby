@@ -41,6 +41,7 @@ module Mixpanel
         params = common_params.merge(additional_params || {})
 
         # Add project_id as query parameter when using service account credentials
+        # Note: project_id is required for service account auth but not used for token auth
         if @credentials
           params['project_id'] = @credentials.project_id
         end

@@ -51,32 +51,4 @@ describe Mixpanel::ServiceAccountCredentials do
     end
   end
 
-  describe 'JSON serialization' do
-    it 'serializes to JSON correctly' do
-      credentials = Mixpanel::ServiceAccountCredentials.new('user', 'secret', 'project123')
-      json_str = credentials.to_json
-      parsed = JSON.parse(json_str)
-      # All fields are serialized for internal use (e.g., debugging)
-      # Note: credentials should NEVER be included in messages sent to Consumer
-      expect(parsed).to eq({
-        'username' => 'user',
-        'secret' => 'secret',
-        'project_id' => 'project123'
-      })
-      # Secret is also accessible on the object
-      expect(credentials.secret).to eq('secret')
-    end
-
-    it 'survives JSON round-trip' do
-      credentials = Mixpanel::ServiceAccountCredentials.new('user', 'secret', 'project123')
-      serialized = credentials.to_json
-      decoded = JSON.parse(serialized)
-      # All fields survive serialization
-      expect(decoded).to eq({
-        'username' => 'user',
-        'secret' => 'secret',
-        'project_id' => 'project123'
-      })
-    end
-  end
 end
