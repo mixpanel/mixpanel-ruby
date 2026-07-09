@@ -36,30 +36,6 @@ describe Mixpanel::Consumer do
         with(:body => {'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=', 'api_key' => 'API_KEY', 'verbose' => '1' })
     end
 
-    it 'should send a request to api.mixpanel.com/import with service account credentials' do
-      stub_request(:any, 'https://api.mixpanel.com/import?project_id=test-project-123').to_return({:body => '{"status": 1, "error": null}'})
-      credentials = {
-        'username' => 'test-user',
-        'secret' => 'test-secret',
-        'project_id' => 'test-project-123'
-      }
-      subject.send!(:import, {'data' => 'TEST EVENT MESSAGE', 'credentials' => credentials}.to_json)
-
-      # Should use Basic Auth header with username:secret
-      # Should add project_id as query parameter
-      # Should NOT include credentials in POST body
-      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import?project_id=test-project-123').
-        with(
-          :body => {
-            'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=',
-            'verbose' => '1'
-          },
-          :headers => {
-            'Authorization' => 'Basic ' + Base64.strict_encode64('test-user:test-secret')
-          }
-        )
-    end
-
     it 'should encode long messages without newlines' do
       stub_request(:any, 'https://api.mixpanel.com/track').to_return({:body => '{"status": 1, "error": null}'})
       subject.send!(:event, {'data' => 'BASE64-ENCODED VERSION OF BIN. THIS METHOD COMPLIES WITH RFC 2045. LINE FEEDS ARE ADDED TO EVERY 60 ENCODED CHARACTORS. IN RUBY 1.8 WE NEED TO JUST CALL ENCODE64 AND REMOVE THE LINE FEEDS, IN RUBY 1.9 WE CALL STRIC_ENCODED64 METHOD INSTEAD'}.to_json)
@@ -117,6 +93,30 @@ describe Mixpanel::Consumer do
     end
 
     it_behaves_like 'consumer'
+  end
+
+  context 'service account credentials' do
+    it 'should send a request to api.mixpanel.com/import with service account credentials' do
+      stub_request(:any, 'https://api.mixpanel.com/import?project_id=test-project-123').to_return({:body => '{"status": 1, "error": null}'})
+      credentials = Mixpanel::ServiceAccountCredentials.new('test-user', 'test-secret', 'test-project-123')
+      consumer = Mixpanel::Consumer.new(nil, nil, nil, nil, credentials: credentials)
+
+      consumer.send!(:import, {'data' => 'TEST EVENT MESSAGE'}.to_json)
+
+      # Should use Basic Auth header with username:secret
+      # Should add project_id as query parameter
+      # Should NOT include credentials in POST body or message
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import?project_id=test-project-123').
+        with(
+          :body => {
+            'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=',
+            'verbose' => '1'
+          },
+          :headers => {
+            'Authorization' => 'Basic ' + Base64.strict_encode64('test-user:test-secret')
+          }
+        )
+    end
   end
 
 end

@@ -22,14 +22,15 @@ module Mixpanel
     #     # tracker has all of the methods of Mixpanel::Events
     #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #
-    def initialize(token, error_handler=nil, &block)
+    def initialize(token, error_handler=nil, credentials: nil, &block)
       @token = token
       @error_handler = error_handler || ErrorHandler.new
+      @credentials = credentials
 
       if block
         @sink = block
       else
-        consumer = Consumer.new
+        consumer = Consumer.new(credentials: credentials)
         @sink = consumer.method(:send!)
       end
     end
@@ -87,19 +88,19 @@ module Mixpanel
     # we pass the time of the method call as the time the event occured, if you
     # wish to override this pass a timestamp in the properties hash.
     #
-    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
-    #
-    #     # Using deprecated API key (still supported)
-    #     tracker.import("API_KEY", "12345", "Credit Card Declined")
-    #
-    #     # Using service account credentials (recommended)
+    #     # Recommended: Pass credentials to constructor, pass nil for api_key
     #     credentials = Mixpanel::ServiceAccountCredentials.new(username, secret, project_id)
-    #     tracker.import(credentials, "12345", "Welcome Email Sent", {
+    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, credentials: credentials)
+    #     tracker.import(nil, "12345", "Welcome Email Sent", {
     #         'Email Template' => 'Pretty Pink Welcome',
     #         'User Sign-up Cohort' => 'July 2013',
     #         'time' => 1369353600,
     #     })
-    def import(api_key_or_credentials, distinct_id, event, properties={}, ip=nil)
+    #
+    #     # Legacy: Pass API key as first parameter
+    #     tracker.import("API_KEY", "12345", "Credit Card Declined")
+    #
+    def import(api_key, distinct_id, event, properties={}, ip=nil)
       properties = {
         'distinct_id' => distinct_id,
         'token' => @token,
@@ -118,12 +119,11 @@ module Mixpanel
         'data' => data,
       }
 
-      # Support both service account credentials and legacy API key
-      if api_key_or_credentials.is_a?(ServiceAccountCredentials)
-        message['credentials'] = api_key_or_credentials
-      else
-        warn '[DEPRECATION] Using API key for import is deprecated. Please use ServiceAccountCredentials instead. See https://developer.mixpanel.com/reference/service-accounts for more information.'
-        message['api_key'] = api_key_or_credentials
+      # Only include api_key in message if provided (legacy auth)
+      # When using service account credentials (recommended), pass nil for api_key
+      # and the Consumer will use credentials from its instance variable
+      if api_key
+        message['api_key'] = api_key
       end
 
       ret = true

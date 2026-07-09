@@ -1,6 +1,7 @@
 require 'json'
 require 'mixpanel-ruby/flags/remote_flags_provider'
 require 'mixpanel-ruby/flags/types'
+require 'mixpanel-ruby/credentials'
 require 'webmock/rspec'
 
 describe Mixpanel::Flags::RemoteFlagsProvider do
@@ -15,9 +16,9 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
     Mixpanel::Flags::RemoteFlagsProvider.new(
       test_token,
       config,
-      nil,  # credentials
       mock_tracker,
       mock_error_handler
+      # credentials defaults to nil
     )
   end
 
@@ -464,9 +465,9 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
       credentials_provider = Mixpanel::Flags::RemoteFlagsProvider.new(
         test_token,
         config,
-        credentials,
         mock_tracker,
-        mock_error_handler
+        mock_error_handler,
+        credentials
       )
 
       result = credentials_provider.get_variant_value('test_flag', 'fallback', test_context, report_exposure: false)

@@ -12,10 +12,10 @@ module Mixpanel
 
       # @param token [String] Mixpanel project token
       # @param config [Hash] Remote flags configuration
-      # @param credentials [ServiceAccountCredentials, nil] Optional service account credentials
       # @param tracker_callback [Proc] Callback to track events
       # @param error_handler [Mixpanel::ErrorHandler] Error handler
-      def initialize(token, config, credentials, tracker_callback, error_handler)
+      # @param credentials [ServiceAccountCredentials, nil] Optional service account credentials
+      def initialize(token, config, tracker_callback, error_handler, credentials = nil)
         merged_config = DEFAULT_CONFIG.merge(config || {})
 
         provider_config = {

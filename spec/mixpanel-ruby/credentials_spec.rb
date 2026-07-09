@@ -56,7 +56,8 @@ describe Mixpanel::ServiceAccountCredentials do
       credentials = Mixpanel::ServiceAccountCredentials.new('user', 'secret', 'project123')
       json_str = credentials.to_json
       parsed = JSON.parse(json_str)
-      # Secret IS included so Consumer can use it for HTTP Basic Auth
+      # All fields are serialized for internal use (e.g., debugging)
+      # Note: credentials should NEVER be included in messages sent to Consumer
       expect(parsed).to eq({
         'username' => 'user',
         'secret' => 'secret',
@@ -68,10 +69,10 @@ describe Mixpanel::ServiceAccountCredentials do
 
     it 'survives JSON round-trip' do
       credentials = Mixpanel::ServiceAccountCredentials.new('user', 'secret', 'project123')
-      message = {'credentials' => credentials}.to_json
-      decoded = JSON.load(message)
-      # Secret IS included so Consumer can use it for HTTP Basic Auth
-      expect(decoded['credentials']).to eq({
+      serialized = credentials.to_json
+      decoded = JSON.parse(serialized)
+      # All fields survive serialization
+      expect(decoded).to eq({
         'username' => 'user',
         'secret' => 'secret',
         'project_id' => 'project123'

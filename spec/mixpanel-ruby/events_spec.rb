@@ -34,11 +34,9 @@ describe Mixpanel::Events do
   end
 
   it 'should send a well formed import/ message' do
-    expect {
-      @events.import('API_KEY', 'TEST ID', 'Test Event', {
-          'Circumstances' => 'During a test'
-      })
-    }.to output(/DEPRECATION.*API key for import is deprecated/).to_stderr
+    @events.import('API_KEY', 'TEST ID', 'Test Event', {
+        'Circumstances' => 'During a test'
+    })
     expect(@log).to eq([[:import, {
         'api_key' => 'API_KEY',
         'data' => {
@@ -79,7 +77,14 @@ describe Mixpanel::Events do
 
   it 'should send a well formed import/ message with service account credentials' do
     credentials = Mixpanel::ServiceAccountCredentials.new('test-user', 'test-secret', 'test-project-123')
-    @events.import(credentials, 'TEST ID', 'Test Event', {
+
+    # Create new Events instance with credentials in constructor
+    events_with_creds = Mixpanel::Events.new('TEST TOKEN', nil, credentials: credentials) do |type, message|
+      @log << [type, JSON.load(message)]
+    end
+
+    # New API: pass nil for api_key, credentials come from instance
+    events_with_creds.import(nil, 'TEST ID', 'Test Event', {
         'Circumstances' => 'During a test'
     })
 
@@ -87,13 +92,9 @@ describe Mixpanel::Events do
     expect(@log[0][0]).to eq(:import)
 
     message = @log[0][1]
-    # Secret IS included in serialization so Consumer can use it for HTTP Basic Auth
-    expect(message['credentials']).to eq({
-        'username' => 'test-user',
-        'secret' => 'test-secret',
-        'project_id' => 'test-project-123'
-    })
-    expect(message['api_key']).to be_nil
+    # Credentials should NOT be in message (secure API)
+    expect(message).not_to have_key('credentials')
+    expect(message).not_to have_key('api_key')
     expect(message['data']).to eq({
         'event' => 'Test Event',
         'properties' => {
