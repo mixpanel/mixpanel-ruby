@@ -49,13 +49,14 @@ begin
     end
   end.new(errors)
 
-  # Create tracker with error handler
-  tracker = Mixpanel::Tracker.new(TOKEN, error_handler)
+  # Create tracker with credentials and error handler
+  tracker = Mixpanel::Tracker.new(TOKEN, error_handler, credentials: credentials)
 
   # Import an event (historical event)
+  # Pass nil as first parameter when using service account credentials
   historical_time = Time.now - 86400  # 1 day ago
   result = tracker.import(
-    credentials,
+    nil,  # api_key - pass nil when using service account credentials
     DISTINCT_ID,
     'Service Account Test Event',
     {
