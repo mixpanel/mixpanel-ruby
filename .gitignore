@@ -3,3 +3,5 @@ Gemfile.lock
 html
 mixpanel-ruby*.gem
 .bundle
+coverage/
+vendor/

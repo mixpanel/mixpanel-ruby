@@ -119,70 +119,12 @@ describe Mixpanel::Consumer do
         )
     end
 
-    it 'should accept credentials as a hash with string keys' do
-      stub_request(:any, 'https://api.mixpanel.com/import?project_id=proj-456').to_return({:body => '{"status": 1, "error": null}'})
-      consumer = Mixpanel::Consumer.new
-
-      credentials_hash = {'username' => 'hash-user', 'secret' => 'hash-secret', 'project_id' => 'proj-456'}
-      # Directly call request with credentials hash to test hash handling
-      consumer.request('https://api.mixpanel.com/import', {'data' => 'test', 'verbose' => '1'}, credentials: credentials_hash, type: :import)
-
-      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import?project_id=proj-456').
-        with(
-          :headers => {
-            'Authorization' => 'Basic ' + Base64.strict_encode64('hash-user:hash-secret')
-          }
-        )
-    end
-
-    it 'should accept credentials as a hash with symbol keys' do
-      stub_request(:any, 'https://api.mixpanel.com/import?project_id=proj-789').to_return({:body => '{"status": 1, "error": null}'})
-      consumer = Mixpanel::Consumer.new
-
-      credentials_hash = {username: 'sym-user', secret: 'sym-secret', project_id: 'proj-789'}
-      consumer.request('https://api.mixpanel.com/import', {'data' => 'test', 'verbose' => '1'}, credentials: credentials_hash, type: :import)
-
-      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import?project_id=proj-789').
-        with(
-          :headers => {
-            'Authorization' => 'Basic ' + Base64.strict_encode64('sym-user:sym-secret')
-          }
-        )
-    end
-
-    it 'should raise ArgumentError when credentials hash is missing username' do
-      consumer = Mixpanel::Consumer.new
-      credentials_hash = {secret: 'secret', project_id: 'proj'}
-
-      expect {
-        consumer.request('https://api.mixpanel.com/import', {'data' => 'test', 'verbose' => '1'}, credentials: credentials_hash, type: :import)
-      }.to raise_error(ArgumentError, "credentials hash missing 'username'")
-    end
-
-    it 'should raise ArgumentError when credentials hash is missing secret' do
-      consumer = Mixpanel::Consumer.new
-      credentials_hash = {username: 'user', project_id: 'proj'}
-
-      expect {
-        consumer.request('https://api.mixpanel.com/import', {'data' => 'test', 'verbose' => '1'}, credentials: credentials_hash, type: :import)
-      }.to raise_error(ArgumentError, "credentials hash missing 'secret'")
-    end
-
-    it 'should raise ArgumentError when credentials hash is missing project_id' do
-      consumer = Mixpanel::Consumer.new
-      credentials_hash = {username: 'user', secret: 'secret'}
-
-      expect {
-        consumer.request('https://api.mixpanel.com/import', {'data' => 'test', 'verbose' => '1'}, credentials: credentials_hash, type: :import)
-      }.to raise_error(ArgumentError, "credentials hash missing 'project_id'")
-    end
-
-    it 'should raise ArgumentError when credentials is not ServiceAccountCredentials or Hash' do
+    it 'should raise ArgumentError when credentials is not ServiceAccountCredentials' do
       consumer = Mixpanel::Consumer.new
 
       expect {
         consumer.request('https://api.mixpanel.com/import', {'data' => 'test', 'verbose' => '1'}, credentials: 'invalid', type: :import)
-      }.to raise_error(ArgumentError, /credentials must be ServiceAccountCredentials or Hash, got String/)
+      }.to raise_error(ArgumentError, /credentials must be ServiceAccountCredentials, got String/)
     end
 
     it 'should not include api_key when credentials are present' do
