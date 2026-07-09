@@ -3,6 +3,7 @@ require 'spec_helper'
 require 'webmock'
 
 require 'mixpanel-ruby/consumer'
+require 'mixpanel-ruby/credentials'
 
 describe Mixpanel::Consumer do
   before { WebMock.reset! }
@@ -116,6 +117,50 @@ describe Mixpanel::Consumer do
             'Authorization' => 'Basic ' + Base64.strict_encode64('test-user:test-secret')
           }
         )
+    end
+
+    it 'should raise error for malformed credential hash missing username' do
+      consumer = Mixpanel::Consumer.new(nil, nil, nil, nil, credentials: {'secret' => 'test-secret', 'project_id' => 'test-project'})
+
+      expect {
+        consumer.send!(:import, {'data' => 'TEST EVENT MESSAGE'}.to_json)
+      }.to raise_error(ArgumentError, "credentials hash missing 'username'")
+    end
+
+    it 'should raise error for malformed credential hash missing secret' do
+      consumer = Mixpanel::Consumer.new(nil, nil, nil, nil, credentials: {'username' => 'test-user', 'project_id' => 'test-project'})
+
+      expect {
+        consumer.send!(:import, {'data' => 'TEST EVENT MESSAGE'}.to_json)
+      }.to raise_error(ArgumentError, "credentials hash missing 'secret'")
+    end
+
+    it 'should raise error for malformed credential hash missing project_id' do
+      consumer = Mixpanel::Consumer.new(nil, nil, nil, nil, credentials: {'username' => 'test-user', 'secret' => 'test-secret'})
+
+      expect {
+        consumer.send!(:import, {'data' => 'TEST EVENT MESSAGE'}.to_json)
+      }.to raise_error(ArgumentError, "credentials hash missing 'project_id'")
+    end
+
+    it 'should raise error for invalid credential type' do
+      consumer = Mixpanel::Consumer.new(nil, nil, nil, nil, credentials: "invalid-string-credential")
+
+      expect {
+        consumer.send!(:import, {'data' => 'TEST EVENT MESSAGE'}.to_json)
+      }.to raise_error(ArgumentError, /credentials must be ServiceAccountCredentials or Hash, got String/)
+    end
+
+    it 'should warn when both api_key and credentials are provided' do
+      stub_request(:any, 'https://api.mixpanel.com/import?project_id=test-project').to_return({:body => '{"status": 1, "error": null}'})
+      credentials = Mixpanel::ServiceAccountCredentials.new('test-user', 'test-secret', 'test-project')
+      consumer = Mixpanel::Consumer.new(nil, nil, nil, nil, credentials: credentials)
+
+      # Expect warning to be issued
+      expect(consumer).to receive(:warn).with(/Both api_key and credentials provided/)
+
+      # Send message with both api_key and credentials
+      consumer.send!(:import, {'data' => 'TEST EVENT MESSAGE', 'api_key' => 'some-api-key'}.to_json)
     end
   end
 

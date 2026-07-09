@@ -104,6 +104,11 @@ module Mixpanel
       # Service account credentials use HTTP Basic Auth instead
       if api_key && !@credentials
         form_data.merge!("api_key" => api_key)
+      elsif api_key && @credentials
+        # Warn if both api_key and credentials are present - credentials take precedence
+        warn "[Mixpanel] Both api_key and credentials provided for import. " \
+             "Using service account credentials (HTTP Basic Auth). " \
+             "The api_key in the message will be ignored."
       end
 
       begin
@@ -115,6 +120,9 @@ module Mixpanel
           else
             request(endpoint, form_data)
           end
+      rescue ArgumentError
+        # Let ArgumentError propagate (e.g., invalid credentials format)
+        raise
       rescue => e
         raise ConnectionError.new("Could not connect to Mixpanel, with error \"#{e.message}\".")
       end
