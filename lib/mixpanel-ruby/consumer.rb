@@ -40,15 +40,10 @@ module Mixpanel
   #        @kestrel.set(ANALYTICS_QUEUE, [type, message].to_json)
   #    end
   #
-  # IMPORTANT SECURITY NOTE: For maximum security, pass credentials to the
-  # Consumer or Tracker constructor (credentials: ...) instead of including them
-  # in import() calls. When credentials are passed to the constructor, they are
-  # stored as instance variables and used only for HTTP Basic Auth headers - they
-  # never appear in message JSON, preventing accidental credential leakage in logs.
-  #
-  # For backward compatibility, credentials can still be passed to import() calls,
-  # but this is deprecated and will serialize credentials into message JSON, which
-  # could leak secrets in logs or queue storage.
+  # IMPORTANT SECURITY NOTE: Always pass credentials to the Consumer or Tracker
+  # constructor (credentials: ...). Credentials are stored as instance variables
+  # and used only for HTTP Basic Auth headers - they never appear in message JSON,
+  # preventing accidental credential leakage in logs or queue storage.
   #
   # You can also instantiate the library consumers yourself, and use
   # them wherever you would like. For example, the working that
@@ -101,20 +96,13 @@ module Mixpanel
       decoded_message = JSON.load(message)
       api_key = decoded_message["api_key"]
 
-      # For backward compatibility: extract credentials from message if present
-      # (deprecated - credentials should be passed to constructor instead)
-      message_credentials = decoded_message["credentials"]
-
-      # Use instance credentials if available, otherwise fall back to message credentials (deprecated)
-      credentials = @credentials || message_credentials
-
       data = Base64.encode64(decoded_message["data"].to_json).gsub("\n", '')
 
       form_data = {"data" => data, "verbose" => 1}
 
       # Only add api_key to form data if using legacy API key (not service account credentials)
       # Service account credentials use HTTP Basic Auth instead
-      if api_key && !credentials
+      if api_key && !@credentials
         form_data.merge!("api_key" => api_key)
       end
 
@@ -123,8 +111,8 @@ module Mixpanel
         # backward-compatibility with 2-arg custom Consumer#request overrides.
         # Credentials are only used for imports, so only pass them for that type.
         response_code, response_body =
-          if credentials && type == :import
-            request(endpoint, form_data, credentials, type)
+          if @credentials && type == :import
+            request(endpoint, form_data, @credentials, type)
           else
             request(endpoint, form_data)
           end
@@ -300,12 +288,10 @@ module Mixpanel
           parsed_messages = chunk.map {|message| JSON.load(message) }
           data = parsed_messages.map {|msg| msg['data'] }
 
-          # Preserve api_key and credentials from first message (if present)
-          # Note: credentials from message are deprecated - they should be passed to constructor
+          # Preserve api_key from first message (if present)
           first_message = parsed_messages.first
           batch_message = {'data' => data}
           batch_message['api_key'] = first_message['api_key'] if first_message['api_key']
-          batch_message['credentials'] = first_message['credentials'] if first_message['credentials']
 
           @sink.call(type, batch_message.to_json)
           sent_messages += chunk.length

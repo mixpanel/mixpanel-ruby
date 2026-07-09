@@ -80,6 +80,10 @@ module Mixpanel
       # Use provided consumer or fall back to block/default behavior from parent
       if consumer
         # Override parent's default behavior - use the provided consumer
+        # Initialize instance variables that super would have set
+        @token = token
+        @error_handler = error_handler || ErrorHandler.new
+        @credentials = credentials
         @sink = consumer.method(:send!)
       else
         # Pass credentials to parent (Events) if no consumer provided
@@ -87,7 +91,6 @@ module Mixpanel
         super(token, error_handler, credentials: credentials, &block)
       end
 
-      @token = token
       @people = People.new(token, error_handler, &block)
       @groups = Groups.new(token, error_handler, &block)
 
