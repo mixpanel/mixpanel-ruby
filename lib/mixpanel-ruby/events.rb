@@ -101,6 +101,11 @@ module Mixpanel
     #     tracker.import("API_KEY", "12345", "Credit Card Declined")
     #
     def import(api_key, distinct_id, event, properties={}, ip=nil)
+      # Validate that at least one authentication method is provided
+      if api_key.nil? && @credentials.nil?
+        raise ArgumentError, 'import requires authentication: provide either api_key parameter or credentials in constructor'
+      end
+
       properties = {
         'distinct_id' => distinct_id,
         'token' => @token,

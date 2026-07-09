@@ -107,4 +107,16 @@ describe Mixpanel::Events do
         }
     })
   end
+
+  it 'should raise ArgumentError when import is called without authentication' do
+    # Create Events without credentials
+    events = Mixpanel::Events.new('TEST TOKEN') do |type, message|
+      @log << [type, JSON.load(message)]
+    end
+
+    # Try to import with nil api_key and no credentials
+    expect {
+      events.import(nil, 'TEST ID', 'Test Event', {})
+    }.to raise_error(ArgumentError, /import requires authentication/)
+  end
 end

@@ -77,19 +77,11 @@ module Mixpanel
              "Consumer.new(credentials: ...)"
       end
 
-      # Use provided consumer or fall back to block/default behavior from parent
-      if consumer
-        # Override parent's default behavior - use the provided consumer
-        # Initialize instance variables that super would have set
-        @token = token
-        @error_handler = error_handler || ErrorHandler.new
-        @credentials = credentials
-        @sink = consumer.method(:send!)
-      else
-        # Pass credentials to parent (Events) if no consumer provided
-        # Parent will create default Consumer with credentials
-        super(token, error_handler, credentials: credentials, &block)
-      end
+      # Always call super to properly initialize parent class
+      super(token, error_handler, credentials: credentials, &block)
+
+      # Override sink if custom consumer provided
+      @sink = consumer.method(:send!) if consumer
 
       @people = People.new(token, error_handler, &block)
       @groups = Groups.new(token, error_handler, &block)
