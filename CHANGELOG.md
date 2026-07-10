@@ -1,5 +1,15 @@
 # Changelog
 
+## [v3.2.0](https://github.com/mixpanel/mixpanel-ruby/tree/v3.2.0) (2026-07-10)
+
+### Features
+- add service account support ([#152](https://github.com/mixpanel/mixpanel-ruby/pull/152))
+
+### Fixes
+- Make local-flags polling loop shutdown promptly ([#149](https://github.com/mixpanel/mixpanel-ruby/pull/149))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-ruby/compare/v3.1.0...v3.2.0)
+
 ## [Unreleased]
 
 ### Added
