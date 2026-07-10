@@ -131,4 +131,22 @@ describe Mixpanel::Tracker do
       expect(expect).to eq(found)
     end
   end
+
+  describe 'service account credentials' do
+    it 'should pass credentials to flags providers when passed directly' do
+      credentials = Mixpanel::ServiceAccountCredentials.new('user', 'secret', 'project123')
+
+      tracker = Mixpanel::Tracker.new(
+        'TEST TOKEN',
+        nil,
+        credentials: credentials,
+        local_flags_config: {},
+        remote_flags_config: {}
+      )
+
+      # Verify credentials were passed to providers by checking internal state
+      expect(tracker.local_flags.instance_variable_get(:@credentials)).to eq(credentials)
+      expect(tracker.remote_flags.instance_variable_get(:@credentials)).to eq(credentials)
+    end
+  end
 end

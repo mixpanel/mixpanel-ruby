@@ -29,6 +29,69 @@ The primary class you will use to track events is Mixpanel::Tracker. An instance
 Mixpanel::Tracker is enough to send events directly to \Mixpanel, and get you integrated
 right away.
 
+== Service Account Authentication
+
+Service accounts provide secure server-to-server authentication and are recommended over
+API keys for import operations and feature flags.
+
+=== Import with Service Account (Recommended)
+
+    require 'mixpanel-ruby'
+
+    # Create service account credentials
+    credentials = Mixpanel::ServiceAccountCredentials.new(
+        'your-service-account-username',
+        'your-service-account-secret',
+        'your-project-id'
+    )
+
+    # Pass credentials to tracker constructor
+    # Credentials are stored securely and never serialized to JSON
+    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, credentials: credentials)
+
+    # Import historical events using import_events (recommended)
+    tracker.import_events('User1', 'Past Event', {
+        'time' => 1369353600,
+        'Source' => 'Import'
+    })
+
+    # Alternative: use import() with nil as first parameter
+    tracker.import(nil, 'User1', 'Past Event', {
+        'time' => 1369353600,
+        'Source' => 'Import'
+    })
+
+=== Import with API Key (Legacy)
+
+    # Legacy approach with API key string
+    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
+    tracker.import("API_KEY", 'User1', 'Past Event', {
+        'time' => 1369353600,
+        'Source' => 'Import'
+    })
+
+=== Feature Flags with Service Account
+
+    require 'mixpanel-ruby'
+
+    credentials = Mixpanel::ServiceAccountCredentials.new(
+        'your-service-account-username',
+        'your-service-account-secret',
+        'your-project-id'
+    )
+
+    # Pass credentials directly to the tracker
+    tracker = Mixpanel::Tracker.new(
+        YOUR_MIXPANEL_TOKEN,
+        nil,
+        credentials: credentials,
+        local_flags_config: {},
+        remote_flags_config: {}
+    )
+
+    # Use feature flags
+    is_enabled = tracker.remote_flags.is_enabled?('my-flag', { 'distinct_id' => 'User1' })
+
 == Additional Information
 
 For more information please visit:

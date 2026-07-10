@@ -12,7 +12,7 @@ module Mixpanel
     # Base class for feature flags providers
     # Provides common HTTP handling and exposure event tracking
     class FlagsProvider
-      # @param provider_config [Hash] Configuration with :token, :api_host, :request_timeout_in_seconds
+      # @param provider_config [Hash] Configuration with :token, :api_host, :request_timeout_in_seconds, :credentials (optional)
       # @param endpoint [String] API endpoint path (e.g., '/flags' or '/flags/definitions')
       # @param tracker_callback [Proc] Function used to track events (bound tracker.track method)
       # @param evaluation_mode [String] The feature flag evaluation mode. This is either 'local' or 'remote'
@@ -23,6 +23,7 @@ module Mixpanel
         @tracker_callback = tracker_callback
         @evaluation_mode = evaluation_mode
         @error_handler = error_handler
+        @credentials = provider_config[:credentials]
       end
 
       # Make HTTP request to flags API endpoint
@@ -31,12 +32,20 @@ module Mixpanel
       # @raise [Mixpanel::ConnectionError] on network errors
       # @raise [Mixpanel::ServerError] on HTTP errors
       def call_flags_endpoint(additional_params = nil)
+        # Always use token in query params
         common_params = Utils.prepare_common_query_params(
           @provider_config[:token],
           Mixpanel::VERSION
         )
 
         params = common_params.merge(additional_params || {})
+
+        # Add project_id as query parameter when using service account credentials
+        # Note: project_id is required for service account auth but not used for token auth
+        if @credentials
+          params['project_id'] = @credentials.project_id
+        end
+
         query_string = URI.encode_www_form(params)
 
         uri = URI::HTTPS.build(
@@ -53,7 +62,12 @@ module Mixpanel
 
         request = Net::HTTP::Get.new(uri.request_uri)
 
-        request.basic_auth(@provider_config[:token], '')
+        # Use service account credentials for basic auth if provided, otherwise use token
+        if @credentials
+          request.basic_auth(@credentials.username, @credentials.secret)
+        else
+          request.basic_auth(@provider_config[:token], '')
+        end
 
         request['Content-Type'] = 'application/json'
         request['traceparent'] = Utils.generate_traceparent

@@ -18,7 +18,8 @@ module Mixpanel
       # @param config [Hash] Local flags configuration
       # @param tracker_callback [Proc] Callback to track events
       # @param error_handler [Mixpanel::ErrorHandler] Error handler
-      def initialize(token, config, tracker_callback, error_handler)
+      # @param credentials [ServiceAccountCredentials, nil] Optional service account credentials
+      def initialize(token, config, tracker_callback, error_handler, credentials = nil)
         # compact: an explicit nil from the caller (e.g.
         # polling_interval_in_seconds: nil) must not override a sane default.
         # Both the previous sleep(nil) and the current
@@ -35,7 +36,8 @@ module Mixpanel
         provider_config = {
           token: token,
           api_host: @config[:api_host],
-          request_timeout_in_seconds: @config[:request_timeout_in_seconds]
+          request_timeout_in_seconds: @config[:request_timeout_in_seconds],
+          credentials: credentials
         }
 
         super(provider_config, '/flags/definitions', tracker_callback, 'local', error_handler)

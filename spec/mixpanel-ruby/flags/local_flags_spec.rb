@@ -2,6 +2,7 @@ require 'json'
 require 'timeout'
 require 'mixpanel-ruby/flags/local_flags_provider'
 require 'mixpanel-ruby/flags/types'
+require 'mixpanel-ruby/credentials'
 require 'webmock/rspec'
 
 describe Mixpanel::Flags::LocalFlagsProvider do
@@ -17,7 +18,8 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       test_token,
       config,
       mock_tracker,
-      mock_error_handler
+      mock_error_handler,
+      nil  # credentials
     )
   end
 
@@ -770,7 +772,8 @@ describe Mixpanel::Flags::LocalFlagsProvider do
         test_token,
         { enable_polling: true, polling_interval_in_seconds: 0.1 },
         mock_tracker,
-        mock_error_handler
+        mock_error_handler,
+        nil  # credentials
       )
 
       begin
@@ -927,6 +930,37 @@ describe Mixpanel::Flags::LocalFlagsProvider do
         starter&.join
         polling_provider.stop_polling_for_definitions!
       end
+    end
+  end
+
+  describe 'service account credentials' do
+    it 'uses service account credentials for authentication' do
+      credentials = Mixpanel::ServiceAccountCredentials.new('test-user', 'test-secret', 'test-project')
+      flag = create_test_flag
+
+      stub_request(:get, endpoint_url_regex)
+        .with(
+          basic_auth: ['test-user', 'test-secret']
+        )
+        .to_return(
+          status: 200,
+          body: { code: 200, flags: [flag] }.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+
+      credentials_provider = Mixpanel::Flags::LocalFlagsProvider.new(
+        test_token,
+        config,
+        mock_tracker,
+        mock_error_handler,
+        credentials
+      )
+
+      credentials_provider.start_polling_for_definitions!
+      result = credentials_provider.get_variant_value('test_flag', 'fallback', test_context, report_exposure: false)
+
+      expect(result).not_to eq('fallback')
+      credentials_provider.stop_polling_for_definitions!
     end
   end
 end
