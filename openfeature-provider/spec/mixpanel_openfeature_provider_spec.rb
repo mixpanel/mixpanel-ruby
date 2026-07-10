@@ -16,7 +16,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       config = { polling_interval: 300 }
       provider = described_class.from_local('test-token', config)
 
-      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', nil, local_flags_config: config)
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', nil, credentials: nil, local_flags_config: config)
       expect(mock_local_flags).to have_received(:start_polling_for_definitions!)
       expect(provider.mixpanel).to eq(mock_tracker)
       expect(provider).to be_a(described_class)
@@ -32,7 +32,20 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       error_handler = double('ErrorHandler')
       described_class.from_local('test-token', {}, error_handler: error_handler)
 
-      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', error_handler, local_flags_config: {})
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', error_handler, credentials: nil, local_flags_config: {})
+    end
+
+    it 'forwards credentials to the tracker' do
+      mock_local_flags = instance_double('LocalFlagsProvider')
+      allow(mock_local_flags).to receive(:start_polling_for_definitions!)
+
+      mock_tracker = instance_double('Mixpanel::Tracker', local_flags: mock_local_flags)
+      stub_const('Mixpanel::Tracker', class_double('Mixpanel::Tracker', new: mock_tracker))
+
+      credentials = double('ServiceAccountCredentials')
+      described_class.from_local('test-token', {}, credentials: credentials)
+
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', nil, credentials: credentials, local_flags_config: {})
     end
   end
 
@@ -45,7 +58,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       config = { endpoint: 'https://example.com' }
       provider = described_class.from_remote('test-token', config)
 
-      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', nil, remote_flags_config: config)
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', nil, credentials: nil, remote_flags_config: config)
       expect(provider.mixpanel).to eq(mock_tracker)
       expect(provider).to be_a(described_class)
     end
@@ -58,7 +71,18 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
       error_handler = double('ErrorHandler')
       described_class.from_remote('test-token', {}, error_handler: error_handler)
 
-      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', error_handler, remote_flags_config: {})
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', error_handler, credentials: nil, remote_flags_config: {})
+    end
+
+    it 'forwards credentials to the tracker' do
+      mock_remote_flags = double('RemoteFlagsProvider')
+      mock_tracker = instance_double('Mixpanel::Tracker', remote_flags: mock_remote_flags)
+      stub_const('Mixpanel::Tracker', class_double('Mixpanel::Tracker', new: mock_tracker))
+
+      credentials = double('ServiceAccountCredentials')
+      described_class.from_remote('test-token', {}, credentials: credentials)
+
+      expect(Mixpanel::Tracker).to have_received(:new).with('test-token', nil, credentials: credentials, remote_flags_config: {})
     end
   end
 

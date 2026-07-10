@@ -7,8 +7,8 @@ module Mixpanel
     class Provider
       attr_reader :metadata, :mixpanel
 
-      def self.from_local(token, config, error_handler: nil)
-        tracker = ::Mixpanel::Tracker.new(token, error_handler, local_flags_config: config)
+      def self.from_local(token, config, error_handler: nil, credentials: nil)
+        tracker = ::Mixpanel::Tracker.new(token, error_handler, credentials: credentials, local_flags_config: config)
         flags_provider = tracker.local_flags
         flags_provider.start_polling_for_definitions!
         provider = new(flags_provider)
@@ -16,8 +16,8 @@ module Mixpanel
         provider
       end
 
-      def self.from_remote(token, config, error_handler: nil)
-        tracker = ::Mixpanel::Tracker.new(token, error_handler, remote_flags_config: config)
+      def self.from_remote(token, config, error_handler: nil, credentials: nil)
+        tracker = ::Mixpanel::Tracker.new(token, error_handler, credentials: credentials, remote_flags_config: config)
         flags_provider = tracker.remote_flags
         provider = new(flags_provider)
         provider.instance_variable_set(:@mixpanel, tracker)

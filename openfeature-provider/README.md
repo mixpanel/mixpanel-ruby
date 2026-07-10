@@ -70,6 +70,44 @@ if show_new_feature
 end
 ```
 
+### Using Service Account Credentials
+
+Service accounts provide a more secure authentication method than API keys for server-to-server communication. You can use service account credentials with both local and remote evaluation:
+
+```ruby
+require 'mixpanel-ruby'
+require 'mixpanel/openfeature'
+
+# Create service account credentials
+credentials = Mixpanel::ServiceAccountCredentials.new(
+  'your-service-account-username',
+  'your-service-account-secret',
+  'your-project-id'
+)
+
+# Use with local evaluation
+provider = Mixpanel::OpenFeature::Provider.from_local(
+  'YOUR_PROJECT_TOKEN',
+  { poll_interval: 300 },
+  credentials: credentials
+)
+
+# Or use with remote evaluation
+provider = Mixpanel::OpenFeature::Provider.from_remote(
+  'YOUR_PROJECT_TOKEN',
+  {},
+  credentials: credentials
+)
+
+# Register and use as normal
+OpenFeature::SDK.configure do |config|
+  config.set_provider(provider)
+end
+
+client = OpenFeature::SDK.build_client
+value = client.fetch_boolean_value(flag_key: 'my-feature', default_value: false)
+```
+
 ### Remote Evaluation
 
 Remote evaluation sends each flag check to Mixpanel's servers, which is useful when you need server-side targeting or cannot download flag definitions locally.
