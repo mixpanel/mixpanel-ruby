@@ -104,7 +104,7 @@ jobs:
           echo "Version confirmed: $FILE_VERSION"
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@d697be2f83c6234b20877c3b5eac7a7f342f0d0c  # v1.269.0
+        uses: ruby/setup-ruby@89f90524b88a01fe6e0b732220432cc6142926af  # v1.313.0
         with:
           ruby-version: '3.3'
           bundler-cache: false
