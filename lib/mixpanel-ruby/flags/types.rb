@@ -92,7 +92,7 @@ module Mixpanel
           is_experiment_active: @is_experiment_active,
           is_qa_tester: @is_qa_tester,
           variant_source: @variant_source,
-          fallback_reason: @fallback_reason
+          fallback_reason: @fallback_reason&.to_h
         }.compact
       end
 
