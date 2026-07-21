@@ -751,6 +751,53 @@ describe Mixpanel::Flags::LocalFlagsProvider do
     end
   end
 
+  describe '#get_variant variant_source / fallback_reason tagging' do
+    let(:fallback) { Mixpanel::Flags::SelectedVariant.new(variant_value: 'fb') }
+
+    it 'tags matched variants as LOCAL with no fallback_reason' do
+      flag = create_test_flag(rollout_percentage: 100.0)
+      stub_flag_definitions([flag])
+      provider.start_polling_for_definitions!
+
+      result = provider.get_variant('test_flag', fallback, test_context)
+      expect(result.variant_source).to eq(Mixpanel::Flags::VariantSource::LOCAL)
+      expect(result.fallback_reason).to be_nil
+      expect(result.variant_key).not_to be_nil
+    end
+
+    it 'tags missing flag as FALLBACK / flag_not_found' do
+      stub_flag_definitions([])
+      provider.start_polling_for_definitions!
+
+      result = provider.get_variant('missing', fallback, test_context)
+      expect(result.variant_source).to eq(Mixpanel::Flags::VariantSource::FALLBACK)
+      expect(result.fallback_reason.kind).to eq(:flag_not_found)
+      expect(result.fallback_reason.message).to be_nil
+      expect(result.variant_value).to eq('fb')
+    end
+
+    it 'tags missing context as FALLBACK / missing_context_key with the missing attribute' do
+      flag = create_test_flag(context: 'distinct_id')
+      stub_flag_definitions([flag])
+      provider.start_polling_for_definitions!
+
+      result = provider.get_variant('test_flag', fallback, {})
+      expect(result.variant_source).to eq(Mixpanel::Flags::VariantSource::FALLBACK)
+      expect(result.fallback_reason.kind).to eq(:missing_context_key)
+      expect(result.fallback_reason.message).to eq('distinct_id')
+    end
+
+    it 'tags no-rollout-match as FALLBACK / no_rollout_match' do
+      flag = create_test_flag(rollout_percentage: 0.0)
+      stub_flag_definitions([flag])
+      provider.start_polling_for_definitions!
+
+      result = provider.get_variant('test_flag', fallback, test_context)
+      expect(result.variant_source).to eq(Mixpanel::Flags::VariantSource::FALLBACK)
+      expect(result.fallback_reason.kind).to eq(:no_rollout_match)
+    end
+  end
+
   describe 'polling' do
     it 'uses most recent polled flag definitions' do
       flag_v1 = create_test_flag(rollout_percentage: 0.0)
