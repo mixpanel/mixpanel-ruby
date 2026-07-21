@@ -749,6 +749,29 @@ describe Mixpanel::Flags::LocalFlagsProvider do
 
       provider.send(:track_exposure_event, 'test_flag', variant, test_context)
     end
+
+    # SDK-84: when local eval succeeds via a non-distinct_id Variant Assignment
+    # Key but the context lacks distinct_id, the exposure can't fire. Surface
+    # via error_handler instead of silently returning.
+    it 'reports through error_handler when distinct_id is missing' do
+      variant = Mixpanel::Flags::SelectedVariant.new(
+        variant_key: 'treatment', variant_value: 'treatment'
+      )
+
+      expect(mock_tracker).not_to receive(:call)
+      expect(mock_error_handler).to receive(:handle) do |err|
+        expect(err).to be_a(Mixpanel::MixpanelError)
+        expect(err.message).to include('test_flag')
+        expect(err.message).to include('distinct_id')
+      end
+
+      provider.send(
+        :track_exposure_event,
+        'test_flag',
+        variant,
+        { 'device_id' => 'abc-123' }
+      )
+    end
   end
 
   describe '#get_variant variant_source / fallback_reason tagging' do
