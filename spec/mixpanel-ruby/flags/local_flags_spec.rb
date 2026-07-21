@@ -828,6 +828,31 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       expect(err.message).to include('boom')
     end
 
+    # Inline path preserves the pre-executor behavior: non-MixpanelError
+    # from the tracker propagates to the flag evaluator's caller instead
+    # of being silently reported. Only the async path wraps everything,
+    # because on the executor thread propagation would just kill the
+    # background thread with no visibility.
+    it 'lets non-MixpanelError exceptions propagate on the inline path' do
+      tracker = ->(_distinct_id, _event, _properties) { raise NoMethodError, 'boom' }
+
+      inline_provider = Mixpanel::Flags::LocalFlagsProvider.new(
+        test_token,
+        { enable_polling: false },
+        tracker,
+        mock_error_handler
+      )
+
+      variant = Mixpanel::Flags::SelectedVariant.new(
+        variant_key: 'treatment', variant_value: 'treatment'
+      )
+
+      expect(mock_error_handler).not_to receive(:handle)
+      expect {
+        inline_provider.send(:track_exposure_event, 'test_flag', variant, test_context)
+      }.to raise_error(NoMethodError, 'boom')
+    end
+
     # SDK-84: when local eval succeeds via a non-distinct_id Variant Assignment
     # Key but the context lacks distinct_id, the exposure can't fire. Surface
     # via error_handler instead of silently returning.

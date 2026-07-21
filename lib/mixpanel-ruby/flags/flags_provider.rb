@@ -135,10 +135,19 @@ module Mixpanel
       # Dispatch the tracker call inline or via the configured executor.
       # The executor is duck-typed — anything that responds to #post(&block)
       # works (Concurrent::ExecutorService, or a Thread.new wrapper).
+      #
+      # Async path only: catch any non-MixpanelError from the tracker so it
+      # doesn't terminate the executor thread silently. Inline path
+      # preserves the original behavior — non-MixpanelError propagates to
+      # the flag evaluator's caller unchanged.
       def dispatch_exposure(distinct_id, properties)
         if @exposure_executor
           begin
-            @exposure_executor.post { invoke_tracker(distinct_id, properties) }
+            @exposure_executor.post do
+              invoke_tracker(distinct_id, properties)
+            rescue StandardError => e
+              @error_handler.handle(MixpanelError.new("Exposure event failed: #{e.class}: #{e.message}")) if @error_handler
+            end
           rescue StandardError => e
             @error_handler.handle(MixpanelError.new("Exposure event dropped — executor refused to accept task: #{e.message}")) if @error_handler
           end
@@ -151,11 +160,6 @@ module Mixpanel
         @tracker_callback.call(distinct_id, Utils::EXPOSURE_EVENT, properties)
       rescue MixpanelError => e
         @error_handler.handle(e) if @error_handler
-      rescue StandardError => e
-        # On the async path a bare `rescue MixpanelError` would let any
-        # other exception terminate the executor thread silently. Wrap
-        # into MixpanelError so error_handler sees a consistent type.
-        @error_handler.handle(MixpanelError.new("Exposure event failed: #{e.class}: #{e.message}")) if @error_handler
       end
     end
   end

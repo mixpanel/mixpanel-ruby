@@ -227,6 +227,8 @@ provider = Mixpanel::OpenFeature::Provider.from_local(
 
 Available on both local and remote flag configs. Defaults to `nil` (inline behavior); existing setups are unaffected.
 
+> **Executor lifecycle:** `provider.shutdown` stops the flags provider's own resources (polling) but does NOT shut down a user-supplied executor. Own the executor's lifecycle explicitly — e.g. `at_exit { exposure_executor.shutdown; exposure_executor.wait_for_termination(5) }` for `Concurrent::FixedThreadPool`. Skipping this can leave background threads alive at process exit and delay shutdown.
+
 ## Error Handling
 
 The provider uses OpenFeature's standard error codes to indicate issues during flag evaluation:
