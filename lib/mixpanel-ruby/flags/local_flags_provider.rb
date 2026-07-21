@@ -19,14 +19,27 @@ module Mixpanel
       # @param config [Hash] Local flags configuration
       # @param tracker_callback [Proc] Callback to track events
       # @param error_handler [Mixpanel::ErrorHandler] Error handler
-      def initialize(token, config, tracker_callback, error_handler)
-        @config = DEFAULT_CONFIG.merge(config || {})
+      # @param credentials [ServiceAccountCredentials, nil] Optional service account credentials
+      def initialize(token, config, tracker_callback, error_handler, credentials = nil)
+        # compact: an explicit nil from the caller (e.g.
+        # polling_interval_in_seconds: nil) must not override a sane default.
+        # Both the previous sleep(nil) and the current
+        # ConditionVariable#wait(mutex, nil) block indefinitely, which would
+        # silently disable polling — fall back to the default instead.
+        @config = DEFAULT_CONFIG.merge((config || {}).compact)
+
+        interval = @config[:polling_interval_in_seconds]
+        unless interval.is_a?(Numeric) && interval > 0
+          raise ArgumentError,
+                "polling_interval_in_seconds must be a positive number, got: #{interval.inspect}"
+        end
 
         provider_config = {
           token: token,
           api_host: @config[:api_host],
           request_timeout_in_seconds: @config[:request_timeout_in_seconds],
-          exposure_executor: @config[:exposure_executor]
+          exposure_executor: @config[:exposure_executor],
+          credentials: credentials
         }
 
         super(provider_config, '/flags/definitions', tracker_callback, 'local', error_handler)
@@ -34,36 +47,90 @@ module Mixpanel
         @flag_definitions = {}
         @polling_thread = nil
         @stop_polling = false
+        @polling_mutex = Mutex.new
+        @polling_condition = ConditionVariable.new
+        # Separate from @polling_mutex: serializes the full start/stop lifecycle
+        # (including the join inside stop) so a concurrent start can't observe a
+        # mid-stop state and spawn a new polling thread before the old one
+        # finishes exiting. We can't hold @polling_mutex across the join — the
+        # polling thread needs it to wake from the condition wait.
+        @lifecycle_mutex = Mutex.new
       end
 
       # Start polling for flag definitions
       # Fetches immediately, then at regular intervals if polling enabled
       def start_polling_for_definitions!
-        fetch_flag_definitions
+        # Clear @stop_polling BEFORE the initial fetch so a concurrent
+        # stop_polling_for_definitions! arriving during the fetch can flip it
+        # back to true and signal "abandon start". Under @polling_mutex, writes
+        # to @stop_polling are linearized: whichever of {start's clear, stop's
+        # set} happened latest is what we observe under the lifecycle lock
+        # below — i.e. last-writer-wins semantics preserve stop's postcondition
+        # (polling is off when stop returns) even across the unguarded fetch.
+        @polling_mutex.synchronize { @stop_polling = false }
 
-        if @config[:enable_polling] && !@polling_thread
-          @stop_polling = false
-          @polling_thread = Thread.new do
-            loop do
-              sleep @config[:polling_interval_in_seconds]
-              break if @stop_polling
+        # Initial fetch is intentionally outside @lifecycle_mutex: it's a
+        # blocking HTTP call, and holding the lifecycle lock across it would
+        # block a concurrent stop_polling_for_definitions! for the full request
+        # timeout.
+        #
+        # A transient failure here (network blip, HTTP 500) should NOT prevent
+        # the polling thread from spawning — the loop retries on the configured
+        # interval. Without this inner rescue, the outer rescue below would
+        # catch and return, leaving the SDK permanently without polling until
+        # the caller manually retried.
+        begin
+          fetch_flag_definitions
+        rescue StandardError => e
+          safe_handle_error(e)
+        end
 
-              begin
-                fetch_flag_definitions
-              rescue StandardError => e
-                @error_handler.handle(e) if @error_handler
+        @lifecycle_mutex.synchronize do
+          # If a stop arrived during/after our @stop_polling clear above, abort
+          # — the user's stop "wins" because it's the most recent intent.
+          stop_requested = @polling_mutex.synchronize { @stop_polling }
+
+          # .alive? guards against a prior polling thread that died abnormally
+          # (e.g. error_handler itself raised); without it @polling_thread would
+          # be non-nil-but-dead and we'd silently refuse to restart polling.
+          if !stop_requested && @config[:enable_polling] &&
+             (@polling_thread.nil? || !@polling_thread.alive?)
+            @polling_thread = Thread.new do
+              loop do
+                # Check @stop_polling INSIDE the mutex (before and after wait)
+                # so a broadcast from stop_polling_for_definitions! can't be
+                # lost if it arrives while we're outside the synchronized region
+                # (e.g. during fetch_flag_definitions below).
+                stopped = @polling_mutex.synchronize do
+                  next true if @stop_polling
+
+                  @polling_condition.wait(@polling_mutex, @config[:polling_interval_in_seconds])
+                  @stop_polling
+                end
+                break if stopped
+
+                begin
+                  fetch_flag_definitions
+                rescue StandardError => e
+                  safe_handle_error(e)
+                end
               end
             end
           end
         end
       rescue StandardError => e
-        @error_handler.handle(e) if @error_handler
+        safe_handle_error(e)
       end
 
       def stop_polling_for_definitions!
-        @stop_polling = true
-        @polling_thread&.join
-        @polling_thread = nil
+        @lifecycle_mutex.synchronize do
+          @polling_mutex.synchronize do
+            @stop_polling = true
+            @polling_condition.broadcast
+          end
+          @polling_thread&.join
+          @polling_thread = nil
+        end
       end
 
       def shutdown
@@ -104,11 +171,11 @@ module Mixpanel
       def get_variant(flag_key, fallback_variant, context, report_exposure: true)
         flag = @flag_definitions[flag_key]
 
-        return fallback_variant unless flag
+        return fallback_variant.as_fallback(FallbackReason.flag_not_found) unless flag
 
         context_key = flag['context']
         unless context.key?(context_key) || context.key?(context_key.to_sym)
-          return fallback_variant
+          return fallback_variant.as_fallback(FallbackReason.missing_context_key(context_key))
         end
 
         context_value = context[context_key] || context[context_key.to_sym]
@@ -120,10 +187,10 @@ module Mixpanel
           selected_variant = get_assigned_variant(flag, context_value, flag_key, rollout) if rollout
         end
 
-        return fallback_variant unless selected_variant
+        return fallback_variant.as_fallback(FallbackReason.no_rollout_match) unless selected_variant
 
         track_exposure_event(flag_key, selected_variant, context) if report_exposure
-        selected_variant
+        selected_variant.with_source(VariantSource::LOCAL)
       end
 
       # Get all variants for user context
@@ -132,16 +199,35 @@ module Mixpanel
       # @return [Hash] Map of flag_key => SelectedVariant
       def get_all_variants(context)
         variants = {}
+        fallback = SelectedVariant.new(variant_value: nil)
 
         @flag_definitions.each_key do |flag_key|
-          variant = get_variant(flag_key, nil, context, report_exposure: false)
-          variants[flag_key] = variant if variant
+          variant = get_variant(flag_key, fallback, context, report_exposure: false)
+          variants[flag_key] = variant if variant.variant_source == VariantSource::LOCAL
         end
 
         variants
       end
 
       private
+
+      # Wrap @error_handler.handle so a misbehaving handler can't kill the
+      # polling thread mid-loop — that would leave @polling_thread non-nil but
+      # dead, and (without the .alive? check in start) silently prevent restart.
+      #
+      # Always warn to stderr as well. The default Mixpanel::ErrorHandler#handle
+      # is a no-op, so dispatching only via @error_handler swallows schema drift
+      # (NoMethodError, JSON::ParserError, etc.) — the loop runs forever
+      # undetected. Matches the convention in mixpanel-python / mixpanel-java /
+      # mixpanel-go / mixpanel-node, all of which log unconditionally and keep
+      # polling.
+      def safe_handle_error(error)
+        warn "[Mixpanel] Failed to fetch flag definitions: #{error.class}: #{error.message}"
+        @error_handler.handle(error) if @error_handler
+      rescue StandardError
+        # Swallow handler failures: keeping the polling loop alive is more
+        # important than propagating a broken handler's failure.
+      end
 
       def fetch_flag_definitions
         response = call_flags_endpoint
