@@ -20,7 +20,7 @@ spec = Gem::Specification.new do |spec|
   spec.add_development_dependency 'activesupport', '~> 4.0'
   spec.add_development_dependency 'rake', '~> 13'
   spec.add_development_dependency 'rspec', '~> 3.0'
-  spec.add_development_dependency 'webmock', '~> 3.16.2'
+  spec.add_development_dependency 'webmock', '~> 3.26.2'
   spec.add_development_dependency 'debug'
   spec.add_development_dependency 'ruby-lsp-rspec'
   spec.add_development_dependency 'simplecov'
