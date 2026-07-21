@@ -259,6 +259,18 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
 
       provider.get_variant('any-flag', fallback_variant, test_context)
     end
+
+    it 'tags the fallback as BACKEND_ERROR with the response body on HTTP error (SDK-83)' do
+      stub_request(:get, %r{https://api\.mixpanel\.com/flags})
+        .to_return(status: 400, body: 'distinct_id must be provided in evalContext as a string')
+
+      fallback_variant = Mixpanel::Flags::SelectedVariant.new(variant_value: 'fb')
+      result = provider.get_variant('any-flag', fallback_variant, test_context, report_exposure: false)
+
+      expect(result.variant_source).to eq(Mixpanel::Flags::VariantSource::FALLBACK)
+      expect(result.fallback_reason.kind).to eq(:backend_error)
+      expect(result.fallback_reason.message).to include('distinct_id must be provided')
+    end
   end
 
   describe '#is_enabled' do
