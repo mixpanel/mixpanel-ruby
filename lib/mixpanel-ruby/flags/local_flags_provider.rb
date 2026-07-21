@@ -71,7 +71,17 @@ module Mixpanel
         # blocking HTTP call, and holding the lifecycle lock across it would
         # block a concurrent stop_polling_for_definitions! for the full request
         # timeout.
-        fetch_flag_definitions
+        #
+        # A transient failure here (network blip, HTTP 500) should NOT prevent
+        # the polling thread from spawning — the loop retries on the configured
+        # interval. Without this inner rescue, the outer rescue below would
+        # catch and return, leaving the SDK permanently without polling until
+        # the caller manually retried.
+        begin
+          fetch_flag_definitions
+        rescue StandardError => e
+          safe_handle_error(e)
+        end
 
         @lifecycle_mutex.synchronize do
           # If a stop arrived during/after our @stop_polling clear above, abort
@@ -202,11 +212,19 @@ module Mixpanel
       # Wrap @error_handler.handle so a misbehaving handler can't kill the
       # polling thread mid-loop — that would leave @polling_thread non-nil but
       # dead, and (without the .alive? check in start) silently prevent restart.
+      #
+      # Always warn to stderr as well. The default Mixpanel::ErrorHandler#handle
+      # is a no-op, so dispatching only via @error_handler swallows schema drift
+      # (NoMethodError, JSON::ParserError, etc.) — the loop runs forever
+      # undetected. Matches the convention in mixpanel-python / mixpanel-java /
+      # mixpanel-go / mixpanel-node, all of which log unconditionally and keep
+      # polling.
       def safe_handle_error(error)
+        warn "[Mixpanel] Failed to fetch flag definitions: #{error.class}: #{error.message}"
         @error_handler.handle(error) if @error_handler
       rescue StandardError
-        # Swallow: keeping the polling loop alive is more important than
-        # propagating a broken handler's failure.
+        # Swallow handler failures: keeping the polling loop alive is more
+        # important than propagating a broken handler's failure.
       end
 
       def fetch_flag_definitions

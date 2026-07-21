@@ -749,6 +749,29 @@ describe Mixpanel::Flags::LocalFlagsProvider do
 
       provider.send(:track_exposure_event, 'test_flag', variant, test_context)
     end
+
+    # SDK-84: when local eval succeeds via a non-distinct_id Variant Assignment
+    # Key but the context lacks distinct_id, the exposure can't fire. Surface
+    # via error_handler instead of silently returning.
+    it 'reports through error_handler when distinct_id is missing' do
+      variant = Mixpanel::Flags::SelectedVariant.new(
+        variant_key: 'treatment', variant_value: 'treatment'
+      )
+
+      expect(mock_tracker).not_to receive(:call)
+      expect(mock_error_handler).to receive(:handle) do |err|
+        expect(err).to be_a(Mixpanel::MixpanelError)
+        expect(err.message).to include('test_flag')
+        expect(err.message).to include('distinct_id')
+      end
+
+      provider.send(
+        :track_exposure_event,
+        'test_flag',
+        variant,
+        { 'device_id' => 'abc-123' }
+      )
+    end
   end
 
   describe '#get_variant variant_source / fallback_reason tagging' do
@@ -975,6 +998,54 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       ensure
         fetch_release << true
         starter&.join
+        polling_provider.stop_polling_for_definitions!
+      end
+    end
+
+    # SDK-78: safe_handle_error previously dispatched only to @error_handler,
+    # whose default Mixpanel::ErrorHandler#handle is a no-op — schema drift
+    # (NoMethodError, JSON::ParserError, etc.) looped forever undetected.
+    # Warn to stderr unconditionally so failures are visible without an
+    # error_handler being configured.
+    it 'warns to stderr when fetch raises and no error_handler is configured' do
+      stub_request(:get, endpoint_url_regex).to_return(status: 500, body: 'server down')
+
+      polling_provider = Mixpanel::Flags::LocalFlagsProvider.new(
+        test_token,
+        { enable_polling: false },
+        mock_tracker,
+        nil
+      )
+
+      expect { polling_provider.start_polling_for_definitions! }
+        .to output(/\[Mixpanel\] Failed to fetch flag definitions: Mixpanel::ServerError/).to_stderr
+    end
+
+    # Regression: previously the outer rescue on start_polling_for_definitions!
+    # caught an initial-fetch failure and returned before the @lifecycle_mutex
+    # block ever spawned the poller thread. A single startup blip (transient
+    # 500 / network timeout) left the SDK permanently without a poller until
+    # the caller retried — the whole point of polling.
+    it 'still spawns the polling thread when the initial fetch fails' do
+      stub_request(:get, endpoint_url_regex).to_return(status: 500, body: 'transient')
+
+      polling_provider = Mixpanel::Flags::LocalFlagsProvider.new(
+        test_token,
+        { enable_polling: true, polling_interval_in_seconds: 30 },
+        mock_tracker,
+        nil
+      )
+
+      begin
+        # Warning is expected because the initial fetch fails; capture stderr
+        # so it doesn't pollute test output.
+        expect { polling_provider.start_polling_for_definitions! }
+          .to output(/\[Mixpanel\] Failed to fetch flag definitions/).to_stderr
+
+        polling_thread = polling_provider.instance_variable_get(:@polling_thread)
+        expect(polling_thread).not_to be_nil
+        expect(polling_thread).to be_alive
+      ensure
         polling_provider.stop_polling_for_definitions!
       end
     end
