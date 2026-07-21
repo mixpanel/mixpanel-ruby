@@ -1,6 +1,7 @@
 require 'json'
 require 'mixpanel-ruby/flags/remote_flags_provider'
 require 'mixpanel-ruby/flags/types'
+require 'mixpanel-ruby/credentials'
 require 'webmock/rspec'
 
 describe Mixpanel::Flags::RemoteFlagsProvider do
@@ -17,6 +18,7 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
       config,
       mock_tracker,
       mock_error_handler
+      # credentials defaults to nil
     )
   end
 
@@ -448,6 +450,40 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
       expect(mock_tracker).to receive(:call).once
 
       provider.send(:track_exposure_event, 'test_flag', variant, test_context)
+    end
+  end
+
+  describe 'service account credentials' do
+    it 'uses service account credentials for authentication' do
+      credentials = Mixpanel::ServiceAccountCredentials.new('test-user', 'test-secret', 'test-project')
+
+      response = create_success_response({
+        'test_flag' => {
+          'variant_key' => 'treatment',
+          'variant_value' => 'treatment'
+        }
+      })
+
+      stub_request(:get, endpoint_url_regex)
+        .with(
+          basic_auth: ['test-user', 'test-secret']
+        )
+        .to_return(
+          status: 200,
+          body: response.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+
+      credentials_provider = Mixpanel::Flags::RemoteFlagsProvider.new(
+        test_token,
+        config,
+        mock_tracker,
+        mock_error_handler,
+        credentials
+      )
+
+      result = credentials_provider.get_variant_value('test_flag', 'fallback', test_context, report_exposure: false)
+      expect(result).to eq('treatment')
     end
   end
 end

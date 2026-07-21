@@ -62,9 +62,14 @@ module Mixpanel
     # If a block is provided, it is passed a type (one of :event or :profile_update)
     # and a string message. This same format is accepted by Mixpanel::Consumer#send!
     # and Mixpanel::BufferedConsumer#send!
-    def initialize(token, error_handler=nil, local_flags_config: nil, remote_flags_config: nil, &block)
-      super(token, error_handler, &block)
-      @token = token
+    #
+    # Optional parameters:
+    # - credentials: ServiceAccountCredentials for authentication (used for import and feature flags)
+    # - local_flags_config: Configuration hash for local feature flags
+    # - remote_flags_config: Configuration hash for remote feature flags
+    def initialize(token, error_handler=nil, credentials: nil, local_flags_config: nil, remote_flags_config: nil, &block)
+      super(token, error_handler, credentials: credentials, &block)
+
       @people = People.new(token, error_handler, &block)
       @groups = Groups.new(token, error_handler, &block)
 
@@ -74,7 +79,8 @@ module Mixpanel
           token,
           local_flags_config,
           method(:track),  # Pass bound method as callback
-          error_handler || ErrorHandler.new
+          error_handler || ErrorHandler.new,
+          credentials
         )
       end
 
@@ -84,7 +90,8 @@ module Mixpanel
           token,
           remote_flags_config,
           method(:track),  # Pass bound method as callback
-          error_handler || ErrorHandler.new
+          error_handler || ErrorHandler.new,
+          credentials
         )
       end
     end
@@ -122,19 +129,42 @@ module Mixpanel
     #
     #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #
-    #     # Import event that user "12345"'s credit card was declined
+    #     # Using deprecated API key (still supported)
     #     tracker.import("API_KEY", "12345", "Credit Card Declined", {
     #       'time' => 1310111365
     #     })
     #
-    #     # Properties describe the circumstances of the event,
-    #     # or aspects of the source or user associated with the event
-    #     tracker.import("API_KEY", "12345", "Welcome Email Sent", {
+    #     # Using service account credentials (recommended)
+    #     credentials = Mixpanel::ServiceAccountCredentials.new(username, secret, project_id)
+    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, credentials: credentials)
+    #     tracker.import(nil, "12345", "Welcome Email Sent", {
     #         'Email Template' => 'Pretty Pink Welcome',
     #         'User Sign-up Cohort' => 'July 2013',
     #         'time' => 1310111365
     #     })
     def import(api_key, distinct_id, event, properties={}, ip=nil)
+      # This is here strictly to allow rdoc to include the relevant
+      # documentation
+      super
+    end
+
+    # Import an event using service account credentials from the constructor.
+    # This is the recommended method for importing historical events with service accounts.
+    #
+    # Service account credentials must be provided when creating the Tracker.
+    # This method provides a cleaner API than import() as it doesn't require
+    # passing nil as the first parameter.
+    #
+    #     credentials = Mixpanel::ServiceAccountCredentials.new(username, secret, project_id)
+    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, credentials: credentials)
+    #
+    #     # Import a historical event
+    #     tracker.import_events('user123', 'Past Event', {
+    #         'Email Template' => 'Welcome Email',
+    #         'time' => 1369353600
+    #     })
+    #
+    def import_events(distinct_id, event, properties={}, ip=nil)
       # This is here strictly to allow rdoc to include the relevant
       # documentation
       super

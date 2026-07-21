@@ -1,6 +1,7 @@
 require 'mixpanel-ruby/consumer.rb'
 require 'mixpanel-ruby/tracker.rb'
 require 'mixpanel-ruby/version.rb'
+require 'mixpanel-ruby/credentials.rb'
 require 'mixpanel-ruby/flags/utils.rb'
 require 'mixpanel-ruby/flags/types.rb'
 require 'mixpanel-ruby/flags/flags_provider.rb'

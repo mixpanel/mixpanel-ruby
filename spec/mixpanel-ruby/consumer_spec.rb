@@ -3,6 +3,7 @@ require 'spec_helper'
 require 'webmock'
 
 require 'mixpanel-ruby/consumer'
+require 'mixpanel-ruby/credentials'
 
 describe Mixpanel::Consumer do
   before { WebMock.reset! }
@@ -93,6 +94,56 @@ describe Mixpanel::Consumer do
     end
 
     it_behaves_like 'consumer'
+  end
+
+  context 'service account credentials' do
+    it 'should send a request to api.mixpanel.com/import with service account credentials' do
+      stub_request(:any, 'https://api.mixpanel.com/import?project_id=test-project-123').to_return({:body => '{"status": 1, "error": null}'})
+      credentials = Mixpanel::ServiceAccountCredentials.new('test-user', 'test-secret', 'test-project-123')
+      consumer = Mixpanel::Consumer.new(nil, nil, nil, nil, credentials: credentials)
+
+      consumer.send!(:import, {'data' => 'TEST EVENT MESSAGE'}.to_json)
+
+      # Should use Basic Auth header with username:secret
+      # Should add project_id as query parameter
+      # Should NOT include credentials in POST body or message
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import?project_id=test-project-123').
+        with(
+          :body => {
+            'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=',
+            'verbose' => '1'
+          },
+          :headers => {
+            'Authorization' => 'Basic ' + Base64.strict_encode64('test-user:test-secret')
+          }
+        )
+    end
+
+    it 'should raise ArgumentError when credentials is not ServiceAccountCredentials' do
+      consumer = Mixpanel::Consumer.new
+
+      expect {
+        consumer.request('https://api.mixpanel.com/import', {'data' => 'test', 'verbose' => '1'}, credentials: 'invalid', type: :import)
+      }.to raise_error(ArgumentError, /credentials must be ServiceAccountCredentials, got String/)
+    end
+
+    it 'should not include api_key when credentials are present' do
+      stub_request(:any, 'https://api.mixpanel.com/import?project_id=test-project').to_return({:body => '{"status": 1, "error": null}'})
+      credentials = Mixpanel::ServiceAccountCredentials.new('user', 'secret', 'test-project')
+      consumer = Mixpanel::Consumer.new(nil, nil, nil, nil, credentials: credentials)
+
+      # Message includes api_key but it should be ignored when credentials are present
+      consumer.send!(:import, {'data' => 'TEST EVENT MESSAGE', 'api_key' => 'SHOULD_BE_IGNORED'}.to_json)
+
+      # api_key should NOT be in the request body (only data and verbose)
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import?project_id=test-project').
+        with(
+          :body => {
+            'data' => 'IlRFU1QgRVZFTlQgTUVTU0FHRSI=',
+            'verbose' => '1'
+          }
+        )
+    end
   end
 
 end
@@ -205,4 +256,34 @@ describe Mixpanel::BufferedConsumer do
     end
   end
 
+  context 'with service account credentials' do
+    it 'should pass credentials to consumer when using BufferedConsumer' do
+      stub_request(:any, 'https://api.mixpanel.com/import?project_id=buffered-project').to_return({:body => '{"status": 1, "error": null}'})
+      credentials = Mixpanel::ServiceAccountCredentials.new('buffered-user', 'buffered-secret', 'buffered-project')
+      consumer = Mixpanel::BufferedConsumer.new(nil, nil, nil, 2, credentials: credentials)
+
+      # Import messages are not buffered - they're sent immediately
+      consumer.send!(:import, {'data' => 'EVENT 1'}.to_json)
+
+      # Verify credentials were used in the request
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import?project_id=buffered-project').
+        with(
+          :headers => {
+            'Authorization' => 'Basic ' + Base64.strict_encode64('buffered-user:buffered-secret')
+          }
+        ).once
+    end
+  end
+
+end
+
+describe 'Connection error handling' do
+  it 'should raise ConnectionError when network error occurs' do
+    stub_request(:any, 'https://api.mixpanel.com/track').to_raise(StandardError.new('Network timeout'))
+    consumer = Mixpanel::Consumer.new
+
+    expect {
+      consumer.send!(:event, {'data' => 'TEST EVENT MESSAGE'}.to_json)
+    }.to raise_error(Mixpanel::ConnectionError, /Could not connect to Mixpanel, with error "Network timeout"/)
+  end
 end

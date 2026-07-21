@@ -14,13 +14,15 @@ module Mixpanel
       # @param config [Hash] Remote flags configuration
       # @param tracker_callback [Proc] Callback to track events
       # @param error_handler [Mixpanel::ErrorHandler] Error handler
-      def initialize(token, config, tracker_callback, error_handler)
+      # @param credentials [ServiceAccountCredentials, nil] Optional service account credentials
+      def initialize(token, config, tracker_callback, error_handler, credentials = nil)
         merged_config = DEFAULT_CONFIG.merge(config || {})
 
         provider_config = {
           token: token,
           api_host: merged_config[:api_host],
-          request_timeout_in_seconds: merged_config[:request_timeout_in_seconds]
+          request_timeout_in_seconds: merged_config[:request_timeout_in_seconds],
+          credentials: credentials
         }
 
         super(provider_config, '/flags', tracker_callback, 'remote', error_handler)
