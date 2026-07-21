@@ -25,4 +25,5 @@ spec = Gem::Specification.new do |spec|
   spec.add_development_dependency 'ruby-lsp-rspec'
   spec.add_development_dependency 'simplecov'
   spec.add_development_dependency 'simplecov-cobertura'
+  spec.add_development_dependency 'rack'
 end
