@@ -1,6 +1,7 @@
 require 'json'
 require 'mixpanel-ruby/flags/remote_flags_provider'
 require 'mixpanel-ruby/flags/types'
+require 'mixpanel-ruby/credentials'
 require 'webmock/rspec'
 
 describe Mixpanel::Flags::RemoteFlagsProvider do
@@ -17,6 +18,7 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
       config,
       mock_tracker,
       mock_error_handler
+      # credentials defaults to nil
     )
   end
 
@@ -257,6 +259,18 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
 
       provider.get_variant('any-flag', fallback_variant, test_context)
     end
+
+    it 'tags the fallback as BACKEND_ERROR with the response body on HTTP error (SDK-83)' do
+      stub_request(:get, %r{https://api\.mixpanel\.com/flags})
+        .to_return(status: 400, body: 'distinct_id must be provided in evalContext as a string')
+
+      fallback_variant = Mixpanel::Flags::SelectedVariant.new(variant_value: 'fb')
+      result = provider.get_variant('any-flag', fallback_variant, test_context, report_exposure: false)
+
+      expect(result.variant_source).to eq(Mixpanel::Flags::VariantSource::FALLBACK)
+      expect(result.fallback_reason.kind).to eq(:backend_error)
+      expect(result.fallback_reason.message).to include('distinct_id must be provided')
+    end
   end
 
   describe '#is_enabled' do
@@ -436,6 +450,40 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
       expect(mock_tracker).to receive(:call).once
 
       provider.send(:track_exposure_event, 'test_flag', variant, test_context)
+    end
+  end
+
+  describe 'service account credentials' do
+    it 'uses service account credentials for authentication' do
+      credentials = Mixpanel::ServiceAccountCredentials.new('test-user', 'test-secret', 'test-project')
+
+      response = create_success_response({
+        'test_flag' => {
+          'variant_key' => 'treatment',
+          'variant_value' => 'treatment'
+        }
+      })
+
+      stub_request(:get, endpoint_url_regex)
+        .with(
+          basic_auth: ['test-user', 'test-secret']
+        )
+        .to_return(
+          status: 200,
+          body: response.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+
+      credentials_provider = Mixpanel::Flags::RemoteFlagsProvider.new(
+        test_token,
+        config,
+        mock_tracker,
+        mock_error_handler,
+        credentials
+      )
+
+      result = credentials_provider.get_variant_value('test_flag', 'fallback', test_context, report_exposure: false)
+      expect(result).to eq('treatment')
     end
   end
 end

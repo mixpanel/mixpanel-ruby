@@ -40,6 +40,11 @@ module Mixpanel
   #        @kestrel.set(ANALYTICS_QUEUE, [type, message].to_json)
   #    end
   #
+  # IMPORTANT SECURITY NOTE: Always pass credentials to the Consumer or Tracker
+  # constructor (credentials: ...). Credentials are stored as instance variables
+  # and used only for HTTP Basic Auth headers - they never appear in message JSON,
+  # preventing accidental credential leakage in logs or queue storage.
+  #
   # You can also instantiate the library consumers yourself, and use
   # them wherever you would like. For example, the working that
   # consumes the above queue might work like this:
@@ -58,14 +63,19 @@ module Mixpanel
     # they will be used instead of the default Mixpanel endpoints.
     # This can be useful for proxying, debugging, or if you prefer
     # not to use SSL for your events.
+    #
+    # @param credentials [ServiceAccountCredentials, nil] Service account credentials for authentication.
+    #   Credentials are only used for the /import endpoint and feature flags.
     def initialize(events_endpoint=nil,
                    update_endpoint=nil,
                    groups_endpoint=nil,
-                   import_endpoint=nil)
+                   import_endpoint=nil,
+                   credentials: nil)
       @events_endpoint = events_endpoint || 'https://api.mixpanel.com/track'
       @update_endpoint = update_endpoint || 'https://api.mixpanel.com/engage'
       @groups_endpoint = groups_endpoint || 'https://api.mixpanel.com/groups'
       @import_endpoint = import_endpoint || 'https://api.mixpanel.com/import'
+      @credentials = credentials
     end
 
     # Send the given string message to Mixpanel. Type should be
@@ -85,13 +95,26 @@ module Mixpanel
 
       decoded_message = JSON.load(message)
       api_key = decoded_message["api_key"]
+
       data = Base64.encode64(decoded_message["data"].to_json).gsub("\n", '')
 
       form_data = {"data" => data, "verbose" => 1}
-      form_data.merge!("api_key" => api_key) if api_key
+
+      # Only add api_key to form data if using legacy API key (not service account credentials)
+      # Service account credentials use HTTP Basic Auth instead
+      if api_key && !@credentials
+        form_data.merge!("api_key" => api_key)
+      end
 
       begin
-        response_code, response_body = request(endpoint, form_data)
+        # Use keyword arguments for credentials to maintain backward compatibility
+        # with custom Consumer subclasses that override request(endpoint, form_data)
+        response_code, response_body =
+          if @credentials && type == :import
+            request(endpoint, form_data, credentials: @credentials, type: type)
+          else
+            request(endpoint, form_data)
+          end
       rescue => e
         raise ConnectionError.new("Could not connect to Mixpanel, with error \"#{e.message}\".")
       end
@@ -123,10 +146,31 @@ module Mixpanel
     #
     # as the result of the response. Response code should be nil if
     # the request never receives a response for some reason.
-    def request(endpoint, form_data)
+    #
+    # For service account authentication, pass credentials (ServiceAccountCredentials object)
+    # and type (:import) as keyword arguments.
+    # The positional parameters are preserved for backward compatibility with custom Consumer subclasses.
+    def request(endpoint, form_data, credentials: nil, type: nil)
       uri = URI(endpoint)
+
+      # Add project_id as query parameter for import endpoint with service account credentials
+      if credentials && type == :import
+        unless credentials.is_a?(ServiceAccountCredentials)
+          raise ArgumentError, "credentials must be ServiceAccountCredentials, got #{credentials.class}"
+        end
+
+        query_params = URI.decode_www_form(uri.query || '').to_h
+        query_params['project_id'] = credentials.project_id
+        uri.query = URI.encode_www_form(query_params)
+      end
+
       request = Net::HTTP::Post.new(uri.request_uri)
       request.set_form_data(form_data)
+
+      # Use Basic Auth with service account credentials for import endpoint
+      if credentials && type == :import
+        request.basic_auth(credentials.username, credentials.secret)
+      end
 
       client = Net::HTTP.new(uri.host, uri.port)
       client.use_ssl = true
@@ -182,17 +226,21 @@ module Mixpanel
     # to the Mixpanel::Tracker constructor. If a block is passed to
     # the constructor, the *_endpoint constructor arguments are
     # ignored.
-    def initialize(events_endpoint=nil, update_endpoint=nil, import_endpoint=nil, max_buffer_length=MAX_LENGTH, &block)
+    #
+    # @param credentials [ServiceAccountCredentials, nil] Service account credentials for authentication.
+    #   Credentials are only used for the /import endpoint and feature flags.
+    def initialize(events_endpoint=nil, update_endpoint=nil, import_endpoint=nil, max_buffer_length=MAX_LENGTH, credentials: nil, &block)
       @max_length = [max_buffer_length, MAX_LENGTH].min
       @buffers = {
         :event => [],
         :profile_update => [],
       }
+      @credentials = credentials
 
       if block
         @sink = block
       else
-        consumer = Consumer.new(events_endpoint, update_endpoint, import_endpoint)
+        consumer = Consumer.new(events_endpoint, update_endpoint, nil, import_endpoint, credentials: credentials)
         @sink = consumer.method(:send!)
       end
     end
