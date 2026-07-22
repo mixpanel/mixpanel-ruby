@@ -1,4 +1,5 @@
 require 'json'
+require 'timeout'
 require 'mixpanel-ruby/flags/remote_flags_provider'
 require 'mixpanel-ruby/flags/types'
 require 'mixpanel-ruby/credentials'
@@ -116,6 +117,61 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
       expect(mock_tracker).not_to receive(:call)
 
       provider.get_variant_value('test_flag', 'control', test_context)
+    end
+
+    it 'runs the tracker inline by default (no executor configured)' do
+      response = create_success_response({
+        'test_flag' => {
+          'variant_key' => 'treatment',
+          'variant_value' => 'treatment'
+        }
+      })
+      stub_flags_request(response)
+
+      calling_thread = Thread.current
+      tracker_thread = nil
+      allow(mock_tracker).to receive(:call) { tracker_thread = Thread.current }
+
+      provider.get_variant_value('test_flag', 'control', test_context)
+      expect(tracker_thread).to be(calling_thread)
+    end
+
+    it 'dispatches the tracker via the configured exposure_executor off the calling thread' do
+      response = create_success_response({
+        'test_flag' => {
+          'variant_key' => 'treatment',
+          'variant_value' => 'treatment'
+        }
+      })
+      stub_flags_request(response)
+
+      calling_thread = Thread.current
+      tracker_thread = nil
+      tracker_ran = Queue.new
+      tracker = ->(_distinct_id, _event, _properties) {
+        tracker_thread = Thread.current
+        tracker_ran << :done
+      }
+
+      # Minimal duck-typed executor: spawn a thread per call.
+      executor = Object.new
+      def executor.post(&block)
+        Thread.new(&block)
+      end
+
+      provider = Mixpanel::Flags::RemoteFlagsProvider.new(
+        test_token,
+        { exposure_executor: executor },
+        tracker,
+        mock_error_handler
+      )
+
+      provider.get_variant_value('test_flag', 'control', test_context)
+
+      # Bounded wait — a bare Queue#pop would hang CI forever if the
+      # tracker block raised before pushing :done.
+      Timeout.timeout(2) { tracker_ran.pop }
+      expect(tracker_thread).not_to be(calling_thread)
     end
 
     it 'does not track exposure event when report_exposure is false' do

@@ -750,6 +750,109 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       provider.send(:track_exposure_event, 'test_flag', variant, test_context)
     end
 
+    it 'runs the tracker inline by default (no executor configured)' do
+      flag = create_test_flag
+      stub_flag_definitions([flag])
+      provider.start_polling_for_definitions!
+
+      variant = Mixpanel::Flags::SelectedVariant.new(
+        variant_key: 'treatment', variant_value: 'treatment'
+      )
+
+      calling_thread = Thread.current
+      tracker_thread = nil
+      allow(mock_tracker).to receive(:call) { tracker_thread = Thread.current }
+
+      provider.send(:track_exposure_event, 'test_flag', variant, test_context)
+      expect(tracker_thread).to be(calling_thread)
+    end
+
+    it 'dispatches the tracker via :exposure_executor when configured' do
+      executor = Object.new
+      def executor.post(&block)
+        Thread.new(&block)
+      end
+
+      tracker_thread = nil
+      tracker_ran = Queue.new
+      tracker = ->(_distinct_id, _event, _properties) {
+        tracker_thread = Thread.current
+        tracker_ran << :done
+      }
+
+      provider = Mixpanel::Flags::LocalFlagsProvider.new(
+        test_token,
+        { enable_polling: false, exposure_executor: executor },
+        tracker,
+        mock_error_handler
+      )
+
+      variant = Mixpanel::Flags::SelectedVariant.new(
+        variant_key: 'treatment', variant_value: 'treatment'
+      )
+      provider.send(:track_exposure_event, 'test_flag', variant, test_context)
+
+      # Bounded wait — a bare Queue#pop would hang CI forever if the
+      # tracker block raised before pushing :done.
+      Timeout.timeout(2) { tracker_ran.pop }
+      expect(tracker_thread).not_to be(Thread.current)
+    end
+
+    it 'reports non-MixpanelError exceptions from the async tracker to error_handler' do
+      handler_called = Queue.new
+      handler = double('error_handler')
+      allow(handler).to receive(:handle) { |e| handler_called << e }
+
+      executor = Object.new
+      def executor.post(&block)
+        Thread.new(&block)
+      end
+
+      tracker = ->(_distinct_id, _event, _properties) { raise NoMethodError, 'boom' }
+
+      provider = Mixpanel::Flags::LocalFlagsProvider.new(
+        test_token,
+        { enable_polling: false, exposure_executor: executor },
+        tracker,
+        handler
+      )
+
+      variant = Mixpanel::Flags::SelectedVariant.new(
+        variant_key: 'treatment', variant_value: 'treatment'
+      )
+      provider.send(:track_exposure_event, 'test_flag', variant, test_context)
+
+      err = Timeout.timeout(2) { handler_called.pop }
+      expect(err).to be_a(Mixpanel::MixpanelError)
+      expect(err.message).to include('NoMethodError')
+      expect(err.message).to include('boom')
+    end
+
+    # Inline path preserves the pre-executor behavior: non-MixpanelError
+    # from the tracker propagates to the flag evaluator's caller instead
+    # of being silently reported. Only the async path wraps everything,
+    # because on the executor thread propagation would just kill the
+    # background thread with no visibility.
+    it 'lets non-MixpanelError exceptions propagate on the inline path' do
+      tracker = ->(_distinct_id, _event, _properties) { raise NoMethodError, 'boom' }
+
+      inline_provider = Mixpanel::Flags::LocalFlagsProvider.new(
+        test_token,
+        { enable_polling: false },
+        tracker,
+        mock_error_handler
+      )
+
+      variant = Mixpanel::Flags::SelectedVariant.new(
+        variant_key: 'treatment', variant_value: 'treatment'
+      )
+
+      expect(mock_error_handler).not_to receive(:handle)
+      expect {
+        inline_provider.send(:track_exposure_event, 'test_flag', variant, test_context)
+      }.to raise_error(NoMethodError, 'boom')
+    end
+
     # SDK-84: when local eval succeeds via a non-distinct_id Variant Assignment
     # Key but the context lacks distinct_id, the exposure can't fire. Surface
     # via error_handler instead of silently returning.
