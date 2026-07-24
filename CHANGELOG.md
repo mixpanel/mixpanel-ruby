@@ -1,5 +1,14 @@
 # Changelog
 
+## [v3.3.0](https://github.com/mixpanel/mixpanel-ruby/tree/v3.3.0) (2026-07-24)
+
+### Fixes
+- allow capability to offload reportExposure to async thread (SDK-80) ([#157](https://github.com/mixpanel/mixpanel-ruby/pull/157))
+- surface dropped exposure when distinct_id missing from context ([#154](https://github.com/mixpanel/mixpanel-ruby/pull/154))
+- distinguish fallback reasons + forward backend error message (SDK-79, SDK-83) ([#153](https://github.com/mixpanel/mixpanel-ruby/pull/153))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-ruby/compare/v3.2.0...v3.3.0)
+
 ## [v3.2.0](https://github.com/mixpanel/mixpanel-ruby/tree/v3.2.0) (2026-07-10)
 
 ### Features
