@@ -201,6 +201,34 @@ When you are done using the provider, shut it down to stop any background pollin
 provider.shutdown
 ```
 
+## Async Exposure Tracking
+
+By default, every flag evaluation tracks an exposure event inline — the `/track` HTTP round trip happens on the calling thread before `fetch_*_value` returns. For latency-sensitive code paths, pass an `:exposure_executor` so exposure tracking runs off-thread. The executor is duck-typed — anything that responds to `#post(&block)` works:
+
+```ruby
+# With concurrent-ruby (recommended)
+require 'concurrent'
+exposure_executor = Concurrent::FixedThreadPool.new(1)
+
+provider = Mixpanel::OpenFeature::Provider.from_local(
+  'YOUR_PROJECT_TOKEN',
+  { exposure_executor: exposure_executor },
+)
+
+# Without concurrent-ruby (minimal wrapper)
+class ThreadPerCall
+  def post(&block) = Thread.new(&block)
+end
+provider = Mixpanel::OpenFeature::Provider.from_local(
+  'YOUR_PROJECT_TOKEN',
+  { exposure_executor: ThreadPerCall.new },
+)
+```
+
+Available on both local and remote flag configs. Defaults to `nil` (inline behavior); existing setups are unaffected.
+
+> **Executor lifecycle:** `provider.shutdown` stops the flags provider's own resources (polling) but does NOT shut down a user-supplied executor. Own the executor's lifecycle explicitly — e.g. `at_exit { exposure_executor.shutdown; exposure_executor.wait_for_termination(5) }` for `Concurrent::FixedThreadPool`. Skipping this can leave background threads alive at process exit and delay shutdown.
+
 ## Error Handling
 
 The provider uses OpenFeature's standard error codes to indicate issues during flag evaluation:
