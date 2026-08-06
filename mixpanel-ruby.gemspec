@@ -17,7 +17,7 @@ spec = Gem::Specification.new do |spec|
   spec.add_runtime_dependency "base64"
   spec.add_runtime_dependency 'json-logic-rb', '~> 0.1.5'
 
-  spec.add_development_dependency 'activesupport', '~> 4.0'
+  spec.add_development_dependency 'activesupport', '~> 7.1'
   spec.add_development_dependency 'rake', '~> 13'
   spec.add_development_dependency 'rspec', '~> 3.0'
   spec.add_development_dependency 'webmock', '~> 3.16.2'
