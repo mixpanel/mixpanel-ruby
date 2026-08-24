@@ -486,6 +486,68 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       expect(result).to eq('fallback')
     end
 
+    it 'respects runtime evaluation rule with semver_compare operator when satisfied' do
+      runtime_eval = {
+        'semver_compare' => [{'var' => 'app_version'}, '>=', '1.2.0']
+      }
+      flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
+
+      stub_flag_definitions([flag])
+      provider.start_polling_for_definitions!
+
+      context = user_context_with_properties({'app_version' => '1.5.0'})
+      result = provider.get_variant_value('test_flag', 'fallback', context)
+
+      expect(result).not_to eq('fallback')
+      expect(['control', 'treatment']).to include(result)
+    end
+
+    it 'respects runtime evaluation rule with semver_compare operator when not satisfied' do
+      runtime_eval = {
+        'semver_compare' => [{'var' => 'app_version'}, '>=', '1.2.0']
+      }
+      flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
+
+      stub_flag_definitions([flag])
+      provider.start_polling_for_definitions!
+
+      context = user_context_with_properties({'app_version' => '1.0.0'})
+      result = provider.get_variant_value('test_flag', 'fallback', context)
+
+      expect(result).to eq('fallback')
+    end
+
+    it 'respects runtime evaluation rule with datetime_compare operator when satisfied' do
+      runtime_eval = {
+        'datetime_compare' => [{'var' => 'signup'}, '>=', 1_784_160_000_000]
+      }
+      flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
+
+      stub_flag_definitions([flag])
+      provider.start_polling_for_definitions!
+
+      context = user_context_with_properties({'signup' => '2026-07-17T00:00:00Z'})
+      result = provider.get_variant_value('test_flag', 'fallback', context)
+
+      expect(result).not_to eq('fallback')
+      expect(['control', 'treatment']).to include(result)
+    end
+
+    it 'respects runtime evaluation rule with datetime_compare operator when not satisfied' do
+      runtime_eval = {
+        'datetime_compare' => [{'var' => 'signup'}, '>=', 1_784_160_000_000]
+      }
+      flag = create_test_flag(runtime_evaluation_rule: runtime_eval)
+
+      stub_flag_definitions([flag])
+      provider.start_polling_for_definitions!
+
+      context = user_context_with_properties({'signup' => '2026-07-15T00:00:00Z'})
+      result = provider.get_variant_value('test_flag', 'fallback', context)
+
+      expect(result).to eq('fallback')
+    end
+
     it 'picks correct variant with hundred percent split' do
       variants = [
         { 'key' => 'A', 'value' => 'variant_a', 'is_control' => false, 'split' => 100.0 },
