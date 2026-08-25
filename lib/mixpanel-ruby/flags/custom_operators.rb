@@ -17,6 +17,11 @@ module Mixpanel
       # SemVer 2.0.0 requires major.minor.patch; partial versions are zero-padded to this.
       SEMVER_PARTS = 3
 
+      # Longest operand the semver regex is allowed to see. A real version never approaches this; the
+      # bound matches MAX_LENGTH in node-semver, and keeps an arbitrarily long property value off the
+      # regex regardless of how the engine schedules backtracking.
+      MAX_SEMVER_LENGTH = 256
+
       # Epoch milliseconds are compared as int64 elsewhere, so anything at or beyond this is out of range.
       MAX_EPOCH_MS = 2**63
 
@@ -30,6 +35,7 @@ module Mixpanel
 
         actual, symbol, target = unpacked
         return false unless actual.is_a?(String) && target.is_a?(String)
+        return false if actual.length > MAX_SEMVER_LENGTH || target.length > MAX_SEMVER_LENGTH
 
         actual_version = normalize_semver(actual)
         target_version = normalize_semver(target)
