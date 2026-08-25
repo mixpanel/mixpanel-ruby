@@ -16,7 +16,6 @@ spec = Gem::Specification.new do |spec|
   spec.add_runtime_dependency 'mutex_m'
   spec.add_runtime_dependency "base64"
   spec.add_runtime_dependency 'json-logic-rb', '~> 0.2'
-  spec.add_runtime_dependency 'semantic_range', '~> 3.1'
 
   spec.add_development_dependency 'activesupport', '~> 4.0'
   spec.add_development_dependency 'rake', '~> 13'
