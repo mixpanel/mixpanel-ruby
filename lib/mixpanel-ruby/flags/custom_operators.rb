@@ -1,3 +1,4 @@
+require 'date'
 require 'time'
 require 'json_logic'
 
@@ -9,8 +10,9 @@ module Mixpanel
       # as part of the Semver 2.0.0 spec. See https://semver.org/
       SEMVER_STRICT = /\A(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?\z/
 
-      # Strict RFC3339 guard for datetime strings.
-      RFC3339_STRICT = /\A\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})\z/
+      # Strict RFC3339 guard for datetime strings. The date and hour fields are captured so the
+      # calendar can be validated separately; the pattern only constrains their shape.
+      RFC3339_STRICT = /\A(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})\z/
 
       # SemVer 2.0.0 requires major.minor.patch; partial versions are zero-padded to this.
       SEMVER_PARTS = 3
@@ -156,11 +158,21 @@ module Mixpanel
         segments.join('.') + suffix
       end
 
+      # The pattern constrains each field to two digits, which still admits a date that cannot exist,
+      # such as 2026-02-30 or 29 February in a common year. Time.iso8601 rolls those forward into a
+      # real instant instead of raising, and hour 24 likewise becomes the following midnight, so the
+      # calendar is checked here. RFC 3339 section 5.6 allows hours 00 through 23.
+      def real_calendar_date?(year, month, day, hour)
+        hour <= 23 && Date.valid_date?(year, month, day)
+      end
+
       def convert_rfc3339_to_unix_seconds(value)
         return nil unless value.is_a?(String)
 
         normalized = value.strip.upcase
-        return nil unless normalized =~ RFC3339_STRICT
+        fields = RFC3339_STRICT.match(normalized)
+        return nil unless fields
+        return nil unless real_calendar_date?(fields[1].to_i, fields[2].to_i, fields[3].to_i, fields[4].to_i)
 
         parsed = Time.iso8601(normalized)
         parsed.to_i
