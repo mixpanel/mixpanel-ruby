@@ -1,5 +1,12 @@
 # Changelog
 
+## [v3.4.0](https://github.com/mixpanel/mixpanel-ruby/tree/v3.4.0) (2026-09-01)
+
+### Features
+- Implement semver and date custom ops for flags runtime props ([#171](https://github.com/mixpanel/mixpanel-ruby/pull/171))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-ruby/compare/v3.3.0...v3.4.0)
+
 ## [v3.3.0](https://github.com/mixpanel/mixpanel-ruby/tree/v3.3.0) (2026-07-24)
 
 ### Fixes
