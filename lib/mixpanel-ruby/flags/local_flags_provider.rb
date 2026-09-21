@@ -1,5 +1,5 @@
 require 'thread'
-require 'json_logic'
+require 'mixpanel-ruby/flags/json_logic'
 require 'mixpanel-ruby/flags/flags_provider'
 require 'mixpanel-ruby/flags/custom_operators'
 
@@ -377,10 +377,10 @@ module Mixpanel
 
         begin
           rule = lowercase_only_leaf_nodes(runtime_rule)
-          result = JsonLogic.apply(rule, parameters)
-          # A well-formed runtime rule evaluates to a boolean. Anything else —
-          # notably an unrecognized operator, which the engine echoes back as a
-          # (truthy) hash rather than raising — fails closed.
+          result = Mixpanel::Flags::JsonLogic.apply(rule, parameters)
+          # A well-formed runtime rule evaluates to a boolean. Any other result —
+          # a number, a string, a collection — fails closed here, and a rule
+          # naming an operator we do not implement raises into the rescue below.
           result == true
         rescue StandardError => e
           @error_handler.handle(e) if @error_handler

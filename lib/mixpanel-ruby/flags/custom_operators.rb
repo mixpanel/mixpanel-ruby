@@ -1,6 +1,6 @@
 require 'date'
 require 'time'
-require 'json_logic'
+require 'mixpanel-ruby/flags/json_logic'
 
 module Mixpanel
   module Flags
@@ -198,10 +198,10 @@ module Mixpanel
   end
 end
 
-JsonLogic.add_operation('semver_compare') do |values, _data|
+Mixpanel::Flags::JsonLogic.add_operation('semver_compare') do |values, _data|
   Mixpanel::Flags::CustomOperators.semver_compare(values)
 end
 
-JsonLogic.add_operation('datetime_compare') do |values, _data|
+Mixpanel::Flags::JsonLogic.add_operation('datetime_compare') do |values, _data|
   Mixpanel::Flags::CustomOperators.datetime_compare(values)
 end

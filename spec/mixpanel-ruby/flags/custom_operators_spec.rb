@@ -1,11 +1,10 @@
 require 'json'
 require 'rspec'
-require 'json_logic'
 require 'mixpanel-ruby/flags/custom_operators'
 
 # The golden vectors are the cross-SDK contract for the custom operators; the canonical copy and its
-# README live in the analytics monorepo. Cases run through JsonLogic.apply so that operator
-# registration is covered alongside the comparison itself.
+# README live in the analytics monorepo. Cases run through the evaluator's apply so that
+# operator registration is covered alongside the comparison itself.
 #
 # Defined at the top level so the case tables can be built while the describe blocks are collected.
 FIXTURES = File.expand_path('../../fixtures', __dir__)
@@ -46,7 +45,7 @@ DATETIME_CASES = load_vectors('datetime')
 
 describe Mixpanel::Flags::CustomOperators do
   def apply(rule, data)
-    JsonLogic.apply(rule, data)
+    Mixpanel::Flags::JsonLogic.apply(rule, data)
   end
 
   describe 'semver_compare' do
