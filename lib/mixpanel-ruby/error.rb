@@ -13,6 +13,21 @@ module Mixpanel
   class ServerError < MixpanelError
   end
 
+  # Raised directly to the caller (never passed to the ErrorHandler) when a
+  # hierarchical groups tracker is asked for a profile operation that
+  # hierarchical groups projects do not support, such as People#increment,
+  # People#append or People#track_charge. Like ArgumentError, it signals a
+  # mistake in the calling code rather than a delivery failure, so it does
+  # not extend MixpanelError.
+  class UnsupportedOperationError < StandardError
+  end
+
+  # Raised directly to the caller (never passed to the ErrorHandler) when a
+  # hierarchical groups tracker builds a group profile update without
+  # knowing its company. Use Tracker#for_company to bind one.
+  class CompanyRequiredError < StandardError
+  end
+
 
   # The default behavior of the gem is to silence all errors
   # thrown in the consumer.  If you wish to handle MixpanelErrors

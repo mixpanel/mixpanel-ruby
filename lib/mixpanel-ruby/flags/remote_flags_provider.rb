@@ -16,7 +16,11 @@ module Mixpanel
       # @param tracker_callback [Proc] Callback to track events
       # @param error_handler [Mixpanel::ErrorHandler] Error handler
       # @param credentials [ServiceAccountCredentials, nil] Optional service account credentials
-      def initialize(token, config, tracker_callback, error_handler, credentials = nil)
+      # @param hierarchical_groups [Boolean] true if the project uses hierarchical
+      #   groups (default false). On such a project an exposure event is attributed
+      #   by $user_id and $company_id from the context, and tracker_callback receives
+      #   a Mixpanel::Identity instead of a distinct_id string.
+      def initialize(token, config, tracker_callback, error_handler, credentials = nil, hierarchical_groups: false)
         merged_config = DEFAULT_CONFIG.merge(config || {})
 
         provider_config = {
@@ -24,7 +28,8 @@ module Mixpanel
           api_host: merged_config[:api_host],
           request_timeout_in_seconds: merged_config[:request_timeout_in_seconds],
           exposure_executor: merged_config[:exposure_executor],
-          credentials: credentials
+          credentials: credentials,
+          hierarchical_groups: hierarchical_groups
         }
 
         super(provider_config, '/flags', tracker_callback, 'remote', error_handler)

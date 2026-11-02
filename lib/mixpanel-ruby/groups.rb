@@ -4,6 +4,7 @@ require 'time'
 
 require 'mixpanel-ruby/consumer'
 require 'mixpanel-ruby/error'
+require 'mixpanel-ruby/identity'
 
 module Mixpanel
 
@@ -14,6 +15,21 @@ module Mixpanel
   #
   #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
   #     tracker.groups.set(...) or .set_once(..), or .delete(...) etc.
+  #
+  # == Hierarchical groups
+  #
+  # Hierarchical groups projects require a top-level $company_id on every
+  # group profile update, including the company's own profile and user
+  # profiles. Bind one with Tracker#for_company:
+  #
+  #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, hierarchical_groups: true)
+  #     acme = tracker.for_company('acme')
+  #     acme.groups.set('$company_id', 'acme', company_properties)
+  #     acme.groups.set('$user_id', 'user_123', user_properties)
+  #     acme.groups.set('department', 'finance', department_properties)
+  #
+  # On a hierarchical groups tracker, an update with no bound company and no
+  # $company_id in optional_params raises Mixpanel::CompanyRequiredError.
   class Groups
 
     # You likely won't need to instantiate instances of Mixpanel::Groups
@@ -22,9 +38,12 @@ module Mixpanel
     #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #     tracker.groups # An instance of Mixpanel::Groups
     #
-    def initialize(token, error_handler=nil, &block)
+    def initialize(token, error_handler=nil, hierarchical_groups: false, company_id: nil, &block)
       @token = token
       @error_handler = error_handler || ErrorHandler.new
+      @hierarchical_groups = hierarchical_groups ? true : false
+      HierarchicalGroups.require_company_id(company_id) unless company_id.nil?
+      @company_id = company_id
 
       if block
         @sink = block
@@ -167,11 +186,34 @@ module Mixpanel
     # or experimental features of groups analytics from Ruby
     # The \Mixpanel HTTP tracking API is documented at
     # https://mixpanel.com/help/reference/http
+    #
+    # A bound company (see Tracker#for_company) is added as a top-level
+    # $company_id, replacing any $company_id in the message. On a hierarchical
+    # groups tracker, an update carrying an operation /groups lacks ($add,
+    # $append or $merge) is still sent, since Mixpanel decides what it accepts,
+    # but logs a warning.
+    #
+    # On a hierarchical groups tracker, raises Mixpanel::CompanyRequiredError
+    # if no company is bound and the message has no $company_id.
     def update(message)
+      if @hierarchical_groups && @company_id.nil? && message['$company_id'].nil?
+        raise CompanyRequiredError, 'Group profile updates for hierarchical groups projects require a ' \
+          'company. Use tracker.for_company(company_id) to send them. Nothing to send for group ' \
+          "#{message['$group_key']}=#{message['$group_id']}"
+      end
+
       data = {
         '$token' => @token,
         '$time' =>  (Time.now.to_f * 1000).to_i,
       }.merge(message)
+      # $company_id must be top-level, not inside the operation payload
+      data['$company_id'] = @company_id unless @company_id.nil?
+
+      unsupported = @hierarchical_groups ? HierarchicalGroups.unsupported_operations(message) : []
+      unless unsupported.empty?
+        warn "[WARNING] Group profiles do not support #{unsupported.join(', ')} and Mixpanel will drop " \
+          "the update. Supported operations are #{HierarchicalGroups::GROUP_OPERATIONS.join(', ')}."
+      end
 
       message = {'data' => data}
 
@@ -184,6 +226,15 @@ module Mixpanel
       end
 
       ret
+    end
+
+    # Returns a Mixpanel::Groups that adds a top-level $company_id to every
+    # group profile update it sends, sharing this instance's consumer and
+    # error handler. The receiver is unchanged. Tracker#for_company is the
+    # usual way to get one.
+    def for_company(company_id)
+      HierarchicalGroups.require_company_id(company_id)
+      Groups.new(@token, @error_handler, hierarchical_groups: @hierarchical_groups, company_id: company_id, &@sink)
     end
 
     private

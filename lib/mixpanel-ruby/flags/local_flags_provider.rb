@@ -16,12 +16,22 @@ module Mixpanel
         exposure_executor: nil
       }.freeze
 
+      # The highest context_template_version this SDK knows how to apply.
+      SUPPORTED_CONTEXT_TEMPLATE_VERSION = 1
+
+      # A {property} placeholder in a context template.
+      CONTEXT_PLACEHOLDER = /\{([^}]+)\}/
+
       # @param token [String] Mixpanel project token
       # @param config [Hash] Local flags configuration
       # @param tracker_callback [Proc] Callback to track events
       # @param error_handler [Mixpanel::ErrorHandler] Error handler
       # @param credentials [ServiceAccountCredentials, nil] Optional service account credentials
-      def initialize(token, config, tracker_callback, error_handler, credentials = nil)
+      # @param hierarchical_groups [Boolean] true if the project uses hierarchical
+      #   groups (default false). On such a project an exposure event is attributed
+      #   by $user_id and $company_id from the context, and tracker_callback receives
+      #   a Mixpanel::Identity instead of a distinct_id string.
+      def initialize(token, config, tracker_callback, error_handler, credentials = nil, hierarchical_groups: false)
         # compact: an explicit nil from the caller (e.g.
         # polling_interval_in_seconds: nil) must not override a sane default.
         # Both the previous sleep(nil) and the current
@@ -40,7 +50,8 @@ module Mixpanel
           api_host: @config[:api_host],
           request_timeout_in_seconds: @config[:request_timeout_in_seconds],
           exposure_executor: @config[:exposure_executor],
-          credentials: credentials
+          credentials: credentials,
+          hierarchical_groups: hierarchical_groups
         }
 
         super(provider_config, '/flags/definitions', tracker_callback, 'local', error_handler)
@@ -175,13 +186,29 @@ module Mixpanel
         return fallback_variant.as_fallback(FallbackReason.flag_not_found) unless flag
 
         context_key = flag['context']
-        unless context.key?(context_key) || context.key?(context_key.to_sym)
+        context_value = context[context_key] || context[context_key.to_sym]
+
+        # The context value is used as sent. Where the caller did not send it,
+        # the service may publish a template saying how to build it from
+        # properties they did send; this SDK never composes an identity itself.
+        template = flag['context_template']
+        template_value = nil
+        if context_value.nil? && template && !template.empty?
+          template_value = apply_context_template(template, context)
+          if template_value.nil?
+            return fallback_variant.as_fallback(FallbackReason.missing_context_key(context_key))
+          end
+          context_value = template_value
+        end
+
+        unless template_value || context.key?(context_key) || context.key?(context_key.to_sym)
           return fallback_variant.as_fallback(FallbackReason.missing_context_key(context_key))
         end
 
-        context_value = context[context_key] || context[context_key.to_sym]
-
-        selected_variant = get_variant_override_for_test_user(flag, context)
+        # Test users are keyed by distinct id. When the flag assigns on
+        # distinct_id its template builds exactly that.
+        templated_distinct_id = context_key == 'distinct_id' ? template_value : nil
+        selected_variant = get_variant_override_for_test_user(flag, context, templated_distinct_id)
 
         unless selected_variant
           rollout = get_assigned_rollout(flag, context_value, context)
@@ -234,6 +261,9 @@ module Mixpanel
         response = call_flags_endpoint
 
         new_definitions = (response['flags'] || []).each_with_object({}) do |flag_data, definitions|
+          # A definition this SDK cannot fully apply is dropped rather than
+          # half-evaluated: it would assign a variant the service never chose.
+          next unless usable_context_template?(flag_data)
           definitions[flag_data['key']] = flag_data
         end
         @flag_definitions = new_definitions
@@ -241,11 +271,52 @@ module Mixpanel
         response
       end
 
-      def get_variant_override_for_test_user(flag, context)
+      # Returns false, with a warning, if the definition's context template is
+      # newer than this SDK or has no usable placeholders. A definition without
+      # a template is usable.
+      def usable_context_template?(flag_data)
+        version = flag_data['context_template_version']
+        if version.is_a?(Numeric) && version > SUPPORTED_CONTEXT_TEMPLATE_VERSION
+          warn "[Mixpanel] Dropping flag '#{flag_data['key']}': context_template_version #{version} is newer " \
+               "than this SDK understands (#{SUPPORTED_CONTEXT_TEMPLATE_VERSION}). Evaluate it remotely, or upgrade the SDK."
+          return false
+        end
+
+        template = flag_data['context_template']
+        return true if template.nil? || template == ''
+
+        # Matches {} as well, so that a blank placeholder is caught.
+        placeholders = template.to_s.scan(/\{([^}]*)\}/).flatten
+        if placeholders.empty? || placeholders.any? { |name| name.strip.empty? }
+          warn "[Mixpanel] Dropping flag '#{flag_data['key']}': context_template '#{template}' has no usable placeholders."
+          return false
+        end
+
+        true
+      end
+
+      # Fills a context template the service published with values from the
+      # evaluation context. Returns nil when any placeholder's property is
+      # missing, nil or empty.
+      def apply_context_template(template, context)
+        missing = false
+        resolved = template.gsub(CONTEXT_PLACEHOLDER) do
+          value = context_value(context, Regexp.last_match(1))
+          if value.nil? || value.to_s.empty?
+            missing = true
+            ''
+          else
+            value.to_s
+          end
+        end
+        missing ? nil : resolved
+      end
+
+      def get_variant_override_for_test_user(flag, context, templated_distinct_id = nil)
         test_users = flag.dig('ruleset', 'test', 'users')
         return nil unless test_users
 
-        distinct_id = context['distinct_id'] || context[:distinct_id]
+        distinct_id = context['distinct_id'] || context[:distinct_id] || templated_distinct_id
         return nil unless distinct_id
 
         variant_key = test_users[distinct_id.to_s]
