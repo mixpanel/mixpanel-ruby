@@ -19,9 +19,8 @@ describe 'Hierarchical groups feature flags' do
     WebMock.disable_net_connect!(allow_localhost: false)
   end
 
-  def flag_definition(key: 'hg_flag', context: 'distinct_id', context_template: nil,
-                      context_template_version: nil, rollout_percentage: 1.0, test_users: nil,
-                      hash_salt: 'salt')
+  def flag_definition(key: 'hg_flag', context: 'distinct_id', context_value_template: nil,
+                      rollout_percentage: 1.0, test_users: nil, hash_salt: 'salt')
     {
       'id' => 'test-id',
       'name' => 'Test Flag',
@@ -29,8 +28,7 @@ describe 'Hierarchical groups feature flags' do
       'status' => 'active',
       'project_id' => 123,
       'context' => context,
-      'context_template' => context_template,
-      'context_template_version' => context_template_version,
+      'context_value_template' => context_value_template,
       'hash_salt' => hash_salt,
       'ruleset' => {
         'variants' => [
@@ -74,197 +72,193 @@ describe 'Hierarchical groups feature flags' do
     keys
   end
 
-  describe 'context template parsing' do
-    let(:tracker) { recording_tracker.first }
-
-    it 'drops a flag whose context_template_version is newer than the SDK supports' do
-      provider = nil
-      expect do
-        provider = local_provider(
-          [flag_definition(context_template: template, context_template_version: 2)], tracker
-        )
-      end.to output(/Dropping flag 'hg_flag'.*context_template_version 2.*Evaluate it remotely, or upgrade the SDK/).to_stderr
-
-      result = provider.get_variant('hg_flag', Mixpanel::Flags::SelectedVariant.new(variant_value: fallback),
-                                    { 'distinct_id' => 'user-123' })
-      expect(result.variant_value).to eq(fallback)
-      expect(result.fallback_reason).to eq(Mixpanel::Flags::FallbackReason.flag_not_found)
-    end
-
-    it 'keeps a flag with context_template_version 1' do
-      provider = local_provider([flag_definition(context_template: template, context_template_version: 1)], tracker)
-      expect(provider.get_variant_value('hg_flag', fallback, hg_context)).to eq('value-a')
-    end
-
-    ['no-placeholders', '{}', '{  }', '$company:{}|$user:{$user_id}', '$company:{ }|$user:{$user_id}'].each do |bad|
-      it "drops a flag whose context_template is #{bad.inspect}" do
-        provider = nil
-        expect do
-          provider = local_provider([flag_definition(context_template: bad)], tracker)
-        end.to output(/Dropping flag 'hg_flag'.*has no usable placeholders/).to_stderr
-
-        expect(provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => 'user-123' })).to eq(fallback)
-      end
-    end
-
-    it 'keeps the other flags when one is dropped' do
-      provider = nil
-      expect do
-        provider = local_provider(
-          [flag_definition(key: 'good_flag'), flag_definition(context_template: '{}')], tracker
-        )
-      end.to output(/Dropping flag 'hg_flag'/).to_stderr
-
-      ctx = { 'distinct_id' => 'user-123' }
-      expect(provider.get_variant_value('good_flag', fallback, ctx)).to eq('value-a')
-      expect(provider.get_variant_value('hg_flag', fallback, ctx)).to eq(fallback)
-    end
-
-    it 'treats an empty context_template as none' do
-      provider = nil
-      expect do
-        provider = local_provider([flag_definition(context_template: '')], tracker)
-      end.not_to output.to_stderr
-
-      expect(provider.get_variant_value('hg_flag', fallback, hg_context)).to eq(fallback)
-      expect(provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => 'user-123' })).to eq('value-a')
-    end
-  end
-
   describe 'resolving the assignment key' do
     let(:tracker) { recording_tracker.first }
-
-    it 'gives a template context exactly the variant its distinct id gets' do
-      definition = {
-        'id' => 'test-id', 'name' => 'HG Test', 'status' => 'active', 'project_id' => 123,
-        'key' => 'hg-test', 'serving_method' => 'client', 'context' => 'distinct_id',
-        'context_template' => '$company:{$company_id}|$user:{$user_id}',
-        'hash_salt' => '880dc3e584b4452fb769808ca18dc9a6',
-        'ruleset' => {
-          'variants' => [{ 'key' => 'On', 'value' => true, 'split' => 1 },
-                         { 'key' => 'Off', 'value' => false, 'split' => 0 }],
-          'rollout' => [{ 'rollout_percentage' => 0.5, 'variant_splits' => { 'Off' => 0, 'On' => 1 } }],
-          'test' => { 'users' => {} }
-        }
-      }
-      provider = local_provider([definition], tracker)
-      fallback_variant = Mixpanel::Flags::SelectedVariant.new(variant_value: 'fallback')
-
-      outcomes = (1..50).map do |i|
-        user_id = "u#{i}"
-        by_template = provider.get_variant('hg-test', fallback_variant,
-                                           { '$company_id' => 'acme', '$user_id' => user_id })
-        by_distinct_id = provider.get_variant('hg-test', fallback_variant,
-                                              { 'distinct_id' => "$company:acme|$user:#{user_id}" })
-        expect([by_template.variant_key, by_template.variant_value, by_template.variant_source])
-          .to eq([by_distinct_id.variant_key, by_distinct_id.variant_value, by_distinct_id.variant_source])
-        by_template.variant_value
-      end
-      # Both outcomes occur, so the comparison above is not vacuous.
-      expect(outcomes).to include(true, 'fallback')
-
-      user_only = provider.get_variant('hg-test', fallback_variant, { '$user_id' => 'u1' })
-      expect(user_only.variant_value).to eq('fallback')
-      expect(user_only.fallback_reason).to eq(Mixpanel::Flags::FallbackReason.missing_context_key('distinct_id'))
+    let(:full_context) do
+      { 'distinct_id' => 'user_123', 'device_id' => 'device_abc', '$user_id' => 'user_123',
+        '$company_id' => 'company_123', 'department' => 'finance' }
     end
 
-    it 'hashes the filled template' do
-      provider = local_provider([flag_definition(context_template: template)], tracker)
+    {
+      'distinct_id' => ['$company:{$company_id}|$user:{$user_id}', '$company:company_123|$user:user_123'],
+      'device_id' => ['{device_id}', 'device_abc'],
+      '$user_id' => ['$company:{$company_id}|$user:{$user_id}', '$company:company_123|$user:user_123'],
+      '$company_id' => ['$company:{$company_id}', '$company:company_123'],
+      'department' => ['$company:{$company_id}|department:{department}', '$company:company_123|department:finance']
+    }.each do |context_key, (value_template, expected_key)|
+      it "hashes a #{context_key} flag on its filled template" do
+        provider = local_provider([flag_definition(context: context_key, context_value_template: value_template)], tracker)
+        keys = hashed_keys
+
+        expect(provider.get_variant_value('hg_flag', fallback, full_context)).to eq('value-a')
+        expect(keys.uniq).to eq([expected_key])
+      end
+    end
+
+    it 'keeps text outside the braces literally' do
+      provider = local_provider(
+        [flag_definition(context_value_template: 'pre-{$company_id}-mid-{$user_id}-{post}')], tracker
+      )
       keys = hashed_keys
 
-      expect(provider.get_variant_value('hg_flag', fallback, hg_context)).to eq('value-a')
-      expect(keys.uniq).to eq(['$company:acme|$user:user-123'])
+      provider.get_variant_value('hg_flag', fallback, full_context.merge('post' => 'end'))
+      expect(keys.uniq).to eq(['pre-company_123-mid-user_123-end'])
     end
 
     it 'stringifies non-string context values' do
-      provider = local_provider([flag_definition(context_template: template)], tracker)
+      provider = local_provider([flag_definition(context_value_template: template)], tracker)
       keys = hashed_keys
 
-      provider.get_variant_value('hg_flag', fallback, { '$company_id' => 42, '$user_id' => 7 })
+      provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => 'raw', '$company_id' => 42, '$user_id' => 7 })
       expect(keys.uniq).to eq(['$company:42|$user:7'])
     end
 
-    it 'needs every placeholder to be present and non-empty' do
-      provider = local_provider([flag_definition(context_template: template)], tracker)
-
-      expect(provider.get_variant_value('hg_flag', fallback, { '$company_id' => 'acme' })).to eq(fallback)
-      expect(provider.get_variant_value('hg_flag', fallback, { '$company_id' => 'acme', '$user_id' => '' })).to eq(fallback)
-      expect(provider.get_variant_value('hg_flag', fallback, { '$company_id' => 'acme', '$user_id' => nil })).to eq(fallback)
-    end
-
-    it 'hashes a distinct_id as sent, ignoring the template' do
-      provider = local_provider([flag_definition(context_template: template)], tracker)
+    it 'reads placeholder values from symbol keys' do
+      provider = local_provider([flag_definition(context_value_template: template)], tracker)
       keys = hashed_keys
 
-      ctx = { 'distinct_id' => '$company:acme|$user:user-123', '$company_id' => 'other', '$user_id' => 'other' }
-      expect(provider.get_variant_value('hg_flag', fallback, ctx)).to eq('value-a')
+      provider.get_variant_value('hg_flag', fallback, { distinct_id: 'raw', '$company_id': 'acme', '$user_id': 'user-123' })
       expect(keys.uniq).to eq(['$company:acme|$user:user-123'])
     end
 
-    it 'hashes a group flag on the raw group value' do
+    it 'falls back to the raw context value when a placeholder key is absent' do
+      provider = local_provider([flag_definition(context_value_template: template)], tracker)
+      keys = hashed_keys
+
+      expect(provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => 'user_123', '$company_id' => 'acme' }))
+        .to eq('value-a')
+      expect(keys.uniq).to eq(['user_123'])
+    end
+
+    it 'falls back to the raw context value when a placeholder value is nil' do
+      provider = local_provider([flag_definition(context_value_template: template)], tracker)
+      keys = hashed_keys
+
+      provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => 'user_123', '$company_id' => nil, '$user_id' => 'u' })
+      expect(keys.uniq).to eq(['user_123'])
+    end
+
+    it 'falls back to the raw context value when the flag has no template' do
       provider = local_provider([flag_definition(context: 'department')], tracker)
       keys = hashed_keys
 
-      provider.get_variant_value('hg_flag', fallback, hg_context.merge('department' => 'finance'))
+      provider.get_variant_value('hg_flag', fallback, full_context)
       expect(keys.uniq).to eq(['finance'])
     end
 
-    it 'hashes a device flag on the raw device id' do
-      provider = local_provider([flag_definition(context: 'device_id')], tracker)
+    it 'treats an empty template as no template' do
+      provider = local_provider([flag_definition(context_value_template: '')], tracker)
       keys = hashed_keys
 
-      provider.get_variant_value('hg_flag', fallback, hg_context.merge('device_id' => 'device-abc'))
-      expect(keys.uniq).to eq(['device-abc'])
+      provider.get_variant_value('hg_flag', fallback, full_context)
+      expect(keys.uniq).to eq(['user_123'])
     end
 
-    it 'cannot evaluate a hierarchical context locally without a template' do
-      provider = local_provider([flag_definition], tracker, hierarchical_groups: true)
+    it 'returns the fallback when the template does not resolve and the raw value is missing' do
+      provider = local_provider([flag_definition(context_value_template: template)], tracker)
       keys = hashed_keys
 
-      expect(provider.get_variant_value('hg_flag', fallback, hg_context)).to eq(fallback)
+      result = provider.get_variant('hg_flag', Mixpanel::Flags::SelectedVariant.new(variant_value: fallback),
+                                    { '$user_id' => 'user_123', 'device_id' => 'device_abc' })
+      expect(result.variant_value).to eq(fallback)
+      expect(result.fallback_reason).to eq(Mixpanel::Flags::FallbackReason.missing_context_key('distinct_id'))
       expect(keys).to be_empty
     end
 
-    it 'applies the template whether or not hierarchical_groups is set' do
-      provider = local_provider([flag_definition(context_template: template)], tracker, hierarchical_groups: false)
+    it 'returns the fallback without a template when the raw value is missing' do
+      provider = local_provider([flag_definition], tracker, hierarchical_groups: true)
+      keys = hashed_keys
+
+      result = provider.get_variant('hg_flag', Mixpanel::Flags::SelectedVariant.new(variant_value: fallback), hg_context)
+      expect(result.variant_value).to eq(fallback)
+      expect(result.fallback_reason).to eq(Mixpanel::Flags::FallbackReason.missing_context_key('distinct_id'))
+      expect(keys).to be_empty
+    end
+
+    it 'resolves the template even when the raw context value is missing' do
+      provider = local_provider([flag_definition(context_value_template: template)], tracker)
+      keys = hashed_keys
+
       expect(provider.get_variant_value('hg_flag', fallback, hg_context)).to eq('value-a')
+      expect(keys.uniq).to eq(['$company:acme|$user:user-123'])
+    end
+
+    it 'applies the template whether or not hierarchical_groups is set' do
+      provider = local_provider([flag_definition(context_value_template: template)], tracker, hierarchical_groups: false)
+      keys = hashed_keys
+
+      provider.get_variant_value('hg_flag', fallback, full_context)
+      expect(keys.uniq).to eq(['$company:company_123|$user:user_123'])
+    end
+
+    it 'gives a context without $company_id the variant master gives it, despite a template' do
+      definition = lambda do |value_template|
+        {
+          'id' => 'test-id', 'name' => 'HG Test', 'status' => 'active', 'project_id' => 123,
+          'key' => 'hg-test', 'context' => 'distinct_id', 'context_value_template' => value_template,
+          'hash_salt' => '880dc3e584b4452fb769808ca18dc9a6',
+          'ruleset' => {
+            'variants' => [{ 'key' => 'On', 'value' => true, 'split' => 0.5 },
+                           { 'key' => 'Off', 'value' => false, 'split' => 0.5 }],
+            'rollout' => [{ 'rollout_percentage' => 0.5 }]
+          }
+        }.compact
+      end
+      with_template = local_provider([definition.call(template)], tracker)
+      without_template = local_provider([definition.call(nil)], tracker)
+      fallback_variant = Mixpanel::Flags::SelectedVariant.new(variant_value: 'fallback')
+
+      outcomes = (1..60).map do |i|
+        ctx = { 'distinct_id' => "u#{i}", '$user_id' => "u#{i}" }
+        templated = with_template.get_variant('hg-test', fallback_variant, ctx, report_exposure: false)
+        master = without_template.get_variant('hg-test', fallback_variant, ctx, report_exposure: false)
+        expect([templated.variant_key, templated.variant_value, templated.variant_source])
+          .to eq([master.variant_key, master.variant_value, master.variant_source])
+        templated.variant_value
+      end
+      # Every outcome occurs, so the comparison above is not vacuous.
+      expect(outcomes).to include(true, false, 'fallback')
     end
   end
 
   describe 'test user overrides' do
     let(:tracker) { recording_tracker.first }
+    let(:test_users) { { '$company:acme|$user:user-123' => 'treatment', 'user-123' => 'control' } }
 
-    it 'matches a test user by the distinct id the template builds' do
-      provider = local_provider(
-        [flag_definition(context_template: template, test_users: { '$company:acme|$user:user-123' => 'treatment' })],
-        tracker
-      )
-      expect(provider.get_variant_value('hg_flag', fallback, hg_context)).to eq('treatment-value')
+    it 'matches a distinct_id flag by its resolved assignment key' do
+      provider = local_provider([flag_definition(context_value_template: template, test_users: test_users)], tracker)
+      result = provider.get_variant('hg_flag', Mixpanel::Flags::SelectedVariant.new(variant_value: fallback),
+                                    hg_context.merge('distinct_id' => 'user-123'))
+      expect(result.variant_value).to eq('treatment-value')
+      expect(result.is_qa_tester).to be true
     end
 
-    it 'matches a test user by the distinct id as sent' do
+    it 'matches a distinct_id flag by the raw distinct_id when the template does not resolve' do
       provider = local_provider(
-        [flag_definition(context_template: template, test_users: { '$company:acme|$user:user-123' => 'treatment' })],
-        tracker, hierarchical_groups: true
+        [flag_definition(context_value_template: template, test_users: { 'user-123' => 'treatment' })], tracker
       )
-      expect(provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => '$company:acme|$user:user-123' }))
+      expect(provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => 'user-123', '$user_id' => 'user-123' }))
         .to eq('treatment-value')
     end
 
-    it 'does not use the template value when the flag assigns on another property' do
+    it 'matches a flag on another property by the raw context distinct_id' do
       provider = local_provider(
-        [flag_definition(context: 'account', context_template: template,
-                         test_users: { '$company:acme|$user:user-123' => 'treatment' })],
+        [flag_definition(context: 'department', context_value_template: '$company:{$company_id}|department:{department}',
+                         test_users: { 'user-123' => 'treatment', '$company:acme|department:finance' => 'treatment' })],
         tracker
       )
-      expect(provider.get_variant_value('hg_flag', fallback, hg_context)).to eq('value-a')
+      expect(provider.get_variant_value('hg_flag', fallback, hg_context.merge('department' => 'finance')))
+        .to eq('value-a')
+      expect(provider.get_variant_value('hg_flag', fallback,
+                                        hg_context.merge('department' => 'finance', 'distinct_id' => 'user-123')))
+        .to eq('treatment-value')
     end
   end
 
   describe 'local exposure' do
     it 'carries $user_id and $company_id and no distinct_id on a hierarchical groups project' do
       tracker, calls = recording_tracker
-      provider = local_provider([flag_definition(context_template: template)], tracker, hierarchical_groups: true)
+      provider = local_provider([flag_definition(context_value_template: template)], tracker, hierarchical_groups: true)
 
       expect(provider.get_variant_value('hg_flag', fallback, hg_context)).to eq('value-a')
 
@@ -354,7 +348,7 @@ describe 'Hierarchical groups feature flags' do
 
     it 'drops a non-hierarchical exposure without distinct_id with the unchanged message' do
       tracker, calls = recording_tracker
-      provider = local_provider([flag_definition(context_template: template)], tracker)
+      provider = local_provider([flag_definition(context_value_template: template)], tracker)
 
       expect(error_handler).to receive(:handle) do |error|
         expect(error.message).to eq("Cannot track exposure event for flag 'hg_flag' without a distinct_id in the context")
@@ -431,7 +425,7 @@ describe 'Hierarchical groups feature flags' do
     end
 
     it 'routes a hierarchical exposure through #track with an identity' do
-      stub_definitions([flag_definition(context_template: template)])
+      stub_definitions([flag_definition(context_value_template: template)])
       tracker, messages = tracker_with_flags(true)
       tracker.local_flags.start_polling_for_definitions!
 
