@@ -119,6 +119,7 @@ hierarchical groups tracker:
 * A user id needs a company (or a device id); otherwise ArgumentError is raised.
 * User profiles support only set, set_once, unset, union and delete_user.
   increment, plus_one, append and track_charge raise Mixpanel::UnsupportedOperationError.
+* alias raises Mixpanel::UnsupportedOperationError.
 * User profile updates are never sent to /engage. Besides an identity with a user and
   company, they accept a distinct id of the form <tt>$company:{company}|$user:{user}</tt>,
   which updates the same <tt>$user_id</tt> group profile. Any other distinct id raises

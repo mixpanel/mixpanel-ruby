@@ -250,7 +250,15 @@ module Mixpanel
     #
     # Alias requests are always sent synchronously, directly to
     # the \Mixpanel service, regardless of how the tracker is configured.
+    #
+    # On a hierarchical groups tracker, raises Mixpanel::UnsupportedOperationError
+    # before anything is sent.
     def alias(alias_id, real_id, events_endpoint=nil)
+      if @hierarchical_groups
+        raise UnsupportedOperationError, 'alias is not supported for hierarchical groups projects, ' \
+          'which identify a user by company and user id. Track with a ' \
+          'Mixpanel::Identity.new(user_id: ..., company_id: ...) instead.'
+      end
       consumer = Mixpanel::Consumer.new(events_endpoint)
       data = {
         'event' => '$create_alias',

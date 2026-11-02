@@ -359,18 +359,11 @@ describe 'Hierarchical groups scenarios' do
   end
 
   it 'Alias' do
-    # Alias is sent synchronously, bypassing the sink, and is unchanged by
-    # hierarchical groups.
+    # A hierarchical groups user is identified by company and user id, so there is nothing to alias.
     WebMock.reset!
-    stub_request(:any, 'https://api.mixpanel.com/track').to_return(body: '{"status": 1, "error": null}')
-
-    expect(@hg.alias('my_alias', user_id)).to be true
-
-    expect(WebMock).to(have_requested(:post, 'https://api.mixpanel.com/track').with do |request|
-      data = JSON.load(Base64.decode64(URI.decode_www_form(request.body).to_h['data']))
-      data == {'event' => '$create_alias',
-               'properties' => {'distinct_id' => user_id, 'alias' => 'my_alias', 'token' => token}}
-    end)
+    expect { @hg.alias('my_alias', user_id) }
+      .to raise_error(Mixpanel::UnsupportedOperationError, /alias is not supported/)
+    expect(WebMock).not_to have_requested(:any, 'https://api.mixpanel.com/track')
     expect_nothing_sent
   end
 

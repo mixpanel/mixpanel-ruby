@@ -214,6 +214,13 @@ describe 'Hierarchical groups' do
     end
   end
 
+  describe 'alias' do
+    it 'refuses alias on a hierarchical tracker' do
+      expect { @hg.alias('$company:acme|$user:u2', '$company:acme|$user:user_123') }
+        .to raise_error(Mixpanel::UnsupportedOperationError, /alias is not supported/)
+    end
+  end
+
   describe 'user profiles' do
     it 'refuses $add and $append on a hierarchical tracker' do
       # A hierarchical groups user profile is a group profile, and /groups has no $add or $append.
