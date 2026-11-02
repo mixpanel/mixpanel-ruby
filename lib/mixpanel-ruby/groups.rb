@@ -188,14 +188,20 @@ module Mixpanel
     # https://mixpanel.com/help/reference/http
     #
     # A bound company (see Tracker#for_company) is added as a top-level
-    # $company_id, replacing any $company_id in the message. On a hierarchical
-    # groups tracker, an update carrying an operation /groups lacks ($add,
-    # $append or $merge) is still sent, since Mixpanel decides what it accepts,
-    # but logs a warning.
+    # $company_id, replacing any $company_id in the message.
     #
-    # On a hierarchical groups tracker, raises Mixpanel::CompanyRequiredError
-    # if no company is bound and the message has no $company_id.
+    # On a hierarchical groups tracker, raises Mixpanel::UnsupportedOperationError
+    # for an operation /groups lacks ($add, $append or $merge), and
+    # Mixpanel::CompanyRequiredError if no company is bound and the message has
+    # no $company_id.
     def update(message)
+      unsupported = @hierarchical_groups ? HierarchicalGroups.unsupported_operations(message) : []
+      unless unsupported.empty?
+        raise UnsupportedOperationError, "#{unsupported.first} is not supported for group profiles on " \
+          "hierarchical groups projects. Supported operations are " \
+          "#{HierarchicalGroups::GROUP_OPERATIONS.join(', ')}."
+      end
+
       if @hierarchical_groups && @company_id.nil? && message['$company_id'].nil?
         raise CompanyRequiredError, 'Group profile updates for hierarchical groups projects require a ' \
           'company. Use tracker.for_company(company_id) to send them. Nothing to send for group ' \
@@ -208,12 +214,6 @@ module Mixpanel
       }.merge(message)
       # $company_id must be top-level, not inside the operation payload
       data['$company_id'] = @company_id unless @company_id.nil?
-
-      unsupported = @hierarchical_groups ? HierarchicalGroups.unsupported_operations(message) : []
-      unless unsupported.empty?
-        warn "[WARNING] Group profiles do not support #{unsupported.join(', ')} and Mixpanel will drop " \
-          "the update. Supported operations are #{HierarchicalGroups::GROUP_OPERATIONS.join(', ')}."
-      end
 
       message = {'data' => data}
 

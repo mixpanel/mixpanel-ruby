@@ -494,33 +494,29 @@ describe 'Hierarchical groups' do
       expect(last_data['$group_key']).to eq('company')
     end
 
-    it 'warns about an unsupported group operation and still sends it' do
+    it 'raises for an unsupported group operation' do
       groups = @hg.for_company('acme').groups
-      expect(groups).to receive(:warn).once.with(/\$add/)
 
-      groups.update('$group_key' => 'company', '$group_id' => 'acme', '$add' => {'seats' => 1})
-      expect(last_type).to eq(:group_update)
-      expect(last_data['$add']).to eq('seats' => 1)
+      %w[$add $append $merge].each do |operation|
+        expect { groups.update('$group_key' => 'company', '$group_id' => 'acme', operation => {'seats' => 1}) }
+          .to raise_error(Mixpanel::UnsupportedOperationError, /#{Regexp.escape(operation)}/)
+      end
+      expect(@log).to be_empty
     end
 
-    it 'does not warn about an unsupported group operation without hierarchical groups' do
-      expect(@legacy.groups).not_to receive(:warn)
+    it 'raises for an unsupported group operation before checking the company' do
+      expect { @hg.groups.update('$group_key' => 'company', '$group_id' => 'acme', '$add' => {'seats' => 1}) }
+        .to raise_error(Mixpanel::UnsupportedOperationError)
+    end
 
+    it 'sends an unsupported group operation without hierarchical groups' do
       @legacy.groups.update('$group_key' => 'company', '$group_id' => 'acme', '$add' => {'seats' => 1})
       expect(last_type).to eq(:group_update)
       expect(last_data['$add']).to eq('seats' => 1)
     end
 
-    it 'does not warn when nothing was sent' do
-      expect(@hg.groups).not_to receive(:warn)
-
-      expect { @hg.groups.update('$group_key' => 'company', '$group_id' => 'acme', '$add' => {'seats' => 1}) }
-        .to raise_error(Mixpanel::CompanyRequiredError)
-    end
-
-    it 'does not warn for the supported group operations' do
+    it 'sends the supported group operations' do
       groups = @hg.for_company('acme').groups
-      expect(groups).not_to receive(:warn)
 
       groups.set('department', 'finance', {'seats' => 1})
       groups.set_once('department', 'finance', {'seats' => 1})
