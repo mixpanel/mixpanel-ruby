@@ -328,9 +328,15 @@ describe 'Hierarchical groups scenarios' do
   it 'Identify Without Company' do
     user_only = Mixpanel::Identity.new(user_id: user_id)
 
-    expect { @hg.people.set(user_only, {'plan' => 'pro'}) }.to raise_error(ArgumentError, /needs a company/)
-    expect { @hg.track(user_only, 'Signup') }.to raise_error(ArgumentError, /needs a company/)
+    # The event is sent as given; a user profile needs the company.
+    expect { @hg.people.set(user_only, {'plan' => 'pro'}) }.to raise_error(Mixpanel::CompanyRequiredError)
     expect_nothing_sent
+
+    @hg.track(user_only, 'Signup')
+    type, message = only_message
+    expect(type).to eq(:event)
+    expect(message['data']['properties']['$user_id']).to eq(user_id)
+    expect(message['data']['properties']).not_to have_key('$company_id')
   end
 
   it 'Set User Property Without User' do

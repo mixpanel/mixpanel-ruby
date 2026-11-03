@@ -162,10 +162,11 @@ describe 'Hierarchical groups' do
       expect(last_properties).not_to have_key('$company_id')
     end
 
-    it 'rejects a user without a company or device on a hierarchical tracker' do
-      expect { @hg.track(identity(user_id: 'user_123'), 'Signup') }
-        .to raise_error(ArgumentError, /cannot be merged/)
-      expect(@log).to be_empty
+    it 'sends a user without a company as given on a hierarchical tracker' do
+      @hg.track(identity(user_id: 'user_123'), 'Signup')
+
+      expect(last_properties['$user_id']).to eq('user_123')
+      expect(last_properties).not_to have_key('$company_id')
     end
 
     it 'allows a user with a device but no company on a hierarchical tracker' do
