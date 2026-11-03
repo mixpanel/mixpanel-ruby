@@ -35,6 +35,11 @@ module Mixpanel
     # An instance of Mixpanel::Groups. Use this to send groups updates
     attr_reader :groups
 
+    # An instance of Mixpanel::Company. Use this on a tracker from
+    # #for_company to update that company's profile. On a tracker with no
+    # bound company its methods raise Mixpanel::CompanyRequiredError.
+    attr_reader :company
+
     # An instance of Mixpanel::Flags::LocalFlagsProvider. Use this for
     # client-side feature flag evaluation
     attr_reader :local_flags
@@ -87,7 +92,7 @@ module Mixpanel
     #
     #    tracker.track(user, 'Signup')
     #    tracker.people.set(user, {'role' => 'admin'})
-    #    tracker.for_company('acme').groups.set('$company_id', 'acme', {'tier' => 'enterprise'})
+    #    tracker.for_company('acme').company.set({'tier' => 'enterprise'})
     #
     # Events still accept a string distinct id and never refuse one, but one
     # that is not of the form <tt>$company:{company}|$user:{user}</tt> names a
@@ -105,6 +110,7 @@ module Mixpanel
 
       @people = People.new(token, error_handler, hierarchical_groups: hierarchical_groups, &block)
       @groups = Groups.new(token, error_handler, hierarchical_groups: hierarchical_groups, &block)
+      @company = Company.new(@groups)
 
       # Initialize local flags if config provided
       if local_flags_config
@@ -219,10 +225,11 @@ module Mixpanel
 
     # Returns a new Tracker bound to the given company. Its #groups add a
     # top-level $company_id to every group profile update, replacing any
-    # $company_id in optional_params:
+    # $company_id in optional_params, and its #company updates the company's
+    # own profile:
     #
     #    acme = tracker.for_company('acme')
-    #    acme.groups.set('$company_id', 'acme', company_properties)
+    #    acme.company.set(company_properties)
     #    acme.groups.set('$user_id', 'user_123', user_properties)
     #    acme.groups.set('department', 'finance', department_properties)
     #
@@ -324,6 +331,7 @@ module Mixpanel
     def bind_company(company_id, groups)
       @company_id = company_id
       @groups = groups
+      @company = Company.new(groups, company_id)
     end
   end
 end
