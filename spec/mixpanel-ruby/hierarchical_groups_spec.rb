@@ -475,6 +475,65 @@ describe 'Hierarchical groups' do
       expect(@log).to be_empty
     end
 
+    it 'takes the company profile company from its group id for every group operation' do
+      groups = @hg.groups
+      groups.set('$company_id', 'acme', {'tier' => 'enterprise'})
+      groups.set_once('$company_id', 'acme', {'tier' => 'enterprise'})
+      groups.union('$company_id', 'acme', {'tags' => ['a']})
+      groups.remove('$company_id', 'acme', {'tags' => 'a'})
+      groups.unset('$company_id', 'acme', 'tier')
+      groups.delete_group('$company_id', 'acme')
+      groups.update('$group_key' => '$company_id', '$group_id' => 'acme', '$set' => {'tier' => 'ent'})
+
+      expect(@log.length).to eq(7)
+      @log.each do |type, message|
+        expect(type).to eq(:group_update)
+        expect(message['data']).to include('$group_key' => '$company_id', '$group_id' => 'acme',
+                                           '$company_id' => 'acme')
+      end
+      expect(@log[0][1]['data']['$set']).to eq('tier' => 'enterprise')
+    end
+
+    it 'accepts a matching company for the company profile' do
+      @hg.for_company('acme').groups.set('$company_id', 'acme', {'tier' => 'ent'})
+      expect(last_data['$company_id']).to eq('acme')
+
+      @hg.groups.set('$company_id', 'acme', {'tier' => 'ent'}, nil, {'$company_id' => 'acme'})
+      expect(last_data['$company_id']).to eq('acme')
+      expect(@log.length).to eq(2)
+    end
+
+    it 'rejects a bound company that differs from the company profile id' do
+      groups = @hg.for_company('other').groups
+
+      expect { groups.set('$company_id', 'acme', {'tier' => 'ent'}) }
+        .to raise_error(ArgumentError, /company is its own id/)
+      expect { groups.delete_group('$company_id', 'acme') }.to raise_error(ArgumentError, /company is its own id/)
+      expect { groups.update('$group_key' => '$company_id', '$group_id' => 'acme', '$set' => {'tier' => 'ent'}) }
+        .to raise_error(ArgumentError, /company is its own id/)
+      expect(@log).to be_empty
+    end
+
+    it 'rejects a $company_id param that differs from the company profile id' do
+      expect { @hg.groups.set('$company_id', 'acme', {'tier' => 'ent'}, nil, {'$company_id' => 'other'}) }
+        .to raise_error(ArgumentError, /company is its own id/)
+      expect(@log).to be_empty
+    end
+
+    it 'still requires a company for a custom group or user profile' do
+      expect { @hg.groups.set('team_id', 'acme', {'name' => 'x'}) }.to raise_error(Mixpanel::CompanyRequiredError)
+      expect { @hg.groups.set('$user_id', 'acme', {'name' => 'x'}) }.to raise_error(Mixpanel::CompanyRequiredError)
+      expect(@log).to be_empty
+    end
+
+    it 'leaves a legacy $company_id group unchanged' do
+      @legacy.groups.set('$company_id', 'acme', {'tier' => 'ent'})
+      expect(last_data).not_to have_key('$company_id')
+
+      @legacy.for_company('other').groups.set('$company_id', 'acme', {'tier' => 'ent'})
+      expect(last_data['$company_id']).to eq('other')
+    end
+
     it 'accepts a $company_id param' do
       @hg.groups.set('department', 'finance', {'plan' => 'x'}, nil, {'$company_id' => 'acme'})
 

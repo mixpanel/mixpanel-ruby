@@ -80,14 +80,16 @@ module Mixpanel
     #
     # On a hierarchical groups project Mixpanel builds the distinct id from
     # $user_id and $company_id. Identify events and user profiles with a
-    # Mixpanel::Identity, and send group profile updates through #for_company:
+    # Mixpanel::Identity. A company's own profile takes its company from its
+    # group id, and other group profile updates go through #for_company:
     #
     #    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, hierarchical_groups: true)
     #    user = Mixpanel::Identity.new(user_id: 'user_123', company_id: 'acme')
     #
     #    tracker.track(user, 'Signup')
     #    tracker.people.set(user, {'role' => 'admin'})
-    #    tracker.for_company('acme').groups.set('$company_id', 'acme', {'tier' => 'enterprise'})
+    #    tracker.groups.set('$company_id', 'acme', {'tier' => 'enterprise'})
+    #    tracker.for_company('acme').groups.set('department', 'finance', {'budget' => 100})
     #
     # Events still accept a string distinct id and never refuse one, but one
     # that is not of the form <tt>$company:{company}|$user:{user}</tt> names a
@@ -222,7 +224,6 @@ module Mixpanel
     # $company_id in optional_params:
     #
     #    acme = tracker.for_company('acme')
-    #    acme.groups.set('$company_id', 'acme', company_properties)
     #    acme.groups.set('$user_id', 'user_123', user_properties)
     #    acme.groups.set('department', 'finance', department_properties)
     #
