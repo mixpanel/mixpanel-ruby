@@ -427,7 +427,7 @@ describe 'Hierarchical groups' do
 
     it 'rejects a company-only identity and points at the company profile' do
       expect { @hg.people.set(identity(company_id: 'acme'), {'tier' => 'ent'}) }
-        .to raise_error(ArgumentError, /groups\.set\('\$company_id'/)
+        .to raise_error(ArgumentError, /for_company\(company_id\)\.company\.set/)
     end
 
     it 'keeps $add and $append refused on a company-bound tracker' do
