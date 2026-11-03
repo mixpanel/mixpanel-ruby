@@ -65,6 +65,25 @@ module Mixpanel
       properties
     end
 
+    # A feature flag evaluation context for this identity, so callers do not
+    # hand-write reserved keys such as $company_id. The ids go under the keys
+    # flags read, the groups at the top level and the custom properties under
+    # custom_properties:
+    #
+    #     identity.to_flag_context(groups: { 'department' => 'finance' },
+    #                              custom_properties: { 'plan' => 'enterprise' })
+    #     # => { '$user_id' => 'user_123', '$company_id' => 'acme', 'department' => 'finance',
+    #     #      'custom_properties' => { 'plan' => 'enterprise' } }
+    def to_flag_context(groups: {}, custom_properties: {})
+      context = groups.dup
+      context['distinct_id'] = @distinct_id unless @distinct_id.nil?
+      context['$user_id'] = @user_id unless @user_id.nil?
+      context['$company_id'] = @company_id unless @company_id.nil?
+      context['device_id'] = @device_id unless @device_id.nil?
+      context['custom_properties'] = custom_properties.dup unless custom_properties.empty?
+      context
+    end
+
     def ==(other)
       other.is_a?(Identity) && state == other.state
     end

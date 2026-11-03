@@ -72,6 +72,23 @@ describe 'Hierarchical groups' do
       expect(user_in_acme.hash).to eq(user_in_acme.hash)
       expect(user_in_acme).not_to eq(identity(user_id: 'user_123', company_id: 'other'))
     end
+
+    it 'builds a flag context' do
+      id = identity(user_id: 'user_123', company_id: 'acme', device_id: 'device_abc')
+
+      expect(id.to_flag_context(groups: { 'department' => 'finance' },
+                                custom_properties: { 'plan' => 'enterprise' })).to eq(
+        '$user_id' => 'user_123',
+        '$company_id' => 'acme',
+        'device_id' => 'device_abc',
+        'department' => 'finance',
+        'custom_properties' => { 'plan' => 'enterprise' }
+      )
+    end
+
+    it 'builds a flag context from a plain distinct id' do
+      expect(identity(distinct_id: 'user_123').to_flag_context).to eq('distinct_id' => 'user_123')
+    end
   end
 
   describe 'events' do
