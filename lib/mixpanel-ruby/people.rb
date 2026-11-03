@@ -36,7 +36,9 @@ module Mixpanel
   #     })
   #
   # The company comes from the identity, or else a $company_id in
-  # optional_params. Tracker#for_company does not apply to these updates.
+  # optional_params, so these updates do not need Tracker#for_company. On a
+  # tracker bound with #for_company, a user from another company raises
+  # ArgumentError and sends nothing.
   #
   # A distinct id, as a string or as an identity's distinct_id, must be one
   # Mixpanel built, of the form <tt>$company:{company}|$user:{user}</tt>. It
@@ -54,10 +56,11 @@ module Mixpanel
     #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #     tracker.people # An instance of Mixpanel::People
     #
-    def initialize(token, error_handler=nil, hierarchical_groups: false, &block)
+    def initialize(token, error_handler=nil, hierarchical_groups: false, company_id: nil, &block)
       @token = token
       @error_handler = error_handler || ErrorHandler.new
       @hierarchical_groups = hierarchical_groups ? true : false
+      @company_id = company_id
 
       if block
         @sink = block
@@ -271,6 +274,13 @@ module Mixpanel
       ret
     end
 
+    # Returns a Mixpanel::People that refuses user profile updates for any
+    # company other than company_id, sharing this instance's consumer and
+    # error handler. The receiver is unchanged. Tracker#for_company uses it.
+    def for_company(company_id)
+      People.new(@token, @error_handler, hierarchical_groups: @hierarchical_groups, company_id: company_id, &@sink)
+    end
+
     private
 
     # Sends a supported profile operation for a distinct id or a Mixpanel::Identity.
@@ -315,6 +325,7 @@ module Mixpanel
           'Use tracker.for_company(company_id).company.set(properties) ' \
           "to update the company's profile."
       end
+      require_bound_company(identity.company_id, identity.to_s)
 
       message = {
         '$group_key' => HierarchicalGroups::USER_ID_GROUP_KEY,
@@ -329,10 +340,21 @@ module Mixpanel
       @user_profiles.update(message)
     end
 
+    # A tracker bound with Tracker#for_company refuses a user from another
+    # company rather than silently updating that company's profile.
+    def require_bound_company(company_id, described)
+      return if company_id.nil? || @company_id.nil? || company_id == @company_id
+
+      raise ArgumentError, "This tracker is bound to company #{@company_id.inspect}, but #{described} " \
+        "belongs to company #{company_id.inspect}. Update the user through a tracker for that " \
+        'company, or one without for_company.'
+    end
+
     # Sends a generic update message to the $user_id group profile its
     # combined $distinct_id names.
     def user_group_message_update(message)
       company_id, user_id = HierarchicalGroups.require_combined_distinct_id(message['$distinct_id'])
+      require_bound_company(company_id, message['$distinct_id'].inspect)
       group_message = message.reject { |key, _| key.to_s == '$distinct_id' }
       group_message['$group_key'] = HierarchicalGroups::USER_ID_GROUP_KEY
       group_message['$group_id'] = user_id

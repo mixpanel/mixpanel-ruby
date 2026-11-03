@@ -395,8 +395,25 @@ describe 'Hierarchical groups' do
       expect { @legacy.people.set(user_in_acme, {'role' => 'admin'}) }.to raise_error(ArgumentError)
     end
 
-    it 'lets the identity company win over for_company' do
-      @hg.for_company('other').people.set(user_in_acme, {'role' => 'admin'})
+    it 'accepts a user from the bound company' do
+      @hg.for_company('acme').people.set(user_in_acme, {'role' => 'admin'})
+
+      expect(last_data['$company_id']).to eq('acme')
+    end
+
+    it 'refuses a user from another company on a bound tracker' do
+      bound = @hg.for_company('other')
+
+      expect { bound.people.set(user_in_acme, {'role' => 'admin'}) }
+        .to raise_error(ArgumentError, /bound to company "other".*belongs to company "acme"/)
+      expect { bound.people.set('$company:acme|$user:user_123', {'role' => 'admin'}) }
+        .to raise_error(ArgumentError, /belongs to company "acme"/)
+      expect(@log).to be_empty
+    end
+
+    it 'leaves the unbound tracker people unchanged' do
+      @hg.for_company('other')
+      @hg.people.set(user_in_acme, {'role' => 'admin'})
 
       expect(last_data['$company_id']).to eq('acme')
     end
@@ -573,7 +590,6 @@ describe 'Hierarchical groups' do
 
       expect(acme.local_flags).to equal(tracker.local_flags)
       expect(acme.remote_flags).to equal(tracker.remote_flags)
-      expect(acme.people).to equal(tracker.people)
 
       expect(handler).to receive(:handle).with(instance_of(Mixpanel::ConnectionError))
       acme.track(user_in_acme, 'Signup')

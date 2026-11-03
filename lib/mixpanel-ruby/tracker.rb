@@ -234,16 +234,17 @@ module Mixpanel
     #    acme.groups.set('department', 'finance', department_properties)
     #
     # The returned tracker shares this tracker's consumer, error handler and
-    # feature flag providers, and this tracker is unchanged. Events and user
-    # profile updates are not affected: a Mixpanel::Identity carries its own
-    # company. Available on any tracker, but only hierarchical groups
-    # projects need it.
+    # feature flag providers, and this tracker is unchanged. Events are not
+    # affected, and user profile updates do not need it: a Mixpanel::Identity
+    # carries its own company. A user from another company raises
+    # ArgumentError on the returned tracker. Available on any tracker, but
+    # only hierarchical groups projects need it.
     #
     # Raises ArgumentError if company_id is nil or empty.
     def for_company(company_id)
       bound_groups = @groups.for_company(company_id)
       view = dup
-      view.bind_company(company_id, bound_groups)
+      view.bind_company(company_id, bound_groups, @people.for_company(company_id))
       view
     end
 
@@ -328,9 +329,10 @@ module Mixpanel
 
     protected
 
-    def bind_company(company_id, groups)
+    def bind_company(company_id, groups, people)
       @company_id = company_id
       @groups = groups
+      @people = people
       @company = Company.new(groups, company_id)
     end
   end
