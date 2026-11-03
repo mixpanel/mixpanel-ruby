@@ -427,7 +427,7 @@ describe 'Hierarchical groups' do
 
     it 'rejects a company-only identity and points at the company profile' do
       expect { @hg.people.set(identity(company_id: 'acme'), {'tier' => 'ent'}) }
-        .to raise_error(ArgumentError, /for_company\(company_id\)\.company\.set/)
+        .to raise_error(ArgumentError, /groups\.set\('\$company_id'/)
     end
 
     it 'keeps $add and $append refused on a company-bound tracker' do
@@ -568,69 +568,6 @@ describe 'Hierarchical groups' do
       @legacy.for_company('acme').groups.set('company', 'acme', {'plan' => 'x'})
 
       expect(last_data['$company_id']).to eq('acme')
-    end
-  end
-
-  describe 'company profile' do
-    def company_and_group_calls
-      [
-        [->(c) { c.set({'tier' => 'enterprise'}) },
-         ->(g) { g.set('$company_id', 'acme', {'tier' => 'enterprise'}) }],
-        [->(c) { c.set({'tier' => 'enterprise'}, '1.2.3.4', {'$ignore_time' => true}) },
-         ->(g) { g.set('$company_id', 'acme', {'tier' => 'enterprise'}, '1.2.3.4', {'$ignore_time' => true}) }],
-        [->(c) { c.set_once({'First Seen' => DateTime.new(2024, 1, 2, 3, 4, 5)}) },
-         ->(g) { g.set_once('$company_id', 'acme', {'First Seen' => DateTime.new(2024, 1, 2, 3, 4, 5)}) }],
-        [->(c) { c.remove({'Products' => 'legacy'}) },
-         ->(g) { g.remove('$company_id', 'acme', {'Products' => 'legacy'}) }],
-        [->(c) { c.union({'Products' => ['analytics']}) },
-         ->(g) { g.union('$company_id', 'acme', {'Products' => ['analytics']}) }],
-        [->(c) { c.unset('Overdue Since') },
-         ->(g) { g.unset('$company_id', 'acme', 'Overdue Since') }],
-        [->(c) { c.unset(['Overdue Since', 'Paid Date'], nil, {'$ignore_time' => true}) },
-         ->(g) { g.unset('$company_id', 'acme', ['Overdue Since', 'Paid Date'], nil, {'$ignore_time' => true}) }],
-        [->(c) { c.delete },
-         ->(g) { g.delete_group('$company_id', 'acme') }],
-        [->(c) { c.delete({'$ignore_alias' => true}) },
-         ->(g) { g.delete_group('$company_id', 'acme', {'$ignore_alias' => true}) }],
-      ]
-    end
-
-    [true, false].each do |hierarchical_groups|
-      it "sends exactly what the matching group call sends (hierarchical_groups: #{hierarchical_groups})" do
-        sent = []
-        tracker = Mixpanel::Tracker.new(token, hierarchical_groups: hierarchical_groups) do |type, message|
-          sent << [type, message]
-        end
-        acme = tracker.for_company('acme')
-
-        company_and_group_calls.each do |company_call, group_call|
-          sent.clear
-          expect(company_call.call(acme.company)).to be true
-          group_call.call(acme.groups)
-
-          expect(sent.length).to eq(2)
-          expect(sent[0]).to eq(sent[1])
-          expect(sent[0][0]).to eq(:group_update)
-        end
-      end
-
-      it "raises without a bound company (hierarchical_groups: #{hierarchical_groups})" do
-        tracker = hierarchical_groups ? @hg : @legacy
-
-        company_and_group_calls.each do |company_call, _|
-          expect { company_call.call(tracker.company) }
-            .to raise_error(Mixpanel::CompanyRequiredError, /for_company/)
-        end
-        expect(@log).to be_empty
-      end
-    end
-
-    it 'leaves the receiver of for_company unbound' do
-      acme = @hg.for_company('acme')
-      acme.company.set({'tier' => 'enterprise'})
-
-      expect(last_data).to include('$group_key' => '$company_id', '$group_id' => 'acme', '$company_id' => 'acme')
-      expect { @hg.company.set({'tier' => 'enterprise'}) }.to raise_error(Mixpanel::CompanyRequiredError)
     end
   end
 
