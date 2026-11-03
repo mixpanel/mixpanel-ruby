@@ -20,19 +20,16 @@ module Mixpanel
   #
   # Hierarchical groups projects require a top-level $company_id on every
   # group profile update, including the company's own profile and user
-  # profiles. A company's own profile, keyed by $company_id, takes its company
-  # from its group id. Bind one for other profiles with Tracker#for_company:
+  # profiles. Bind one with Tracker#for_company:
   #
   #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, hierarchical_groups: true)
-  #     tracker.groups.set('$company_id', 'acme', company_properties)
-  #
   #     acme = tracker.for_company('acme')
+  #     acme.company.set(company_properties)
   #     acme.groups.set('$user_id', 'user_123', user_properties)
   #     acme.groups.set('department', 'finance', department_properties)
   #
-  # On a hierarchical groups tracker, an update to any other profile with no
-  # bound company and no $company_id in optional_params raises
-  # Mixpanel::CompanyRequiredError.
+  # On a hierarchical groups tracker, an update with no bound company and no
+  # $company_id in optional_params raises Mixpanel::CompanyRequiredError.
   class Groups
 
     # You likely won't need to instantiate instances of Mixpanel::Groups
@@ -193,13 +190,10 @@ module Mixpanel
     # A bound company (see Tracker#for_company) is added as a top-level
     # $company_id, replacing any $company_id in the message.
     #
-    # On a hierarchical groups tracker, an update to a company's own profile
-    # ($group_key $company_id) with no bound company and no $company_id in the
-    # message takes its group id as the company. Raises
-    # Mixpanel::UnsupportedOperationError for an operation /groups lacks ($add,
-    # $append or $merge), ArgumentError if a company's own profile is sent with
-    # a different company, and Mixpanel::CompanyRequiredError if any other
-    # profile has no bound company and the message has no $company_id.
+    # On a hierarchical groups tracker, raises Mixpanel::UnsupportedOperationError
+    # for an operation /groups lacks ($add, $append or $merge), and
+    # Mixpanel::CompanyRequiredError if no company is bound and the message has
+    # no $company_id.
     def update(message)
       unsupported = @hierarchical_groups ? HierarchicalGroups.unsupported_operations(message) : []
       unless unsupported.empty?
@@ -208,14 +202,18 @@ module Mixpanel
           "#{HierarchicalGroups::GROUP_OPERATIONS.join(', ')}."
       end
 
-      company_id = @hierarchical_groups ? hierarchical_company_id(message) : @company_id
+      if @hierarchical_groups && @company_id.nil? && message['$company_id'].nil?
+        raise CompanyRequiredError, 'Group profile updates for hierarchical groups projects require a ' \
+          'company. Use tracker.for_company(company_id) to send them. Nothing to send for group ' \
+          "#{message['$group_key']}=#{message['$group_id']}"
+      end
 
       data = {
         '$token' => @token,
         '$time' =>  (Time.now.to_f * 1000).to_i,
       }.merge(message)
       # $company_id must be top-level, not inside the operation payload
-      data['$company_id'] = company_id unless company_id.nil?
+      data['$company_id'] = @company_id unless @company_id.nil?
 
       message = {'data' => data}
 
@@ -241,31 +239,6 @@ module Mixpanel
 
     private
 
-    # The company a hierarchical groups update belongs to: the bound company,
-    # then a $company_id in the message, then, for a company's own profile,
-    # its group id.
-    def hierarchical_company_id(message)
-      company_id = @company_id || message['$company_id']
-      group_id = message['$group_id']
-
-      if message['$group_key'] == HierarchicalGroups::COMPANY_ID_GROUP_KEY
-        if company_id.nil?
-          company_id = group_id unless group_id.respond_to?(:empty?) && group_id.empty?
-        elsif company_id != group_id
-          raise ArgumentError, "A company profile's company is its own id, so company profile " \
-            "#{group_id.inspect} cannot be sent with company #{company_id.inspect}. Nothing to send."
-        end
-      end
-
-      if company_id.nil?
-        raise CompanyRequiredError, 'Group profile updates for hierarchical groups projects require a ' \
-          'company. Use tracker.for_company(company_id) to send them. Nothing to send for group ' \
-          "#{message['$group_key']}=#{group_id}"
-      end
-
-      company_id
-    end
-
     def fix_property_dates(properties)
       properties.inject({}) do |ret, (key, value)|
         value = value.respond_to?(:new_offset) ? value.new_offset('0') : value
@@ -274,6 +247,88 @@ module Mixpanel
         ret[key] = value.respond_to?(:strftime) ? value.strftime('%Y-%m-%dT%H:%M:%S') : value
         ret
       end
+    end
+  end
+
+  # Updates the profile of the company a tracker is bound to by
+  # Tracker#for_company, so the company is named once. Use it through
+  # Tracker#company:
+  #
+  #     acme = tracker.for_company('acme')
+  #     acme.company.set({'tier' => 'enterprise'})
+  #
+  # Each method sends exactly what the matching Mixpanel::Groups method sends
+  # with group key '$company_id' and the bound company as group id, so the
+  # call above is the same as
+  #
+  #     acme.groups.set('$company_id', 'acme', {'tier' => 'enterprise'})
+  #
+  # On a tracker with no bound company, every method raises
+  # Mixpanel::CompanyRequiredError, with or without hierarchical groups.
+  class Company
+
+    # You won't need to instantiate instances of Mixpanel::Company
+    # directly. Use Tracker#company on a tracker from Tracker#for_company.
+    def initialize(groups, company_id=nil)
+      @groups = groups
+      @company_id = company_id
+    end
+
+    # Sets properties on the company profile. See Mixpanel::Groups#set.
+    #
+    #    tracker.for_company('acme').company.set({'tier' => 'enterprise'})
+    def set(properties, ip=nil, optional_params={})
+      @groups.set('$company_id', bound_company_id, properties, ip, optional_params)
+    end
+
+    # Sets properties on the company profile only if they are not already
+    # present. See Mixpanel::Groups#set_once.
+    #
+    #    tracker.for_company('acme').company.set_once({'First Seen' => DateTime.now})
+    def set_once(properties, ip=nil, optional_params={})
+      @groups.set_once('$company_id', bound_company_id, properties, ip, optional_params)
+    end
+
+    # Removes a value from a list property of the company profile. See
+    # Mixpanel::Groups#remove.
+    #
+    #    tracker.for_company('acme').company.remove({'Products' => 'legacy'})
+    def remove(properties, ip=nil, optional_params={})
+      @groups.remove('$company_id', bound_company_id, properties, ip, optional_params)
+    end
+
+    # Set union on list valued properties of the company profile. See
+    # Mixpanel::Groups#union.
+    #
+    #    tracker.for_company('acme').company.union({'Products' => ['analytics']})
+    def union(properties, ip=nil, optional_params={})
+      @groups.union('$company_id', bound_company_id, properties, ip, optional_params)
+    end
+
+    # Removes properties and their values from the company profile. Takes a
+    # property name or an Array of them. See Mixpanel::Groups#unset.
+    #
+    #    tracker.for_company('acme').company.unset(['Overdue Since', 'Paid Date'])
+    def unset(properties, ip=nil, optional_params={})
+      @groups.unset('$company_id', bound_company_id, properties, ip, optional_params)
+    end
+
+    # Permanently deletes the company profile. See
+    # Mixpanel::Groups#delete_group.
+    #
+    #    tracker.for_company('acme').company.delete
+    def delete(optional_params={})
+      @groups.delete_group('$company_id', bound_company_id, optional_params)
+    end
+
+    private
+
+    def bound_company_id
+      if @company_id.nil?
+        raise CompanyRequiredError, 'Company profile updates require a company. ' \
+          'Use tracker.for_company(company_id).company to send them.'
+      end
+      @company_id
     end
   end
 end

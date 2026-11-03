@@ -341,9 +341,9 @@ describe 'Hierarchical groups scenarios' do
   end
 
   it 'Set Company Property Without Company' do
-    @hg.groups.set('$company_id', company_id, {'tier' => 'enterprise'})
-
-    expect(expect_company_update('$set')).to eq('tier' => 'enterprise')
+    expect { @hg.groups.set('$company_id', company_id, {'tier' => 'enterprise'}) }
+      .to raise_error(Mixpanel::CompanyRequiredError)
+    expect_nothing_sent
   end
 
   it 'Set Custom Group Property Without Company' do

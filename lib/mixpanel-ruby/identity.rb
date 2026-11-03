@@ -111,9 +111,6 @@ module Mixpanel
 
     USER_ID_GROUP_KEY = '$user_id'.freeze
 
-    # The group key of a company's own profile. Its group id is the company.
-    COMPANY_ID_GROUP_KEY = '$company_id'.freeze
-
     COMBINED_COMPANY_PREFIX = '$company:'.freeze
     COMBINED_USER_SEPARATOR = '|$user:'.freeze
 

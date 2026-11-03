@@ -312,7 +312,7 @@ module Mixpanel
             'Device ids identify anonymous events, not profiles.'
         end
         raise ArgumentError, "User profile updates require a user id, and #{identity} has none. " \
-          "Use tracker.groups.set('$company_id', company_id, properties) " \
+          'Use tracker.for_company(company_id).company.set(properties) ' \
           "to update the company's profile."
       end
 
