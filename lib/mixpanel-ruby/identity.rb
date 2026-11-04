@@ -57,7 +57,7 @@ module Mixpanel
     end
 
     # The event properties this identity contributes, with unset values omitted.
-    def to_properties
+    def to_properties # :nodoc:
       properties = {}
       properties['distinct_id'] = @distinct_id unless @distinct_id.nil?
       properties['$user_id'] = @user_id unless @user_id.nil?
@@ -117,6 +117,10 @@ module Mixpanel
       value.is_a?(String) ? value.dup.freeze : value
     end
   end
+
+  # The same class as Mixpanel::Identity, under the name the other Mixpanel
+  # SDKs use.
+  MixpanelIdentity = Identity
 
   # Validation shared by Events, People and Groups for hierarchical groups
   # projects. Not part of the public API.

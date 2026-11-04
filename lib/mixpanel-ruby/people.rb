@@ -277,7 +277,7 @@ module Mixpanel
     # Returns a Mixpanel::People that refuses user profile updates for any
     # company other than company_id, sharing this instance's consumer and
     # error handler. The receiver is unchanged. Tracker#for_company uses it.
-    def for_company(company_id)
+    def for_company(company_id) # :nodoc:
       People.new(@token, @error_handler, hierarchical_groups: @hierarchical_groups, company_id: company_id, &@sink)
     end
 

@@ -232,7 +232,7 @@ module Mixpanel
     # group profile update it sends, sharing this instance's consumer and
     # error handler. The receiver is unchanged. Tracker#for_company is the
     # usual way to get one.
-    def for_company(company_id)
+    def for_company(company_id) # :nodoc:
       HierarchicalGroups.require_company_id(company_id)
       Groups.new(@token, @error_handler, hierarchical_groups: @hierarchical_groups, company_id: company_id, &@sink)
     end
