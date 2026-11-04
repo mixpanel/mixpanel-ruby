@@ -17,7 +17,7 @@ module Mixpanel
       }.freeze
 
       # A {key} placeholder in a flag's context_value_template.
-      CONTEXT_PLACEHOLDER = /\{([^}]+)\}/
+      CONTEXT_PLACEHOLDER = /\{([^{}]+)\}/
 
       # @param token [String] Mixpanel project token
       # @param config [Hash] Local flags configuration
