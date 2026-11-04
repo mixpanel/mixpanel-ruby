@@ -437,6 +437,26 @@ describe 'Hierarchical groups' do
         .to raise_error(Mixpanel::CompanyRequiredError)
     end
 
+    it 'takes the company from a bound tracker for a user without one' do
+      @hg.for_company('acme').people.set(identity(user_id: 'user_123'), {'role' => 'admin'})
+
+      expect(last_type).to eq(:group_update)
+      expect(last_data['$group_id']).to eq('user_123')
+      expect(last_data['$company_id']).to eq('acme')
+    end
+
+    it 'lets the bound company win over a $company_id param' do
+      @hg.for_company('acme').people.set(identity(user_id: 'user_123'), {'role' => 'admin'}, nil, {'$company_id' => 'other'})
+
+      expect(last_data['$company_id']).to eq('acme')
+    end
+
+    it 'does not count an empty $company_id param as a company' do
+      expect { @hg.people.set(identity(user_id: 'user_123'), {'role' => 'admin'}, nil, {'$company_id' => ''}) }
+        .to raise_error(Mixpanel::CompanyRequiredError)
+      expect(@log).to be_empty
+    end
+
     it 'sends a distinct id identity to /engage on a legacy tracker' do
       @legacy.people.set(identity(distinct_id: 'user_123'), {'role' => 'admin'})
 
@@ -514,6 +534,12 @@ describe 'Hierarchical groups' do
       @hg.groups.set('department', 'finance', {'plan' => 'x'}, nil, {'$company_id' => 'acme'})
 
       expect(last_data['$company_id']).to eq('acme')
+    end
+
+    it 'does not count an empty $company_id param as a company' do
+      expect { @hg.groups.set('department', 'finance', {'plan' => 'x'}, nil, {'$company_id' => ''}) }
+        .to raise_error(Mixpanel::CompanyRequiredError)
+      expect(@log).to be_empty
     end
 
     it 'lets for_company win over a $company_id param' do

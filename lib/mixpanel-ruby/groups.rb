@@ -193,7 +193,7 @@ module Mixpanel
     # On a hierarchical groups tracker, raises Mixpanel::UnsupportedOperationError
     # for an operation /groups lacks ($add, $append or $merge), and
     # Mixpanel::CompanyRequiredError if no company is bound and the message has
-    # no $company_id.
+    # no non-empty $company_id.
     def update(message)
       unsupported = @hierarchical_groups ? HierarchicalGroups.unsupported_operations(message) : []
       unless unsupported.empty?
@@ -202,7 +202,8 @@ module Mixpanel
           "#{HierarchicalGroups::GROUP_OPERATIONS.join(', ')}."
       end
 
-      if @hierarchical_groups && @company_id.nil? && message['$company_id'].nil?
+      message_company_id = message['$company_id']
+      if @hierarchical_groups && @company_id.nil? && (message_company_id.nil? || message_company_id == '')
         raise CompanyRequiredError, 'Group profile updates for hierarchical groups projects require a ' \
           'company. Use tracker.for_company(company_id) to send them. Nothing to send for group ' \
           "#{message['$group_key']}=#{message['$group_id']}"

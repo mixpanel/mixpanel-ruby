@@ -35,10 +35,11 @@ module Mixpanel
   #         'role' => 'admin'
   #     })
   #
-  # The company comes from the identity, or else a $company_id in
-  # optional_params, so these updates do not need Tracker#for_company. On a
-  # tracker bound with #for_company, a user from another company raises
-  # ArgumentError and sends nothing.
+  # The company comes from the identity, or else the company the tracker is
+  # bound to by Tracker#for_company, or else a $company_id in optional_params,
+  # so these updates do not need Tracker#for_company. On a tracker bound with
+  # #for_company, a user from another company raises ArgumentError and sends
+  # nothing.
   #
   # A distinct id, as a string or as an identity's distinct_id, must be one
   # Mixpanel built, of the form <tt>$company:{company}|$user:{user}</tt>. It
@@ -333,9 +334,11 @@ module Mixpanel
         operation => properties,
       }.merge(optional_params)
       message['$ip'] = ip if ip
-      # The identity's company wins over a $company_id in optional_params. With
-      # neither, Groups#update raises Mixpanel::CompanyRequiredError.
-      message['$company_id'] = identity.company_id unless identity.company_id.nil?
+      # The identity's company, or else the bound company, wins over a
+      # $company_id in optional_params. With none of them, Groups#update raises
+      # Mixpanel::CompanyRequiredError.
+      company_id = identity.company_id || @company_id
+      message['$company_id'] = company_id unless company_id.nil?
 
       @user_profiles.update(message)
     end
