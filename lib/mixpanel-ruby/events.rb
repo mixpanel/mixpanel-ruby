@@ -2,6 +2,7 @@ require 'time'
 
 require 'mixpanel-ruby/consumer'
 require 'mixpanel-ruby/error'
+require 'mixpanel-ruby/identity'
 
 module Mixpanel
 
@@ -22,10 +23,13 @@ module Mixpanel
     #     # tracker has all of the methods of Mixpanel::Events
     #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #
-    def initialize(token, error_handler=nil, credentials: nil, &block)
+    # Pass hierarchical_groups: true if the project uses hierarchical
+    # groups; see Mixpanel::Tracker#initialize.
+    def initialize(token, error_handler=nil, credentials: nil, hierarchical_groups: false, &block)
       @token = token
       @error_handler = error_handler || ErrorHandler.new
       @credentials = credentials
+      @hierarchical_groups = hierarchical_groups ? true : false
 
       if block && credentials
         warn '[WARNING] credentials passed to Events/Tracker are ignored when a custom sink block is provided. Pass credentials to your consumer directly.'
@@ -56,14 +60,16 @@ module Mixpanel
     #         'Email Template' => 'Pretty Pink Welcome',
     #         'User Sign-up Cohort' => 'July 2013'
     #     })
+    #
+    # distinct_id may also be a Mixpanel::Identity, whose keys replace any
+    # caller-supplied values for the same keys in properties:
+    #
+    #     tracker.track(Mixpanel::Identity.new(user_id: '12345', company_id: 'acme'), 'Signup')
+    #
+    # Raises ArgumentError if the identity does not match the project (see
+    # Mixpanel::Identity).
     def track(distinct_id, event, properties={}, ip=nil)
-      properties = {
-        'distinct_id' => distinct_id,
-        'token' => @token,
-        'time' => (Time.now.to_f * 1000).to_i,
-        'mp_lib' => 'ruby',
-        '$lib_version' => Mixpanel::VERSION,
-      }.merge(properties)
+      properties = event_properties(distinct_id, properties)
       properties['ip'] = ip if ip
 
       data = {
@@ -133,6 +139,7 @@ module Mixpanel
     #         'Source' => 'Import'
     #     })
     #
+    # Like #track, distinct_id may be a Mixpanel::Identity.
     def import_events(distinct_id, event, properties={}, ip=nil)
       unless @credentials
         raise ArgumentError, 'import_events requires credentials in constructor. Use: Tracker.new(token, credentials: credentials)'
@@ -152,13 +159,7 @@ module Mixpanel
         raise ArgumentError, 'import requires authentication: provide either api_key parameter or credentials in constructor'
       end
 
-      properties = {
-        'distinct_id' => distinct_id,
-        'token' => @token,
-        'time' => (Time.now.to_f * 1000).to_i,
-        'mp_lib' => 'ruby',
-        '$lib_version' => Mixpanel::VERSION,
-      }.merge(properties)
+      properties = event_properties(distinct_id, properties)
       properties['ip'] = ip if ip
 
       data = {
@@ -186,6 +187,36 @@ module Mixpanel
       end
 
       ret
+    end
+
+    # Builds the properties of an event message for a distinct id or a
+    # Mixpanel::Identity. A string distinct id is never refused, in either
+    # mode: Mixpanel accepts a distinct id it built itself, such as
+    # "$company:acme|$user:user_123".
+    def event_properties(distinct_id, properties)
+      unless distinct_id.is_a?(Identity)
+        return {
+          'distinct_id' => distinct_id,
+          'token' => @token,
+          'time' => (Time.now.to_f * 1000).to_i,
+          'mp_lib' => 'ruby',
+          '$lib_version' => Mixpanel::VERSION,
+        }.merge(properties)
+      end
+
+      identity = distinct_id
+      HierarchicalGroups.require_identity_matches_project(identity, @hierarchical_groups)
+
+      # An identity without a distinct id sends no distinct_id: Mixpanel
+      # resolves the event from $user_id, $company_id and $device_id.
+      defaults = {}
+      defaults['distinct_id'] = identity.distinct_id unless identity.distinct_id.nil?
+      defaults.merge(
+        'token' => @token,
+        'time' => (Time.now.to_f * 1000).to_i,
+        'mp_lib' => 'ruby',
+        '$lib_version' => Mixpanel::VERSION,
+      ).merge(properties).merge(identity.to_properties)
     end
   end
 end
