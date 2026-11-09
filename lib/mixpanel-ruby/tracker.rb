@@ -35,6 +35,11 @@ module Mixpanel
     # An instance of Mixpanel::Groups. Use this to send groups updates
     attr_reader :groups
 
+    # An instance of Mixpanel::Company. Use this on a tracker from
+    # #for_company to update that company's profile. On a tracker with no
+    # bound company its methods raise Mixpanel::CompanyRequiredError.
+    attr_reader :company
+
     # An instance of Mixpanel::Flags::LocalFlagsProvider. Use this for
     # client-side feature flag evaluation
     attr_reader :local_flags
@@ -42,6 +47,9 @@ module Mixpanel
     # An instance of Mixpanel::Flags::RemoteFlagsProvider. Use this for
     # server-side feature flag evaluation
     attr_reader :remote_flags
+
+    # The company this tracker is bound to by #for_company, or nil.
+    attr_reader :company_id
 
     # Takes your Mixpanel project token, as a string.
     #
@@ -67,11 +75,42 @@ module Mixpanel
     # - credentials: ServiceAccountCredentials for authentication (used for import and feature flags)
     # - local_flags_config: Configuration hash for local feature flags
     # - remote_flags_config: Configuration hash for remote feature flags
-    def initialize(token, error_handler=nil, credentials: nil, local_flags_config: nil, remote_flags_config: nil, &block)
-      super(token, error_handler, credentials: credentials, &block)
+    # - hierarchical_groups: true if the project uses hierarchical groups
+    #   (default false). This only adds validation; a message that is valid
+    #   either way is sent unchanged. Feature flag exposure events are the
+    #   exception: they are attributed by $user_id and $company_id from the
+    #   flag context.
+    #
+    # == Hierarchical groups
+    #
+    # On a hierarchical groups project Mixpanel builds the distinct id from
+    # $user_id and $company_id. Identify events and user profiles with a
+    # Mixpanel::Identity, and send group profile updates through #for_company:
+    #
+    #    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, hierarchical_groups: true)
+    #    user = Mixpanel::Identity.new(user_id: 'user_123', company_id: 'acme')
+    #
+    #    tracker.track(user, 'Signup')
+    #    tracker.people.set(user, {'role' => 'admin'})
+    #    tracker.for_company('acme').company.set({'tier' => 'enterprise'})
+    #
+    # Events still accept a string distinct id and never refuse one, but one
+    # that is not of the form <tt>$company:{company}|$user:{user}</tt> names a
+    # separate user that nothing reconciles later. User profile updates never
+    # go to /engage: they accept only an identity with a user and company, or
+    # a distinct id of that form, and raise ArgumentError for any other. User
+    # profiles support only set, set_once, unset, union and delete_user; see
+    # Mixpanel::People.
+    #
+    # Mistakes in the calling code raise ArgumentError,
+    # Mixpanel::UnsupportedOperationError or Mixpanel::CompanyRequiredError
+    # directly; they are not passed to the error handler.
+    def initialize(token, error_handler=nil, credentials: nil, local_flags_config: nil, remote_flags_config: nil, hierarchical_groups: false, &block)
+      super(token, error_handler, credentials: credentials, hierarchical_groups: hierarchical_groups, &block)
 
-      @people = People.new(token, error_handler, &block)
-      @groups = Groups.new(token, error_handler, &block)
+      @people = People.new(token, error_handler, hierarchical_groups: hierarchical_groups, &block)
+      @groups = Groups.new(token, error_handler, hierarchical_groups: hierarchical_groups, &block)
+      @company = Company.new(@groups)
 
       # Initialize local flags if config provided
       if local_flags_config
@@ -80,7 +119,8 @@ module Mixpanel
           local_flags_config,
           method(:track),  # Pass bound method as callback
           error_handler || ErrorHandler.new,
-          credentials
+          credentials,
+          hierarchical_groups: hierarchical_groups
         )
       end
 
@@ -91,7 +131,8 @@ module Mixpanel
           remote_flags_config,
           method(:track),  # Pass bound method as callback
           error_handler || ErrorHandler.new,
-          credentials
+          credentials,
+          hierarchical_groups: hierarchical_groups
         )
       end
     end
@@ -114,6 +155,15 @@ module Mixpanel
     #         'Email Template' => 'Pretty Pink Welcome',
     #         'User Sign-up Cohort' => 'July 2013'
     #     })
+    #
+    # distinct_id may also be a Mixpanel::Identity, whose keys replace any
+    # caller-supplied values for the same keys in properties:
+    #
+    #     tracker.track(Mixpanel::Identity.new(user_id: '12345', company_id: 'acme'), 'Signup')
+    #
+    # Raises ArgumentError if the identity does not match the project, for
+    # example an identity with a company on a tracker created without
+    # hierarchical_groups: true.
     def track(distinct_id, event, properties={}, ip=nil)
       # This is here strictly to allow rdoc to include the relevant
       # documentation
@@ -142,6 +192,8 @@ module Mixpanel
     #         'User Sign-up Cohort' => 'July 2013',
     #         'time' => 1310111365
     #     })
+    #
+    # Like #track, distinct_id may be a Mixpanel::Identity.
     def import(api_key, distinct_id, event, properties={}, ip=nil)
       # This is here strictly to allow rdoc to include the relevant
       # documentation
@@ -164,10 +216,36 @@ module Mixpanel
     #         'time' => 1369353600
     #     })
     #
+    # Like #track, distinct_id may be a Mixpanel::Identity.
     def import_events(distinct_id, event, properties={}, ip=nil)
       # This is here strictly to allow rdoc to include the relevant
       # documentation
       super
+    end
+
+    # Returns a new Tracker bound to the given company. Its #groups add a
+    # top-level $company_id to every group profile update, replacing any
+    # $company_id in optional_params, and its #company updates the company's
+    # own profile:
+    #
+    #    acme = tracker.for_company('acme')
+    #    acme.company.set(company_properties)
+    #    acme.groups.set('$user_id', 'user_123', user_properties)
+    #    acme.groups.set('department', 'finance', department_properties)
+    #
+    # The returned tracker shares this tracker's consumer, error handler and
+    # feature flag providers, and this tracker is unchanged. Events are not
+    # affected, and user profile updates do not need it: a Mixpanel::Identity
+    # carries its own company. A user from another company raises
+    # ArgumentError on the returned tracker. Available on any tracker, but
+    # only hierarchical groups projects need it.
+    #
+    # Raises ArgumentError if company_id is nil or empty.
+    def for_company(company_id)
+      bound_groups = @groups.for_company(company_id)
+      view = dup
+      view.bind_company(company_id, bound_groups, @people.for_company(company_id))
+      view
     end
 
     # Creates a distinct_id alias. \Events and updates with an alias
@@ -180,7 +258,15 @@ module Mixpanel
     #
     # Alias requests are always sent synchronously, directly to
     # the \Mixpanel service, regardless of how the tracker is configured.
+    #
+    # On a hierarchical groups tracker, raises Mixpanel::UnsupportedOperationError
+    # before anything is sent.
     def alias(alias_id, real_id, events_endpoint=nil)
+      if @hierarchical_groups
+        raise UnsupportedOperationError, 'alias is not supported for hierarchical groups projects, ' \
+          'which identify a user by company and user id. Track with a ' \
+          'Mixpanel::Identity.new(user_id: ..., company_id: ...) instead.'
+      end
       consumer = Mixpanel::Consumer.new(events_endpoint)
       data = {
         'event' => '$create_alias',
@@ -239,6 +325,15 @@ module Mixpanel
       data = Base64.urlsafe_encode64(raw_data.to_json)
 
       "#{endpoint}?data=#{data}&ip=1&img=1"
+    end
+
+    protected
+
+    def bind_company(company_id, groups, people)
+      @company_id = company_id
+      @groups = groups
+      @people = people
+      @company = Company.new(groups, company_id)
     end
   end
 end

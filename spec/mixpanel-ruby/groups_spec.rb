@@ -156,4 +156,9 @@ describe Mixpanel::Groups do
         '$delete' => ''
     }]])
   end
+
+  it 'should raise TypeError for a non-Hash update, as before hierarchical groups' do
+    expect { @groups.update(nil) }.to raise_error(TypeError)
+    expect(@log).to eq([])
+  end
 end

@@ -16,12 +16,19 @@ module Mixpanel
         exposure_executor: nil
       }.freeze
 
+      # A {key} placeholder in a flag's context_value_template.
+      CONTEXT_PLACEHOLDER = /\{([^{}]+)\}/
+
       # @param token [String] Mixpanel project token
       # @param config [Hash] Local flags configuration
       # @param tracker_callback [Proc] Callback to track events
       # @param error_handler [Mixpanel::ErrorHandler] Error handler
       # @param credentials [ServiceAccountCredentials, nil] Optional service account credentials
-      def initialize(token, config, tracker_callback, error_handler, credentials = nil)
+      # @param hierarchical_groups [Boolean] true if the project uses hierarchical
+      #   groups (default false). On such a project an exposure event is attributed
+      #   by $user_id and $company_id from the context, and tracker_callback receives
+      #   a Mixpanel::Identity instead of a distinct_id string.
+      def initialize(token, config, tracker_callback, error_handler, credentials = nil, hierarchical_groups: false)
         # compact: an explicit nil from the caller (e.g.
         # polling_interval_in_seconds: nil) must not override a sane default.
         # Both the previous sleep(nil) and the current
@@ -40,7 +47,8 @@ module Mixpanel
           api_host: @config[:api_host],
           request_timeout_in_seconds: @config[:request_timeout_in_seconds],
           exposure_executor: @config[:exposure_executor],
-          credentials: credentials
+          credentials: credentials,
+          hierarchical_groups: hierarchical_groups
         }
 
         super(provider_config, '/flags/definitions', tracker_callback, 'local', error_handler)
@@ -175,13 +183,20 @@ module Mixpanel
         return fallback_variant.as_fallback(FallbackReason.flag_not_found) unless flag
 
         context_key = flag['context']
-        unless context.key?(context_key) || context.key?(context_key.to_sym)
-          return fallback_variant.as_fallback(FallbackReason.missing_context_key(context_key))
+
+        # The assignment key is the flag's context_value_template filled from the
+        # context. Without a template, or with a placeholder the context lacks,
+        # it is the raw context value, as the service does.
+        context_value = resolve_context_value_template(flag['context_value_template'], context)
+        if context_value.nil?
+          unless context.key?(context_key) || context.key?(context_key.to_sym)
+            return fallback_variant.as_fallback(FallbackReason.missing_context_key(context_key))
+          end
+
+          context_value = context[context_key] || context[context_key.to_sym]
         end
 
-        context_value = context[context_key] || context[context_key.to_sym]
-
-        selected_variant = get_variant_override_for_test_user(flag, context)
+        selected_variant = get_variant_override_for_test_user(flag, context, context_value)
 
         unless selected_variant
           rollout = get_assigned_rollout(flag, context_value, context)
@@ -241,11 +256,32 @@ module Mixpanel
         response
       end
 
-      def get_variant_override_for_test_user(flag, context)
+      # Fills a context_value_template with the string values of its placeholder
+      # keys from the evaluation context. Returns nil when there is no template
+      # or any placeholder's key is absent or nil.
+      def resolve_context_value_template(template, context)
+        return nil if template.nil? || template.empty?
+
+        missing = false
+        resolved = template.gsub(CONTEXT_PLACEHOLDER) do
+          value = context_value(context, Regexp.last_match(1))
+          missing = true if value.nil?
+          value.to_s
+        end
+        missing ? nil : resolved
+      end
+
+      def get_variant_override_for_test_user(flag, context, assignment_key)
         test_users = flag.dig('ruleset', 'test', 'users')
         return nil unless test_users
 
-        distinct_id = context['distinct_id'] || context[:distinct_id]
+        # Test users are keyed by distinct id. A flag assigned on distinct_id
+        # matches them by its resolved assignment key.
+        distinct_id = if flag['context'] == 'distinct_id'
+                        assignment_key
+                      else
+                        context['distinct_id'] || context[:distinct_id]
+                      end
         return nil unless distinct_id
 
         variant_key = test_users[distinct_id.to_s]
