@@ -202,17 +202,17 @@ module Mixpanel
           "#{HierarchicalGroups::GROUP_OPERATIONS.join(', ')}."
       end
 
+      data = {
+        '$token' => @token,
+        '$time' =>  (Time.now.to_f * 1000).to_i,
+      }.merge(message)
+
       message_company_id = message['$company_id']
       if @hierarchical_groups && @company_id.nil? && (message_company_id.nil? || message_company_id == '')
         raise CompanyRequiredError, 'Group profile updates for hierarchical groups projects require a ' \
           'company. Use tracker.for_company(company_id) to send them. Nothing to send for group ' \
           "#{message['$group_key']}=#{message['$group_id']}"
       end
-
-      data = {
-        '$token' => @token,
-        '$time' =>  (Time.now.to_f * 1000).to_i,
-      }.merge(message)
       # $company_id must be top-level, not inside the operation payload
       data['$company_id'] = @company_id unless @company_id.nil?
 
