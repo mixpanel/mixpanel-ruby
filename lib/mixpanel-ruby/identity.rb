@@ -35,8 +35,10 @@ module Mixpanel
   class Identity
     attr_reader :distinct_id, :user_id, :company_id, :device_id
 
-    # nil leaves a value unset; an empty string is a caller error rather
-    # than an absent value. At least one value is required.
+    # Each id is a String or an Integer and is sent as given. nil leaves a
+    # value unset; an empty string is a caller error rather than an absent
+    # value, and any other type raises ArgumentError. At least one value is
+    # required.
     def initialize(distinct_id: nil, user_id: nil, company_id: nil, device_id: nil)
       @distinct_id = check_value(distinct_id, 'distinct_id')
       @user_id = check_value(user_id, 'user_id')
@@ -111,6 +113,7 @@ module Mixpanel
 
     def check_value(value, name)
       return nil if value.nil?
+      HierarchicalGroups.require_id_type(value, name)
       if value.respond_to?(:empty?) && value.empty?
         raise ArgumentError, "#{name} must be non-empty"
       end
@@ -129,9 +132,11 @@ module Mixpanel
     # group profile keyed by $user_id, so it supports the same set.
     GROUP_OPERATIONS = %w[$set $set_once $unset $union $remove $delete].freeze
 
-    # Profile operations the HTTP API defines. Keys of a generic update message
-    # that are in this list but not in GROUP_OPERATIONS are unsupported on /groups.
-    KNOWN_OPERATIONS = (GROUP_OPERATIONS + %w[$add $append $merge]).freeze
+    # Keys of a generic update message that are not operations.
+    NON_OPERATION_KEYS = %w[
+      $token $distinct_id $group_key $group_id $company_id $time $ip
+      $ignore_time $ignore_alias $mp_metadata $latitude $longitude
+    ].freeze
 
     USER_ID_GROUP_KEY = '$user_id'.freeze
 
@@ -167,9 +172,25 @@ module Mixpanel
         '$company:{company}|$user:{user}.'
     end
 
-    # The unsupported operations a generic update message carries.
+    # The unsupported operations a generic update message carries: any
+    # $-prefixed key that is neither a /groups operation nor a non-operation
+    # key such as $token or $company_id.
     def unsupported_operations(message)
-      message.keys.map(&:to_s) & (KNOWN_OPERATIONS - GROUP_OPERATIONS)
+      message.keys.map(&:to_s).select do |key|
+        key.start_with?('$') && !GROUP_OPERATIONS.include?(key) && !NON_OPERATION_KEYS.include?(key)
+      end
+    end
+
+    # Ids are Strings or Integers. Anything else raises ArgumentError.
+    def require_id_type(value, name)
+      return if value.is_a?(String) || value.is_a?(Integer)
+      raise ArgumentError, "#{name} must be a String or an Integer, not #{value.inspect}"
+    end
+
+    # A bound company and an identity's company are the same company when
+    # they are equal as strings, so 7 and '7' match.
+    def same_company?(a, b)
+      a.to_s == b.to_s
     end
 
     # Hierarchical groups is a project setting, so a hierarchical identity is
@@ -190,6 +211,7 @@ module Mixpanel
       if company_id.nil? || (company_id.respond_to?(:empty?) && company_id.empty?)
         raise ArgumentError, 'company_id must be non-empty'
       end
+      require_id_type(company_id, 'company_id')
     end
   end
 end

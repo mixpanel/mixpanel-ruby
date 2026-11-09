@@ -191,7 +191,8 @@ module Mixpanel
     # $company_id, replacing any $company_id in the message.
     #
     # On a hierarchical groups tracker, raises Mixpanel::UnsupportedOperationError
-    # for an operation /groups lacks ($add, $append or $merge), and
+    # for an operation /groups lacks (anything but $set, $set_once, $unset,
+    # $union, $remove or $delete), and
     # Mixpanel::CompanyRequiredError if no company is bound and the message has
     # no non-empty $company_id.
     def update(message)

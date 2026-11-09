@@ -162,12 +162,17 @@ module Mixpanel
         company_id = context_value(context, '$company_id')
         distinct_id = nil unless present?(distinct_id)
         company_id = nil unless present?(company_id)
-        # A $user_id without a $company_id names a separate user that nothing
-        # reconciles later, and the tracker refuses that identity, so such an
-        # exposure is attributed by its distinct_id alone.
-        user_id = nil unless company_id && present?(user_id)
+        user_id = nil unless present?(user_id)
 
-        Mixpanel::Identity.new(distinct_id: distinct_id, user_id: user_id, company_id: company_id)
+        Mixpanel::Identity.new(distinct_id: exposure_id(distinct_id), user_id: exposure_id(user_id),
+                               company_id: exposure_id(company_id))
+      end
+
+      # A context value as an identity id: Strings and Integers as given,
+      # anything else as its string form, so an exposure is not lost to a
+      # context value Mixpanel::Identity does not accept.
+      def exposure_id(value)
+        value.nil? || value.is_a?(String) || value.is_a?(Integer) ? value : value.to_s
       end
 
       def context_value(context, key)

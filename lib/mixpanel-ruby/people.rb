@@ -246,7 +246,8 @@ module Mixpanel
     # https://mixpanel.com/help/reference/http
     #
     # On a hierarchical groups tracker, raises Mixpanel::UnsupportedOperationError
-    # if the message carries $add, $append or $merge. Otherwise the message's
+    # if the message carries an operation other than $set, $set_once, $unset,
+    # $union, $remove or $delete. Otherwise the message's
     # $distinct_id must be of the form <tt>$company:{company}|$user:{user}</tt>,
     # or ArgumentError is raised. The message is sent to /groups with
     # $distinct_id replaced by the $user_id group profile and company it names.
@@ -346,7 +347,7 @@ module Mixpanel
     # A tracker bound with Tracker#for_company refuses a user from another
     # company rather than silently updating that company's profile.
     def require_bound_company(company_id, described)
-      return if company_id.nil? || @company_id.nil? || company_id == @company_id
+      return if company_id.nil? || @company_id.nil? || HierarchicalGroups.same_company?(company_id, @company_id)
 
       raise ArgumentError, "This tracker is bound to company #{@company_id.inspect}, but #{described} " \
         "belongs to company #{company_id.inspect}. Update the user through a tracker for that " \

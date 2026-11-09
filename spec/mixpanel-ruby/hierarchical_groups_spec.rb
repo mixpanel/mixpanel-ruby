@@ -46,6 +46,23 @@ describe 'Hierarchical groups' do
       expect { identity(distinct_id: '') }.to raise_error(ArgumentError, /distinct_id/)
     end
 
+    it 'accepts String and Integer ids and sends them as given' do
+      id = identity(distinct_id: 0, user_id: 42, company_id: 7, device_id: 'dev')
+
+      expect(id.to_properties).to eq('distinct_id' => 0, '$user_id' => 42, '$company_id' => 7, '$device_id' => 'dev')
+      @hg.track(id, 'event')
+      expect(last_properties['$user_id']).to eq(42)
+      expect(last_properties['$company_id']).to eq(7)
+    end
+
+    it 'rejects ids that are not a String or an Integer' do
+      %i[distinct_id user_id company_id device_id].each do |name|
+        [true, false, 1.5, ['a'], {'a' => 1}, :a].each do |value|
+          expect { identity(name => value) }.to raise_error(ArgumentError, /#{name}/)
+        end
+      end
+    end
+
     it 'needs at least one value' do
       expect { Mixpanel::Identity.new }.to raise_error(ArgumentError)
       expect { identity(user_id: nil, company_id: nil) }.to raise_error(ArgumentError)
@@ -350,6 +367,32 @@ describe 'Hierarchical groups' do
       }]])
     end
 
+    it 'refuses any generic update operation outside the supported six' do
+      %w[$add $append $merge $increment $foo].each do |operation|
+        expect { @hg.people.update('$distinct_id' => '$company:acme|$user:user_123', operation => {'a' => 1}) }
+          .to raise_error(Mixpanel::UnsupportedOperationError, /#{Regexp.escape(operation)}/)
+      end
+      expect { @hg.people.update('$distinct_id' => '$company:acme|$user:user_123', :$foo => {'a' => 1}) }
+        .to raise_error(Mixpanel::UnsupportedOperationError, /\$foo/)
+      expect(@log).to be_empty
+    end
+
+    it 'allows non-operation keys in a generic update' do
+      @hg.people.update('$distinct_id' => '$company:acme|$user:user_123', '$set' => {'plan' => 'pro'},
+                        '$token' => token, '$time' => 1, '$ip' => '1.2.3.4', '$ignore_time' => true,
+                        '$ignore_alias' => true, '$mp_metadata' => {}, '$company_id' => 'acme',
+                        '$group_key' => '$user_id', '$group_id' => 'user_123', 'custom' => 1)
+
+      expect(last_type).to eq(:group_update)
+      expect(last_data['$set']).to eq('plan' => 'pro')
+    end
+
+    it 'sends any generic update operation unchanged on a legacy tracker' do
+      @legacy.people.update('$distinct_id' => 'user_123', '$foo' => {'a' => 1})
+      expect(last_type).to eq(:profile_update)
+      expect(last_data['$foo']).to eq('a' => 1)
+    end
+
     it 'refuses a generic update without a $distinct_id on a hierarchical tracker' do
       expect { @hg.people.update('$set' => {'plan' => 'pro'}) }.to raise_error(ArgumentError)
       expect(@log).to be_empty
@@ -410,6 +453,17 @@ describe 'Hierarchical groups' do
       expect { bound.people.set('$company:acme|$user:user_123', {'role' => 'admin'}) }
         .to raise_error(ArgumentError, /belongs to company "acme"/)
       expect(@log).to be_empty
+    end
+
+    it 'compares the bound company and the user company as strings' do
+      @hg.for_company(7).people.set(identity(user_id: 'user_123', company_id: '7'), {'role' => 'admin'})
+      expect(last_data['$company_id']).to eq('7')
+      @hg.for_company(7).people.set('$company:7|$user:user_123', {'role' => 'admin'})
+      expect(last_data['$company_id']).to eq('7')
+      @hg.for_company('7').people.set(identity(user_id: 1, company_id: 7), {'role' => 'admin'})
+      expect(last_data['$company_id']).to eq(7)
+      expect { @hg.for_company(8).people.set(identity(user_id: 1, company_id: 7), {'role' => 'admin'}) }
+        .to raise_error(ArgumentError, /bound to company 8/)
     end
 
     it 'leaves the unbound tracker people unchanged' do
@@ -565,6 +619,25 @@ describe 'Hierarchical groups' do
       expect(@log).to be_empty
     end
 
+    it 'raises for any group operation outside the supported six' do
+      groups = @hg.for_company('acme').groups
+
+      %w[$increment $foo].each do |operation|
+        expect { groups.update('$group_key' => 'company', '$group_id' => 'acme', operation => {'seats' => 1}) }
+          .to raise_error(Mixpanel::UnsupportedOperationError, /#{Regexp.escape(operation)}/)
+      end
+      expect(@log).to be_empty
+    end
+
+    it 'allows non-operation keys in a group update' do
+      @hg.for_company('acme').groups.update('$group_key' => 'company', '$group_id' => 'acme',
+                                            '$set' => {'seats' => 1}, '$token' => token, '$time' => 1,
+                                            '$ip' => '1.2.3.4', '$ignore_time' => true, '$ignore_alias' => true,
+                                            '$mp_metadata' => {}, '$company_id' => 'acme', '$distinct_id' => 'x')
+      expect(last_type).to eq(:group_update)
+      expect(last_data['$set']).to eq('seats' => 1)
+    end
+
     it 'raises for an unsupported group operation before checking the company' do
       expect { @hg.groups.update('$group_key' => 'company', '$group_id' => 'acme', '$add' => {'seats' => 1}) }
         .to raise_error(Mixpanel::UnsupportedOperationError)
@@ -593,6 +666,19 @@ describe 'Hierarchical groups' do
     it 'rejects an empty company' do
       expect { @hg.for_company('') }.to raise_error(ArgumentError)
       expect { @hg.for_company(nil) }.to raise_error(ArgumentError)
+    end
+
+    it 'accepts Integer companies, including 0' do
+      [0, 7].each do |company_id|
+        @hg.for_company(company_id).company.set({'tier' => 'pro'})
+        expect(last_data['$company_id']).to eq(company_id)
+      end
+    end
+
+    it 'rejects companies that are not a String or an Integer' do
+      [true, false, 1.5, ['acme'], {'id' => 'acme'}, :acme].each do |company_id|
+        expect { @hg.for_company(company_id) }.to raise_error(ArgumentError, /company_id/)
+      end
     end
 
     it 'returns a new tracker and leaves the receiver unchanged' do
