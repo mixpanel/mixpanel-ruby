@@ -61,7 +61,12 @@ API keys for import operations and feature flags.
         'Source' => 'Import'
     })
 
-import_events returns true when \Mixpanel accepted the event and false when it did not.
+import_events returns true when the request completed without a \Mixpanel error, and false
+when a Mixpanel::MixpanelError was raised. With a custom consumer block, such as a queue, true
+only means the handoff to that block succeeded. A false result does not always mean the event
+was lost: after a timeout, \Mixpanel may still have stored it, so set a unique
+<tt>$insert_id</tt> property if you retry, and \Mixpanel will drop the duplicate.
+
 With the default error handler, a failed import also prints a warning to stderr. To handle
 failures yourself, for example to retry or alert, pass a Mixpanel::ErrorHandler subclass:
 

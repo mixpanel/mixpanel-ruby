@@ -187,12 +187,11 @@ module Mixpanel
         # explicit, low-volume backfills, so surface the failure on stderr when no
         # custom handler is configured.
         if @error_handler.instance_of?(ErrorHandler)
-          # A ServerError means Mixpanel answered and rejected the request. Any other
-          # error (for example a ConnectionError after a read timeout) leaves the
-          # outcome unknown: the server may have stored the event before failing.
-          outcome = e.is_a?(ServerError) ? 'was rejected' : 'may not have been stored'
+          # The outcome is not always known: a read timeout, a 5xx, or an unreadable
+          # 200 response can all follow a successful write. Don't claim the event was
+          # rejected; the message carries the status and server reply when there is one.
           detail = e.message.to_s.gsub(/\s+/, ' ').strip.chomp('.')
-          warn "[Mixpanel] import failed; the event #{outcome}: #{detail}. " \
+          warn "[Mixpanel] import failed; the event may not have been stored: #{detail}. " \
                'Pass a Mixpanel::ErrorHandler to Tracker.new to handle import errors yourself.'
         end
         @error_handler.handle(e)

@@ -34,6 +34,19 @@ describe Mixpanel::Tracker do
         }
     end
 
+    it 'does not claim rejection when /import returns 200 with an unreadable body' do
+      stub_request(:post, 'https://api.mixpanel.com/import?project_id=123').
+        to_return(status: 200, body: '<html>bad gateway</html>')
+      credentials = Mixpanel::ServiceAccountCredentials.new('user', 'secret', 123)
+      tracker = Mixpanel::Tracker.new('TEST TOKEN', credentials: credentials)
+
+      result = nil
+      expect {
+        result = tracker.import_events('ID', 'Import', { 'time' => 1369353600 })
+      }.to output(/\[Mixpanel\] import failed; the event may not have been stored: Could not interpret/).to_stderr
+      expect(result).to be false
+    end
+
     it 'returns false and warns when /import rejects service account credentials' do
       stub_request(:post, 'https://api.mixpanel.com/import?project_id=123').
         to_return(status: 401, body: '{"error": "Invalid credentials", "status": 0}')
@@ -43,7 +56,7 @@ describe Mixpanel::Tracker do
       result = nil
       expect {
         result = tracker.import_events('ID', 'Import', { 'time' => 1369353600 })
-      }.to output(/\[Mixpanel\] import failed; the event was rejected: .*401/).to_stderr
+      }.to output(/\[Mixpanel\] import failed; the event may not have been stored: .*401/).to_stderr
       expect(result).to be false
     end
 
@@ -55,7 +68,7 @@ describe Mixpanel::Tracker do
       result = nil
       expect {
         result = tracker.import('API_KEY', 'ID', 'Import', { 'time' => 1369353600 })
-      }.to output(/may be rejected by Mixpanel's \/import endpoint.*\[Mixpanel\] import failed; the event was rejected/m).to_stderr
+      }.to output(/may be rejected by Mixpanel's \/import endpoint.*\[Mixpanel\] import failed; the event may not have been stored/m).to_stderr
       expect(result).to be false
     end
   end

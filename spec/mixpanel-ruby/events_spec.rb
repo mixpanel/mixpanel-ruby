@@ -239,7 +239,7 @@ describe Mixpanel::Events do
       result = nil
       expect {
         result = events.import_events('TEST ID', 'Test Event', {})
-      }.to output(/\[Mixpanel\] import failed; the event was rejected: .*401/).to_stderr
+      }.to output(/\[Mixpanel\] import failed; the event may not have been stored: .*401/).to_stderr
       expect(result).to be false
     end
 
