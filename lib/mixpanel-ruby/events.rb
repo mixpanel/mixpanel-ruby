@@ -107,7 +107,7 @@ module Mixpanel
     def import(api_key, distinct_id, event, properties={}, ip=nil)
       # Warn about deprecated API key usage
       if api_key && !api_key.to_s.empty?
-        warn '[DEPRECATION] Passing api_key to import() is deprecated. Use ServiceAccountCredentials in the constructor instead. See https://docs.mixpanel.com/docs/tracking-methods/sdks/ruby#service-account-authentication'
+        warn '[DEPRECATION] Passing api_key to import() is deprecated and may be rejected by Mixpanel\'s /import endpoint. Use ServiceAccountCredentials in the constructor with import_events() instead. See https://docs.mixpanel.com/docs/tracking-methods/sdks/ruby#service-account-authentication'
       end
 
       # Warn when using import(nil, ...) - recommend import_events instead
@@ -181,6 +181,20 @@ module Mixpanel
       begin
         @sink.call(:import, message.to_json)
       rescue MixpanelError => e
+        # The default ErrorHandler silences all errors, which makes a rejected
+        # import (for example a 401 from bad credentials) indistinguishable from
+        # a successful one unless the caller checks the return value. Imports are
+        # explicit, low-volume backfills, so surface the failure on stderr when no
+        # custom handler is configured.
+        if @error_handler.instance_of?(ErrorHandler)
+          # A ServerError means Mixpanel answered and rejected the request. Any other
+          # error (for example a ConnectionError after a read timeout) leaves the
+          # outcome unknown: the server may have stored the event before failing.
+          outcome = e.is_a?(ServerError) ? 'was rejected' : 'may not have been stored'
+          detail = e.message.to_s.gsub(/\s+/, ' ').strip.chomp('.')
+          warn "[Mixpanel] import failed; the event #{outcome}: #{detail}. " \
+               'Pass a Mixpanel::ErrorHandler to Tracker.new to handle import errors yourself.'
+        end
         @error_handler.handle(e)
         ret = false
       end

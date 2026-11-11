@@ -61,14 +61,23 @@ API keys for import operations and feature flags.
         'Source' => 'Import'
     })
 
-=== Import with API Key (Legacy)
+import_events returns true when \Mixpanel accepted the event and false when it did not.
+With the default error handler, a failed import also prints a warning to stderr. To handle
+failures yourself, for example to retry or alert, pass a Mixpanel::ErrorHandler subclass:
 
-    # Legacy approach with API key string
-    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
-    tracker.import("API_KEY", 'User1', 'Past Event', {
-        'time' => 1369353600,
-        'Source' => 'Import'
-    })
+    class ImportErrorHandler < Mixpanel::ErrorHandler
+      def handle(error)
+        Rails.logger.error("Mixpanel import failed: #{error.message}")
+      end
+    end
+
+    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, ImportErrorHandler.new, credentials: credentials)
+
+=== Import with API Key (deprecated)
+
+Passing an API key as the first argument to import, as in
+<tt>tracker.import("API_KEY", ...)</tt>, is deprecated, and \Mixpanel's /import endpoint
+may reject these requests. Use service account credentials with import_events, as shown above.
 
 === Feature Flags with Service Account
 

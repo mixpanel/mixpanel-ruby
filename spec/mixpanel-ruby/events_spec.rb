@@ -225,4 +225,83 @@ describe Mixpanel::Events do
       }.not_to output(/DEPRECATION/).to_stderr
     end
   end
+
+  describe 'import failures' do
+    let(:credentials) { Mixpanel::ServiceAccountCredentials.new('user', 'secret', 'project') }
+    let(:failing_sink) do
+      proc { |_type, _message| raise Mixpanel::ServerError, "Could not write to Mixpanel, server responded with 401" }
+    end
+
+    it 'returns false and warns on stderr with the default error handler' do
+      events = Mixpanel::Events.new('TEST TOKEN', nil, credentials: nil, &failing_sink)
+      events.instance_variable_set(:@credentials, credentials)
+
+      result = nil
+      expect {
+        result = events.import_events('TEST ID', 'Test Event', {})
+      }.to output(/\[Mixpanel\] import failed; the event was rejected: .*401/).to_stderr
+      expect(result).to be false
+    end
+
+    it 'says the outcome is unknown when the import fails with a connection error' do
+      events = Mixpanel::Events.new('TEST TOKEN') do |_type, _message|
+        raise Mixpanel::ConnectionError, 'Could not connect to Mixpanel, with error "Net::ReadTimeout".'
+      end
+      events.instance_variable_set(:@credentials, credentials)
+
+      result = nil
+      expect {
+        result = events.import_events('TEST ID', 'Test Event', {})
+      }.to output(/\[Mixpanel\] import failed; the event may not have been stored: .*ReadTimeout/).to_stderr
+      expect(result).to be false
+    end
+
+    it 'prints the failure on a single line even when the server body has newlines' do
+      events = Mixpanel::Events.new('TEST TOKEN') do |_type, _message|
+        raise Mixpanel::ServerError, "Could not write to Mixpanel, server responded with 401 returning: '{\"status\":0}\n'"
+      end
+      events.instance_variable_set(:@credentials, credentials)
+
+      expect {
+        events.import_events('TEST ID', 'Test Event', {})
+      }.to output(/\A\[Mixpanel\] import failed[^\n]*\n\z/).to_stderr
+    end
+
+    it 'passes the error to a custom handler without printing the import warning' do
+      handler = Class.new(Mixpanel::ErrorHandler) do
+        attr_reader :errors
+        def handle(error)
+          (@errors ||= []) << error
+        end
+      end.new
+      events = Mixpanel::Events.new('TEST TOKEN', handler, &failing_sink)
+      events.instance_variable_set(:@credentials, credentials)
+
+      result = nil
+      expect {
+        result = events.import_events('TEST ID', 'Test Event', {})
+      }.not_to output(/import failed/).to_stderr
+      expect(result).to be false
+      expect(handler.errors.map(&:class)).to eq([Mixpanel::ServerError])
+    end
+
+    it 'keeps track failures silent with the default error handler' do
+      events = Mixpanel::Events.new('TEST TOKEN', &failing_sink)
+
+      result = nil
+      expect {
+        result = events.track('TEST ID', 'Test Event', {})
+      }.not_to output.to_stderr
+      expect(result).to be false
+    end
+
+    it 'does not warn when the import succeeds' do
+      events = Mixpanel::Events.new('TEST TOKEN') { |_type, _message| true }
+      events.instance_variable_set(:@credentials, credentials)
+
+      expect {
+        expect(events.import_events('TEST ID', 'Test Event', {})).to be true
+      }.not_to output.to_stderr
+    end
+  end
 end
