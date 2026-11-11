@@ -34,6 +34,23 @@ right away.
 Service accounts provide secure server-to-server authentication and are recommended over
 API keys for import operations and feature flags.
 
+=== Which credential do I need?
+
+\Mixpanel uses different credentials for different calls, and they are not interchangeable:
+
+[Project token]
+  Passed to Mixpanel::Tracker.new and used for track, people and groups calls. It is
+  public (it ships in client-side code) and does not authenticate import.
+[Service account username and secret, plus project ID]
+  Required for import_events and import. Create a service account in your \Mixpanel
+  organization settings
+  (see https://docs.mixpanel.com/docs/orgs-and-projects/service-accounts), then pass it
+  to Mixpanel::Tracker.new as a Mixpanel::ServiceAccountCredentials. The project ID is
+  shown in your project settings.
+[API key]
+  The legacy credential taken by <tt>import("API_KEY", ...)</tt>. It is not your project
+  token. See "Import with API Key (deprecated)" below.
+
 === Import with Service Account (Recommended)
 
     require 'mixpanel-ruby'
