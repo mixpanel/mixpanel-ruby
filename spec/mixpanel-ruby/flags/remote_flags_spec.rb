@@ -303,6 +303,40 @@ describe Mixpanel::Flags::RemoteFlagsProvider do
       provider.get_variant('test-flag', fallback_variant, test_context)
     end
 
+    it 'marks exposure with $openfeature_provider when context carries the marker (SDK-448)' do
+      stub_flags_request(create_success_response({
+        'test-flag' => { 'variant_key' => 'treatment', 'variant_value' => true }
+      }))
+      fallback_variant = Mixpanel::Flags::SelectedVariant.new(variant_key: 'control', variant_value: false)
+
+      captured = nil
+      expect(mock_tracker).to receive(:call).once do |_distinct_id, _event_name, properties|
+        captured = properties
+      end
+
+      result = provider.get_variant('test-flag', fallback_variant, test_context.merge('$openfeature_provider' => true))
+
+      expect(result.variant_key).to eq('treatment')
+      expect(captured['Flag evaluation mode']).to eq('remote')
+      expect(captured['$openfeature_provider']).to eq(true)
+    end
+
+    it 'omits $openfeature_provider from exposure for direct SDK calls (SDK-448)' do
+      stub_flags_request(create_success_response({
+        'test-flag' => { 'variant_key' => 'treatment', 'variant_value' => true }
+      }))
+      fallback_variant = Mixpanel::Flags::SelectedVariant.new(variant_key: 'control', variant_value: false)
+
+      captured = nil
+      expect(mock_tracker).to receive(:call).once do |_distinct_id, _event_name, properties|
+        captured = properties
+      end
+
+      provider.get_variant('test-flag', fallback_variant, test_context)
+
+      expect(captured).not_to have_key('$openfeature_provider')
+    end
+
     it 'does not track exposure event when fallback variant is selected' do
       stub_flags_request(create_success_response({}))
 

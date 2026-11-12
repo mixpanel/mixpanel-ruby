@@ -126,6 +126,11 @@ module Mixpanel
         properties['$experiment_id'] = selected_variant.experiment_id if selected_variant.experiment_id
         properties['$is_experiment_active'] = selected_variant.is_experiment_active unless selected_variant.is_experiment_active.nil?
         properties['$is_qa_tester'] = selected_variant.is_qa_tester unless selected_variant.is_qa_tester.nil?
+        # SDK-448: the OpenFeature provider marks its evaluation context so
+        # exposures it triggers can be told apart from direct SDK calls.
+        if context['$openfeature_provider'] == true || context[:'$openfeature_provider'] == true
+          properties['$openfeature_provider'] = true
+        end
 
         dispatch_exposure(distinct_id, properties)
       end
