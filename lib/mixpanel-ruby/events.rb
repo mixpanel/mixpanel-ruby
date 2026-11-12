@@ -107,7 +107,7 @@ module Mixpanel
     def import(api_key, distinct_id, event, properties={}, ip=nil)
       # Warn about deprecated API key usage
       if api_key && !api_key.to_s.empty?
-        warn '[DEPRECATION] Passing api_key to import() is deprecated. Use ServiceAccountCredentials in the constructor instead. See https://docs.mixpanel.com/docs/tracking-methods/sdks/ruby#service-account-authentication'
+        warn '[DEPRECATION] Passing api_key to import() is deprecated and may be rejected by Mixpanel\'s /import endpoint. Use ServiceAccountCredentials in the constructor with import_events() instead. See https://docs.mixpanel.com/docs/tracking-methods/sdks/ruby#service-account-authentication'
       end
 
       # Warn when using import(nil, ...) - recommend import_events instead
@@ -181,6 +181,21 @@ module Mixpanel
       begin
         @sink.call(:import, message.to_json)
       rescue MixpanelError => e
+        # The default ErrorHandler silences all errors, which makes a rejected
+        # import (for example a 401 from bad credentials) indistinguishable from
+        # a successful one unless the caller checks the return value. Print the
+        # first failure per tracker to stderr when no custom handler is configured
+        # (once only, so a failing backfill doesn't flood stderr).
+        if @error_handler.instance_of?(ErrorHandler) && !@import_failure_warned
+          @import_failure_warned = true
+          # The outcome is not always known: a read timeout, a 5xx, or an unreadable
+          # 200 response can all follow a successful write. Don't claim the event was
+          # rejected; the message carries the status and server reply when there is one.
+          detail = e.message.to_s.gsub(/\s+/, ' ').strip[0, 200].chomp('.')
+          warn "[Mixpanel] import failed; the event may not have been stored: #{detail}. " \
+               'Further import failures will not be printed. ' \
+               'Pass a Mixpanel::ErrorHandler to Tracker.new to handle import errors yourself.'
+        end
         @error_handler.handle(e)
         ret = false
       end
