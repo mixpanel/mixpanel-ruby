@@ -127,20 +127,24 @@ module Mixpanel
     # as a Hash with string keys and strings, numbers or booleans as
     # values.
     #
-    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
-    #
-    #     # Using deprecated API key (still supported)
-    #     tracker.import("API_KEY", "12345", "Credit Card Declined", {
-    #       'time' => 1310111365
-    #     })
+    # Prefer #import_events, which takes the same arguments without the
+    # leading api_key. Import is authenticated with service account
+    # credentials passed to the constructor; the project token alone is
+    # not enough.
     #
     #     # Using service account credentials (recommended)
     #     credentials = Mixpanel::ServiceAccountCredentials.new(username, secret, project_id)
     #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, credentials: credentials)
-    #     tracker.import(nil, "12345", "Welcome Email Sent", {
+    #     tracker.import_events("12345", "Welcome Email Sent", {
     #         'Email Template' => 'Pretty Pink Welcome',
     #         'User Sign-up Cohort' => 'July 2013',
     #         'time' => 1310111365
+    #     })
+    #
+    #     # Deprecated: legacy API key (not your project token). Avoid in new code.
+    #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
+    #     tracker.import("API_KEY", "12345", "Credit Card Declined", {
+    #       'time' => 1310111365
     #     })
     def import(api_key, distinct_id, event, properties={}, ip=nil)
       # This is here strictly to allow rdoc to include the relevant
