@@ -227,6 +227,10 @@ describe Mixpanel::Events do
   end
 
   describe 'import failures' do
+    # These examples use a custom sink block to simulate consumer errors. Passing
+    # credentials to the constructor together with a block prints an unrelated
+    # "credentials are ignored" warning, which would pollute the stderr assertions,
+    # so credentials are set directly on the instance instead.
     let(:credentials) { Mixpanel::ServiceAccountCredentials.new('user', 'secret', 'project') }
     let(:failing_sink) do
       proc { |_type, _message| raise Mixpanel::ServerError, "Could not write to Mixpanel, server responded with 401" }
@@ -241,6 +245,26 @@ describe Mixpanel::Events do
         result = events.import_events('TEST ID', 'Test Event', {})
       }.to output(/\[Mixpanel\] import failed; the event may not have been stored: .*401/).to_stderr
       expect(result).to be false
+    end
+
+    it 'warns only on the first failure but returns false every time' do
+      events = Mixpanel::Events.new('TEST TOKEN', &failing_sink)
+      events.instance_variable_set(:@credentials, credentials)
+
+      results = []
+      expect {
+        3.times { results << events.import_events('TEST ID', 'Test Event', {}) }
+      }.to output(/\A\[Mixpanel\] import failed[^\n]*\n\z/).to_stderr
+      expect(results).to eq([false, false, false])
+    end
+
+    it 'truncates a long server reply in the warning' do
+      events = Mixpanel::Events.new('TEST TOKEN') { |*| raise Mixpanel::ServerError, 'x' * 5000 }
+      events.instance_variable_set(:@credentials, credentials)
+
+      expect {
+        events.import_events('TEST ID', 'Test Event', {})
+      }.to output(/stored: x{200}\. Further/).to_stderr
     end
 
     it 'says the outcome is unknown when the import fails with a connection error' do

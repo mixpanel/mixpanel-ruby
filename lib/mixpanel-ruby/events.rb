@@ -183,15 +183,17 @@ module Mixpanel
       rescue MixpanelError => e
         # The default ErrorHandler silences all errors, which makes a rejected
         # import (for example a 401 from bad credentials) indistinguishable from
-        # a successful one unless the caller checks the return value. Imports are
-        # explicit, low-volume backfills, so surface the failure on stderr when no
-        # custom handler is configured.
-        if @error_handler.instance_of?(ErrorHandler)
+        # a successful one unless the caller checks the return value. Print the
+        # first failure per tracker to stderr when no custom handler is configured
+        # (once only, so a failing backfill doesn't flood stderr).
+        if @error_handler.instance_of?(ErrorHandler) && !@import_failure_warned
+          @import_failure_warned = true
           # The outcome is not always known: a read timeout, a 5xx, or an unreadable
           # 200 response can all follow a successful write. Don't claim the event was
           # rejected; the message carries the status and server reply when there is one.
-          detail = e.message.to_s.gsub(/\s+/, ' ').strip.chomp('.')
+          detail = e.message.to_s.gsub(/\s+/, ' ').strip[0, 200].chomp('.')
           warn "[Mixpanel] import failed; the event may not have been stored: #{detail}. " \
+               'Further import failures will not be printed. ' \
                'Pass a Mixpanel::ErrorHandler to Tracker.new to handle import errors yourself.'
         end
         @error_handler.handle(e)
