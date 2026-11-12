@@ -10,6 +10,69 @@ describe Mixpanel::Tracker do
     allow(Time).to receive(:now).and_return(@time_now)
   end
 
+  describe 'import rejected by the server (GitHub #106)' do
+    before(:each) { WebMock.reset! }
+
+    it 'returns true, sends Basic Auth and project_id, and prints nothing when /import accepts the event' do
+      stub_request(:post, 'https://api.mixpanel.com/import?project_id=123').
+        to_return(status: 200, body: '{"code": 200, "num_records_imported": 1, "status": 1}')
+      credentials = Mixpanel::ServiceAccountCredentials.new('sa-user', 'sa-secret', 123)
+      tracker = Mixpanel::Tracker.new('TEST TOKEN', credentials: credentials)
+
+      result = nil
+      expect {
+        result = tracker.import_events('ID', 'Import', { 'time' => 1369353600 })
+      }.not_to output.to_stderr
+      expect(result).to be true
+
+      expect(WebMock).to have_requested(:post, 'https://api.mixpanel.com/import?project_id=123').
+        with(basic_auth: ['sa-user', 'sa-secret']) { |req|
+          form = URI.decode_www_form(req.body).to_h
+          payload = JSON.parse(Base64.decode64(form['data']))
+          !form.key?('api_key') && payload['event'] == 'Import' &&
+            payload['properties']['distinct_id'] == 'ID' && payload['properties']['time'] == 1369353600
+        }
+    end
+
+    it 'does not claim rejection when /import returns 200 with an unreadable body' do
+      stub_request(:post, 'https://api.mixpanel.com/import?project_id=123').
+        to_return(status: 200, body: '<html>bad gateway</html>')
+      credentials = Mixpanel::ServiceAccountCredentials.new('user', 'secret', 123)
+      tracker = Mixpanel::Tracker.new('TEST TOKEN', credentials: credentials)
+
+      result = nil
+      expect {
+        result = tracker.import_events('ID', 'Import', { 'time' => 1369353600 })
+      }.to output(/\[Mixpanel\] import failed; the event may not have been stored: Could not interpret/).to_stderr
+      expect(result).to be false
+    end
+
+    it 'returns false and warns when /import rejects service account credentials' do
+      stub_request(:post, 'https://api.mixpanel.com/import?project_id=123').
+        to_return(status: 401, body: '{"error": "Invalid credentials", "status": 0}')
+      credentials = Mixpanel::ServiceAccountCredentials.new('user', 'bad-secret', 123)
+      tracker = Mixpanel::Tracker.new('TEST TOKEN', credentials: credentials)
+
+      result = nil
+      expect {
+        result = tracker.import_events('ID', 'Import', { 'time' => 1369353600 })
+      }.to output(/\[Mixpanel\] import failed; the event may not have been stored: .*401/).to_stderr
+      expect(result).to be false
+    end
+
+    it 'returns false and warns when /import rejects a legacy api_key' do
+      stub_request(:post, 'https://api.mixpanel.com/import').
+        to_return(status: 401, body: '{"error": "Unauthorized", "status": 0}')
+      tracker = Mixpanel::Tracker.new('TEST TOKEN')
+
+      result = nil
+      expect {
+        result = tracker.import('API_KEY', 'ID', 'Import', { 'time' => 1369353600 })
+      }.to output(/may be rejected by Mixpanel's \/import endpoint.*\[Mixpanel\] import failed; the event may not have been stored/m).to_stderr
+      expect(result).to be false
+    end
+  end
+
   it 'should send an alias message to mixpanel no matter what the consumer is' do
     WebMock.reset!
     stub_request(:any, 'https://api.mixpanel.com/track').to_return({:body => '{"status": 1, "error": null}'})

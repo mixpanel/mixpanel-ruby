@@ -34,6 +34,23 @@ right away.
 Service accounts provide secure server-to-server authentication and are recommended over
 API keys for import operations and feature flags.
 
+=== Which credential do I need?
+
+\Mixpanel uses different credentials for different calls, and they are not interchangeable:
+
+[Project token]
+  Passed to Mixpanel::Tracker.new and used for track, people and groups calls. It is
+  public (it ships in client-side code) and does not authenticate import.
+[Service account username and secret, plus project ID]
+  Required for import_events (and import without an API key). Create a service account in your \Mixpanel
+  organization settings
+  (see https://docs.mixpanel.com/docs/orgs-and-projects/service-accounts), then pass it
+  to Mixpanel::Tracker.new as a Mixpanel::ServiceAccountCredentials. The project ID is
+  shown in your project settings.
+[API key]
+  The legacy credential taken by <tt>import("API_KEY", ...)</tt>. It is not your project
+  token. See "Import with API Key (deprecated)" below.
+
 === Import with Service Account (Recommended)
 
     require 'mixpanel-ruby'
@@ -61,14 +78,28 @@ API keys for import operations and feature flags.
         'Source' => 'Import'
     })
 
-=== Import with API Key (Legacy)
+import_events returns true when the request completed without a \Mixpanel error, and false
+when a Mixpanel::MixpanelError was raised. With a custom consumer block, such as a queue, true
+only means the handoff to that block succeeded. A false result does not always mean the event
+was lost: after a timeout, \Mixpanel may still have stored it, so set a unique
+<tt>$insert_id</tt> property if you retry, and \Mixpanel will drop the duplicate.
 
-    # Legacy approach with API key string
-    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
-    tracker.import("API_KEY", 'User1', 'Past Event', {
-        'time' => 1369353600,
-        'Source' => 'Import'
-    })
+With the default error handler, a failed import also prints a warning to stderr. To handle
+failures yourself, for example to retry or alert, pass a Mixpanel::ErrorHandler subclass:
+
+    class ImportErrorHandler < Mixpanel::ErrorHandler
+      def handle(error)
+        Rails.logger.error("Mixpanel import failed: #{error.message}")
+      end
+    end
+
+    tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN, ImportErrorHandler.new, credentials: credentials)
+
+=== Import with API Key (deprecated)
+
+Passing an API key as the first argument to import, as in
+<tt>tracker.import("API_KEY", ...)</tt>, is deprecated, and \Mixpanel's /import endpoint
+may reject these requests. Use service account credentials with import_events, as shown above.
 
 === Feature Flags with Service Account
 
