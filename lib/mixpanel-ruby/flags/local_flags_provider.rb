@@ -16,6 +16,9 @@ module Mixpanel
         exposure_executor: nil
       }.freeze
 
+      ROLLOUT_TYPE_EXPERIMENT = 'experiment'.freeze
+      EXPERIMENT_STATUS_DRAFT = 'draft'.freeze
+
       # @param token [String] Mixpanel project token
       # @param config [Hash] Local flags configuration
       # @param tracker_callback [Proc] Callback to track events
@@ -280,16 +283,20 @@ module Mixpanel
         return nil unless rollouts
 
         rollouts.each_with_index do |rollout, index|
-          salt = if flag['hash_salt']
-                   "#{flag['key']}#{flag['hash_salt']}#{index}"
-                 else
-                   "#{flag['key']}rollout"
-                 end
+          if experiment_rollout?(rollout)
+            is_in_rollout = context_in_experiment_allocation?(flag, context_value, rollout)
+          else
+            salt = if flag['hash_salt']
+                     "#{flag['key']}#{flag['hash_salt']}#{index}"
+                   else
+                     "#{flag['key']}rollout"
+                   end
 
-          rollout_hash = Utils.normalized_hash(context_value.to_s, salt)
+            rollout_hash = Utils.normalized_hash(context_value.to_s, salt)
+            is_in_rollout = rollout_hash < rollout['rollout_percentage']
+          end
 
-          if rollout_hash < rollout['rollout_percentage'] &&
-             is_runtime_evaluation_satisfied?(rollout, context)
+          if is_in_rollout && is_runtime_evaluation_satisfied?(rollout, context)
             return rollout
           end
         end
@@ -297,18 +304,52 @@ module Mixpanel
         nil
       end
 
+      # Experiment entries of a multi-experiment flag assign subjects by
+      # allocation bucket and ignore rollout_percentage.
+      def experiment_rollout?(rollout)
+        rollout['type'] == ROLLOUT_TYPE_EXPERIMENT
+      end
+
+      def context_in_experiment_allocation?(flag, context_value, rollout)
+        return false if rollout['experiment_status'] == EXPERIMENT_STATUS_DRAFT
+
+        hash_salt = flag['hash_salt']
+        return false if hash_salt.nil? || hash_salt.empty?
+
+        bucket = Utils.allocation_bucket(context_value.to_s, "#{flag['key']}#{hash_salt}")
+        (rollout['allocation'] || []).any? do |allocation_range|
+          allocation_range['start'] <= bucket && bucket < allocation_range['end']
+        end
+      end
+
+      def experiment_attribution(flag, rollout)
+        if experiment_rollout?(rollout)
+          [rollout['experiment_id'], rollout['is_experiment_active'] == true]
+        else
+          [flag['experiment_id'], flag['is_experiment_active']]
+        end
+      end
+
       def get_assigned_variant(flag, context_value, flag_key, rollout)
+        experiment_id, is_experiment_active = experiment_attribution(flag, rollout)
+
         if rollout['variant_override']
           variant = get_matching_variant(rollout['variant_override']['key'], flag)
           if variant
             variant.is_qa_tester = false
+            variant.experiment_id = experiment_id
+            variant.is_experiment_active = is_experiment_active
             return variant
           end
         end
 
         stored_salt = flag['hash_salt'] || ''
-        salt = "#{flag_key}#{stored_salt}variant"
-        variant_hash = Utils.normalized_hash(context_value.to_s, salt)
+        variant_hash = if experiment_rollout?(rollout)
+                         salt = "#{flag_key}#{stored_salt}#{rollout['experiment_id']}variant"
+                         Utils.mixed_normalized_hash(context_value.to_s, salt)
+                       else
+                         Utils.normalized_hash(context_value.to_s, "#{flag_key}#{stored_salt}variant")
+                       end
 
         variants = flag['ruleset']['variants'].map(&:dup)
         if rollout['variant_splits']
@@ -328,8 +369,8 @@ module Mixpanel
         SelectedVariant.new(
           variant_key: selected['key'],
           variant_value: selected['value'],
-          experiment_id: flag['experiment_id'],
-          is_experiment_active: flag['is_experiment_active'],
+          experiment_id: experiment_id,
+          is_experiment_active: is_experiment_active,
           is_qa_tester: false
         )
       end
