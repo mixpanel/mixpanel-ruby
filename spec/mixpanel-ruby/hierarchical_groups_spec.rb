@@ -455,6 +455,17 @@ describe 'Hierarchical groups' do
       expect(@log).to be_empty
     end
 
+    it 'keeps the bound company when the caller changes its string afterwards' do
+      company_id = +'acme'
+      bound = @hg.for_company(company_id)
+      company_id.replace('other')
+
+      bound.company.set({'tier' => 'pro'})
+      expect(last_data['$group_id']).to eq('acme')
+      bound.people.set(user_in_acme, {'role' => 'admin'})
+      expect(last_data['$company_id']).to eq('acme')
+    end
+
     it 'compares the bound company and the user company as strings' do
       @hg.for_company(7).people.set(identity(user_id: 'user_123', company_id: '7'), {'role' => 'admin'})
       expect(last_data['$company_id']).to eq('7')

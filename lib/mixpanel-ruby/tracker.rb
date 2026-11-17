@@ -246,6 +246,8 @@ module Mixpanel
     #
     # Raises ArgumentError if company_id is nil or empty.
     def for_company(company_id)
+      # Copy a string id so later changes to the caller's string do not move the bound company.
+      company_id = company_id.dup.freeze if company_id.is_a?(String)
       bound_groups = @groups.for_company(company_id)
       view = dup
       view.bind_company(company_id, bound_groups, @people.for_company(company_id))
