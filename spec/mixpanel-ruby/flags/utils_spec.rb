@@ -107,4 +107,21 @@ describe Mixpanel::Flags::Utils do
       end
     end
   end
+
+  describe '.allocation_bucket' do
+    it 'should match known test vectors' do
+      # Matches FnvHashMixed("abc") == 0.37 in the flags Go service.
+      expect(Mixpanel::Flags::Utils.allocation_bucket('abc', '')).to eq(37)
+      expect(Mixpanel::Flags::Utils.allocation_bucket('user123', 'checkoutsalt1')).to eq(32)
+      expect(Mixpanel::Flags::Utils.allocation_bucket('user456', 'checkoutsalt1')).to eq(58)
+    end
+  end
+
+  describe '.mixed_normalized_hash' do
+    it 'should match known test vectors' do
+      # Matches FnvHashMixed("abc") == 0.37 in the flags Go service.
+      expect(Mixpanel::Flags::Utils.mixed_normalized_hash('abc', '')).to eq(0.37)
+      expect(Mixpanel::Flags::Utils.mixed_normalized_hash('erin', 'checkoutsalt1e_ctavariant')).to eq(0.34)
+    end
+  end
 end
