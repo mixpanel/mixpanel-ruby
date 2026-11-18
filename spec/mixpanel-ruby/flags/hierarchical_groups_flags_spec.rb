@@ -329,8 +329,37 @@ describe 'Hierarchical groups feature flags' do
 
       provider.get_variant_value('hg_flag', fallback, { '$company_id' => :acme, '$user_id' => 7, 'department' => 'x' })
 
+      identity, _, properties = calls.first
+      expect(identity).to eq(Mixpanel::Identity.new(user_id: '7', company_id: 'acme'))
+      expect(properties).to include('$user_id' => '7', '$company_id' => 'acme')
+    end
+
+    it 'sends Integer context ids as strings on the exposure event' do
+      log = []
+      tracker = Mixpanel::Tracker.new(test_token, hierarchical_groups: true) { |_, message| log << JSON.parse(message) }
+      provider = local_provider([flag_definition(context: 'department')], tracker.method(:track), hierarchical_groups: true)
+
+      provider.get_variant_value('hg_flag', fallback, { '$company_id' => 3190317, '$user_id' => 3190316, 'department' => 'x' })
+
+      properties = log.last['data']['properties']
+      expect(properties).to include('$user_id' => '3190316', '$company_id' => '3190317')
+      expect(properties).not_to have_key('distinct_id')
+    end
+
+    it 'does not attribute an exposure to a user or company id of only whitespace' do
+      tracker, calls = recording_tracker
+      provider = local_provider([flag_definition(context: 'department')], tracker, hierarchical_groups: true)
+
+      expect(error_handler).to receive(:handle) do |error|
+        expect(error.message).to eq("Cannot track exposure event for flag 'hg_flag' without a $company_id in the context")
+      end
+      expect(provider.get_variant_value('hg_flag', fallback, { '$company_id' => '  ', '$user_id' => 'u', 'department' => 'x' }))
+        .to eq('value-a')
+      expect(calls).to be_empty
+
+      provider.get_variant_value('hg_flag', fallback, { '$company_id' => 'acme', '$user_id' => ' ', 'department' => 'x' })
       identity, = calls.first
-      expect(identity).to eq(Mixpanel::Identity.new(user_id: 7, company_id: 'acme'))
+      expect(identity).to eq(Mixpanel::Identity.new(company_id: 'acme'))
     end
 
     it 'sends a non-hierarchical exposure exactly as before, ignoring $user_id and $company_id' do

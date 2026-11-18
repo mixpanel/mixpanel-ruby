@@ -29,7 +29,9 @@ module Mixpanel
   #     acme.groups.set('department', 'finance', department_properties)
   #
   # On a hierarchical groups tracker, an update with no bound company and no
-  # $company_id in optional_params raises Mixpanel::CompanyRequiredError.
+  # $company_id in optional_params raises Mixpanel::CompanyRequiredError,
+  # and a $company_id there that is not a String or an Integer, or is only
+  # whitespace, raises ArgumentError. A bound company is sent as a string.
   # An update to group key '$company_id' whose group id is not that company
   # raises ArgumentError; use Tracker#company to update a company profile.
   class Groups
@@ -213,6 +215,7 @@ module Mixpanel
       }.merge(message)
 
       message_company_id = message['$company_id']
+      HierarchicalGroups.require_valid_company_param(message_company_id) if @hierarchical_groups && @company_id.nil?
       if @hierarchical_groups && @company_id.nil? && (message_company_id.nil? || message_company_id == '')
         raise CompanyRequiredError, 'Group profile updates for hierarchical groups projects require a ' \
           'company. Use tracker.for_company(company_id) to send them. Nothing to send for group ' \
@@ -227,7 +230,7 @@ module Mixpanel
           "A company profile is updated through for_company(#{message['$group_id']}).company. Nothing sent"
       end
       # $company_id must be top-level, not inside the operation payload
-      data['$company_id'] = @company_id unless @company_id.nil?
+      data['$company_id'] = HierarchicalGroups.wire_id(@company_id) unless @company_id.nil?
 
       message = {'data' => data}
 
@@ -342,7 +345,7 @@ module Mixpanel
         raise CompanyRequiredError, 'Company profile updates require a company. ' \
           'Use tracker.for_company(company_id).company to send them.'
       end
-      @company_id
+      HierarchicalGroups.wire_id(@company_id)
     end
   end
 end

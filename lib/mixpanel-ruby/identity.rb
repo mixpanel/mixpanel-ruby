@@ -35,10 +35,11 @@ module Mixpanel
   class Identity
     attr_reader :distinct_id, :user_id, :company_id, :device_id
 
-    # Each id is a String or an Integer and is sent as given. nil leaves a
-    # value unset; an empty string is a caller error rather than an absent
-    # value, and any other type raises ArgumentError. At least one value is
-    # required.
+    # Each id is a String or an Integer. nil leaves a value unset; an empty
+    # string is a caller error rather than an absent value, as is a user_id or
+    # company_id of only whitespace, and any other type raises ArgumentError.
+    # At least one value is required. On a hierarchical groups tracker events
+    # send user_id and company_id as strings.
     def initialize(distinct_id: nil, user_id: nil, company_id: nil, device_id: nil)
       @distinct_id = check_value(distinct_id, 'distinct_id')
       @user_id = check_value(user_id, 'user_id')
@@ -117,6 +118,7 @@ module Mixpanel
       if value.respond_to?(:empty?) && value.empty?
         raise ArgumentError, "#{name} must be non-empty"
       end
+      HierarchicalGroups.require_not_blank(value, name) if %w[user_id company_id].include?(name)
       value.is_a?(String) ? value.dup.freeze : value
     end
   end
@@ -148,7 +150,8 @@ module Mixpanel
     # Parses a distinct id Mixpanel built, of the form
     # <tt>$company:{company}|$user:{user}</tt>, into [company_id, user_id].
     # The company ends at the first |$user: and the user is everything after
-    # it. Returns nil unless both parts are non-empty.
+    # it. Returns nil unless both parts are non-empty, and raises
+    # ArgumentError if either part is only whitespace.
     def parse_combined_distinct_id(distinct_id)
       return nil unless distinct_id.is_a?(String) && distinct_id.start_with?(COMBINED_COMPANY_PREFIX)
       separator = distinct_id.index(COMBINED_USER_SEPARATOR, COMBINED_COMPANY_PREFIX.length)
@@ -156,7 +159,50 @@ module Mixpanel
       company_id = distinct_id[COMBINED_COMPANY_PREFIX.length...separator]
       user_id = distinct_id[(separator + COMBINED_USER_SEPARATOR.length)..-1]
       return nil if company_id.empty? || user_id.empty?
+      if blank?(company_id) || blank?(user_id)
+        raise ArgumentError, "distinct_id #{distinct_id.inspect} names a company or user of only whitespace. Nothing sent"
+      end
       [company_id, user_id]
+    end
+
+    # Raises ArgumentError if a $company_id or $user_id sent with a combined
+    # distinct id names a different company or user than the distinct id.
+    # Values are compared as strings; nil is not checked.
+    def require_consistent_with_combined_id(distinct_id, parsed, company_id: nil, user_id: nil)
+      parsed_company_id, parsed_user_id = parsed
+      if !company_id.nil? && company_id.to_s != parsed_company_id
+        raise ArgumentError, "distinct_id #{distinct_id} names company #{parsed_company_id}, " \
+          "but $company_id is #{company_id}. Nothing sent"
+      end
+      if !user_id.nil? && user_id.to_s != parsed_user_id
+        raise ArgumentError, "distinct_id #{distinct_id} names user #{parsed_user_id}, " \
+          "but $user_id is #{user_id}. Nothing sent"
+      end
+    end
+
+    # A $company_id taken from optional_params on a hierarchical groups
+    # project. nil and the empty string are left to the caller to treat as
+    # missing; anything else must be a String or an Integer that is not only
+    # whitespace, or ArgumentError is raised.
+    def require_valid_company_param(company_id)
+      return if company_id.nil? || company_id == ''
+      require_id_type(company_id, '$company_id')
+      require_not_blank(company_id, '$company_id')
+    end
+
+    # True for a non-empty String of only whitespace.
+    def blank?(value)
+      value.is_a?(String) && !value.empty? && value.match?(/\A[[:space:]]+\z/)
+    end
+
+    def require_not_blank(value, name)
+      raise ArgumentError, "#{name} must not be only whitespace" if blank?(value)
+    end
+
+    # An id as it is written to a hierarchical groups message: as a string,
+    # since Mixpanel stores Integer $user_id values inconsistently.
+    def wire_id(value)
+      value.nil? ? nil : value.to_s
     end
 
     # The [company_id, user_id] a hierarchical groups user profile update
@@ -212,6 +258,7 @@ module Mixpanel
         raise ArgumentError, 'company_id must be non-empty'
       end
       require_id_type(company_id, 'company_id')
+      require_not_blank(company_id, 'company_id')
     end
   end
 end

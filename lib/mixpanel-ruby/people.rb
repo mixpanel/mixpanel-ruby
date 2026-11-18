@@ -45,7 +45,9 @@ module Mixpanel
   # Mixpanel built, of the form <tt>$company:{company}|$user:{user}</tt>. It
   # sends the same update as the identity with that user and company. Any
   # other distinct id raises ArgumentError and sends nothing, as does #update
-  # with any other $distinct_id.
+  # with any other $distinct_id, or a $company_id in optional_params (or in
+  # the #update message) naming a different company. User and company ids
+  # are sent as strings.
   #
   # Without hierarchical groups, a distinct id or an identity with a
   # distinct_id updates that profile through /engage.
@@ -298,6 +300,8 @@ module Mixpanel
 
       if @hierarchical_groups
         company_id, user_id = HierarchicalGroups.require_combined_distinct_id(distinct_id)
+        HierarchicalGroups.require_consistent_with_combined_id(distinct_id, [company_id, user_id],
+                                                               company_id: optional_params['$company_id'])
         identity = Identity.new(user_id: user_id, company_id: company_id)
         return user_group_update(identity, operation, properties, ip, optional_params)
       end
@@ -331,7 +335,7 @@ module Mixpanel
 
       message = {
         '$group_key' => HierarchicalGroups::USER_ID_GROUP_KEY,
-        '$group_id' => identity.user_id,
+        '$group_id' => HierarchicalGroups.wire_id(identity.user_id),
         operation => properties,
       }.merge(optional_params)
       message['$ip'] = ip if ip
@@ -339,7 +343,7 @@ module Mixpanel
       # $company_id in optional_params. With none of them, Groups#update raises
       # Mixpanel::CompanyRequiredError.
       company_id = identity.company_id || @company_id
-      message['$company_id'] = company_id unless company_id.nil?
+      message['$company_id'] = HierarchicalGroups.wire_id(company_id) unless company_id.nil?
 
       @user_profiles.update(message)
     end
@@ -358,6 +362,8 @@ module Mixpanel
     # combined $distinct_id names.
     def user_group_message_update(message)
       company_id, user_id = HierarchicalGroups.require_combined_distinct_id(message['$distinct_id'])
+      HierarchicalGroups.require_consistent_with_combined_id(message['$distinct_id'], [company_id, user_id],
+                                                             company_id: message['$company_id'])
       require_bound_company(company_id, message['$distinct_id'].inspect)
       group_message = message.reject { |key, _| key.to_s == '$distinct_id' }
       group_message['$group_key'] = HierarchicalGroups::USER_ID_GROUP_KEY

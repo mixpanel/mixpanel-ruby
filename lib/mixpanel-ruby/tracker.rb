@@ -313,14 +313,11 @@ module Mixpanel
     #     })
     #
     #     url == 'https://api.mixpanel.com/track/?data=[BASE_64_JSON_EVENT]&ip=1&img=1'
+    #
+    # Like #track, distinct_id may be a Mixpanel::Identity, and the event
+    # properties are built and checked the same way.
     def generate_tracking_url(distinct_id, event, properties={}, endpoint=nil)
-      properties = {
-        'distinct_id' => distinct_id,
-        'token' => @token,
-        'time' => (Time.now.to_f * 1000).to_i,
-        'mp_lib' => 'ruby',
-        '$lib_version' => Mixpanel::VERSION,
-      }.merge(properties)
+      properties = event_properties(distinct_id, properties)
 
       raw_data = {
         'event' => event,

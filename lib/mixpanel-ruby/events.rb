@@ -205,11 +205,15 @@ module Mixpanel
     end
 
     # Builds the properties of an event message for a distinct id or a
-    # Mixpanel::Identity. A string distinct id is never refused, in either
+    # Mixpanel::Identity. A string distinct id is sent as given in either
     # mode: Mixpanel accepts a distinct id it built itself, such as
-    # "$company:acme|$user:user_123".
+    # "$company:acme|$user:user_123". On a hierarchical groups tracker such a
+    # combined distinct id raises ArgumentError if properties carry a
+    # $company_id or $user_id naming a different company or user, or if
+    # either part is only whitespace.
     def event_properties(distinct_id, properties)
       unless distinct_id.is_a?(Identity)
+        require_consistent_combined_event(distinct_id, properties) if @hierarchical_groups
         return {
           'distinct_id' => distinct_id,
           'token' => @token,
@@ -231,7 +235,34 @@ module Mixpanel
         'time' => (Time.now.to_f * 1000).to_i,
         'mp_lib' => 'ruby',
         '$lib_version' => Mixpanel::VERSION,
-      ).merge(properties).merge(identity.to_properties)
+      ).merge(properties).merge(identity_event_properties(identity))
+    end
+
+    # The identity's keys, with $user_id and $company_id as strings on a
+    # hierarchical groups tracker.
+    def identity_event_properties(identity)
+      identity_properties = identity.to_properties
+      if @hierarchical_groups
+        %w[$user_id $company_id].each do |key|
+          identity_properties[key] = HierarchicalGroups.wire_id(identity_properties[key]) if identity_properties.key?(key)
+        end
+      end
+      identity_properties
+    end
+
+    def require_consistent_combined_event(distinct_id, properties)
+      parsed = HierarchicalGroups.parse_combined_distinct_id(distinct_id)
+      return if parsed.nil?
+      HierarchicalGroups.require_consistent_with_combined_id(
+        distinct_id, parsed,
+        company_id: property_value(properties, '$company_id'),
+        user_id: property_value(properties, '$user_id')
+      )
+    end
+
+    def property_value(properties, key)
+      value = properties[key]
+      value.nil? ? properties[key.to_sym] : value
     end
   end
 end
