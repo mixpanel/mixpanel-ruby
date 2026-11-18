@@ -278,6 +278,40 @@ describe 'Hierarchical groups' do
       expect(@log).to be_empty
     end
 
+    it 'refuses an identity whose combined distinct id has a blank company or user on events' do
+      tracker = Mixpanel::Tracker.new(token, credentials: @credentials, hierarchical_groups: true) do |type, message|
+        @log << [type, JSON.load(message)]
+      end
+      {
+        '$company:|$user:u' => 'company', '$company: |$user:u' => 'company', '$company:|$user:' => 'company',
+        '$company: |$user:' => 'company', '$company: |$user:  ' => 'company',
+        '$company:c|$user:' => 'user', '$company:c|$user:  ' => 'user'
+      }.each do |distinct_id, part|
+        message = "distinct_id #{distinct_id.inspect} names a blank #{part}. Nothing sent"
+        [identity(distinct_id: distinct_id), identity(distinct_id: distinct_id, user_id: 'u', company_id: 'c')].each do |id|
+          expect { @hg.track(id, 'Signup') }.to raise_error(ArgumentError, message)
+          expect { tracker.import_events(id, 'Signup') }.to raise_error(ArgumentError, message)
+          expect { tracker.import('API_KEY', id, 'Signup') }.to raise_error(ArgumentError, message)
+          expect { @hg.generate_tracking_url(id, 'Signup') }.to raise_error(ArgumentError, message)
+        end
+      end
+      expect(@log).to be_empty
+    end
+
+    it 'sends an identity whose distinct id is combined with non-blank parts, or not combined, as given' do
+      ['$company:c|$user: u ', '$company:acme', '$device:abc', 'user_123'].each do |distinct_id|
+        @hg.track(identity(distinct_id: distinct_id), 'Signup')
+        expect(last_properties['distinct_id']).to eq(distinct_id)
+      end
+    end
+
+    it 'sends an identity whose combined distinct id has a blank part without hierarchical groups' do
+      ['$company:|$user:u', '$company: |$user:  ', '$company:c|$user:'].each do |distinct_id|
+        @legacy.track(identity(distinct_id: distinct_id), 'Signup')
+        expect(last_properties['distinct_id']).to eq(distinct_id)
+      end
+    end
+
     it 'sends a combined distinct id with non-blank parts, and a non-combined id, as given' do
       ['$company:c|$user: u ', '$company:acme', '$device:abc', 'user_123'].each do |distinct_id|
         @hg.track(distinct_id, 'Signup')
