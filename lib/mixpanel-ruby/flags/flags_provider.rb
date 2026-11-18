@@ -123,6 +123,11 @@ module Mixpanel
           # distinct_id, $user_id and $company_id the context has, and no
           # distinct_id when it has none.
           recipient = hierarchical_exposure_identity(context)
+          conflict = combined_id_conflict(recipient)
+          if conflict
+            @error_handler&.handle(MixpanelError.new(conflict))
+            return
+          end
           properties = recipient.to_properties
         else
           properties = { 'distinct_id' => distinct_id }
@@ -167,6 +172,25 @@ module Mixpanel
         # User and company ids are sent as strings, as hierarchical groups events send them.
         Mixpanel::Identity.new(distinct_id: exposure_id(distinct_id), user_id: Mixpanel::HierarchicalGroups.wire_id(user_id),
                                company_id: Mixpanel::HierarchicalGroups.wire_id(company_id))
+      end
+
+      # The message for an exposure identity whose combined distinct id
+      # ($company:<c>|$user:<u>) names a different company or user than its
+      # $company_id or $user_id, as track refuses it, or nil if they agree.
+      def combined_id_conflict(identity)
+        distinct_id = identity.distinct_id
+        parsed = begin
+          Mixpanel::HierarchicalGroups.parse_combined_distinct_id(distinct_id)
+        rescue ArgumentError
+          nil
+        end
+        return nil if parsed.nil?
+        Mixpanel::HierarchicalGroups.require_consistent_with_combined_id(
+          distinct_id, parsed, company_id: identity.company_id, user_id: identity.user_id
+        )
+        nil
+      rescue ArgumentError => e
+        e.message
       end
 
       # A context value as an identity id: Strings and Integers as given,

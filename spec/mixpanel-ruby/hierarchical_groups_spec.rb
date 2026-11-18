@@ -963,6 +963,21 @@ describe 'Hierarchical groups' do
       expect(sent).to eq([:event, :group_update])
     end
 
+    it 'sends an Integer bound company as given on a legacy tracker and as a string on hierarchical groups' do
+      @legacy.for_company(42).groups.set('department', 'finance', {'plan' => 'x'})
+      expect(last_data['$company_id']).to eql(42)
+      @legacy.for_company(42).company.set({'tier' => 'pro'})
+      expect(last_data).to include('$group_key' => '$company_id')
+      expect(last_data['$group_id']).to eql(42)
+      expect(last_data['$company_id']).to eql(42)
+
+      @hg.for_company(42).groups.set('department', 'finance', {'plan' => 'x'})
+      expect(last_data['$company_id']).to eql('42')
+      @hg.for_company(42).company.set({'tier' => 'pro'})
+      expect(last_data['$group_id']).to eql('42')
+      expect(last_data['$company_id']).to eql('42')
+    end
+
     it 'works on a legacy tracker' do
       @legacy.for_company('acme').groups.set('company', 'acme', {'plan' => 'x'})
 

@@ -287,6 +287,49 @@ describe 'Hierarchical groups feature flags' do
       expect(properties['$company_id']).to eq('acme')
     end
 
+    it 'drops a hierarchical exposure whose combined distinct_id names another company or user' do
+      tracker, calls = recording_tracker
+      provider = local_provider([flag_definition(context: 'department')], tracker, hierarchical_groups: true)
+      id = '$company:acme|$user:user-123'
+      messages = []
+      allow(error_handler).to receive(:handle) { |error| messages << [error.class, error.message] }
+
+      expect(provider.get_variant_value('hg_flag', fallback, hg_context.merge('distinct_id' => id, '$company_id' => 'other',
+                                                                              'department' => 'x'))).to eq('value-a')
+      expect(provider.get_variant_value('hg_flag', fallback, hg_context.merge('distinct_id' => id, '$user_id' => 'user-9',
+                                                                              'department' => 'x'))).to eq('value-a')
+
+      expect(calls).to be_empty
+      expect(messages).to eq([
+        [Mixpanel::MixpanelError, "distinct_id #{id} names company acme, but $company_id is other. Nothing sent"],
+        [Mixpanel::MixpanelError, "distinct_id #{id} names user user-123, but $user_id is user-9. Nothing sent"]
+      ])
+    end
+
+    it 'sends a hierarchical exposure whose combined distinct_id matches its ids as a string' do
+      tracker, calls = recording_tracker
+      provider = local_provider([flag_definition(context: 'department')], tracker, hierarchical_groups: true)
+      expect(error_handler).not_to receive(:handle)
+
+      provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => '$company:42|$user:7', '$company_id' => 42,
+                                                        '$user_id' => 7, 'department' => 'x' })
+
+      identity, _, properties = calls.first
+      expect(identity).to eq(Mixpanel::Identity.new(distinct_id: '$company:42|$user:7', user_id: '7', company_id: '42'))
+      expect(properties).to include('distinct_id' => '$company:42|$user:7', '$user_id' => '7', '$company_id' => '42')
+    end
+
+    it 'sends a non-hierarchical exposure with a conflicting combined distinct_id as before' do
+      tracker, calls = recording_tracker
+      provider = local_provider([flag_definition], tracker)
+      expect(error_handler).not_to receive(:handle)
+
+      provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => '$company:acme|$user:user-123', '$company_id' => 'other' })
+
+      expect(calls.first[0]).to eq('$company:acme|$user:user-123')
+      expect(calls.first[2]['distinct_id']).to eq('$company:acme|$user:user-123')
+    end
+
     it 'attributes a hierarchical exposure by $company_id alone' do
       tracker, calls = recording_tracker
       provider = local_provider([flag_definition(context: 'department')], tracker, hierarchical_groups: true)

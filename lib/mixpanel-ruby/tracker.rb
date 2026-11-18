@@ -336,7 +336,7 @@ module Mixpanel
       @company_id = company_id
       @groups = groups
       @people = people
-      @company = Company.new(groups, company_id)
+      @company = Company.new(groups, company_id, hierarchical_groups: @hierarchical_groups)
     end
   end
 end

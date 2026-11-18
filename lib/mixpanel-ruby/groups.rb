@@ -229,8 +229,11 @@ module Mixpanel
         raise ArgumentError, "Group $company_id=#{message['$group_id']} does not match company #{company_id}. " \
           "A company profile is updated through for_company(#{message['$group_id']}).company. Nothing sent"
       end
-      # $company_id must be top-level, not inside the operation payload
-      data['$company_id'] = HierarchicalGroups.wire_id(@company_id) unless @company_id.nil?
+      # $company_id must be top-level, not inside the operation payload. It is
+      # a string on hierarchical groups projects and sent as given otherwise.
+      unless @company_id.nil?
+        data['$company_id'] = @hierarchical_groups ? HierarchicalGroups.wire_id(@company_id) : @company_id
+      end
 
       message = {'data' => data}
 
@@ -286,9 +289,10 @@ module Mixpanel
 
     # You won't need to instantiate instances of Mixpanel::Company
     # directly. Use Tracker#company on a tracker from Tracker#for_company.
-    def initialize(groups, company_id=nil)
+    def initialize(groups, company_id=nil, hierarchical_groups: false)
       @groups = groups
       @company_id = company_id
+      @hierarchical_groups = hierarchical_groups ? true : false
     end
 
     # Sets properties on the company profile. See Mixpanel::Groups#set.
@@ -345,7 +349,8 @@ module Mixpanel
         raise CompanyRequiredError, 'Company profile updates require a company. ' \
           'Use tracker.for_company(company_id).company to send them.'
       end
-      HierarchicalGroups.wire_id(@company_id)
+      # A string on hierarchical groups projects, and as given otherwise.
+      @hierarchical_groups ? HierarchicalGroups.wire_id(@company_id) : @company_id
     end
   end
 end
