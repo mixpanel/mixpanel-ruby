@@ -347,6 +347,45 @@ describe 'Hierarchical groups' do
       expect(@log).to be_empty
     end
 
+    it 'refuses an identity whose combined distinct id names a different user or company on events' do
+      tracker = Mixpanel::Tracker.new(token, credentials: @credentials, hierarchical_groups: true) do |type, message|
+        @log << [type, JSON.load(message)]
+      end
+      {
+        identity(distinct_id: '$company:acme|$user:old', user_id: 'new', company_id: 'acme') =>
+          'distinct_id $company:acme|$user:old names user old, but user_id is new. Nothing sent',
+        identity(distinct_id: '$company:acme|$user:u', user_id: 'u', company_id: 'other') =>
+          'distinct_id $company:acme|$user:u names company acme, but company_id is other. Nothing sent',
+        identity(distinct_id: '$company:acme|$user:old', user_id: 'new') =>
+          'distinct_id $company:acme|$user:old names user old, but user_id is new. Nothing sent',
+        identity(distinct_id: '$company:acme|$user:u', company_id: 7) =>
+          'distinct_id $company:acme|$user:u names company acme, but company_id is 7. Nothing sent'
+      }.each do |id, message|
+        expect { @hg.track(id, 'Signup') }.to raise_error(ArgumentError, message)
+        expect { tracker.import_events(id, 'Signup') }.to raise_error(ArgumentError, message)
+        expect { tracker.import('API_KEY', id, 'Signup') }.to raise_error(ArgumentError, message)
+        expect { @hg.generate_tracking_url(id, 'Signup') }.to raise_error(ArgumentError, message)
+      end
+      expect(@log).to be_empty
+    end
+
+    it 'sends an identity whose combined distinct id agrees with its user and company ids' do
+      @hg.track(identity(distinct_id: '$company:7|$user:42', user_id: 42, company_id: 7), 'Signup')
+      expect(last_properties).to include('distinct_id' => '$company:7|$user:42', '$user_id' => '42', '$company_id' => '7')
+      @hg.track(identity(distinct_id: '$company:acme|$user:u', user_id: 'u'), 'Signup')
+      expect(last_properties).to include('distinct_id' => '$company:acme|$user:u', '$user_id' => 'u')
+      @hg.track(identity(distinct_id: '$company:acme|$user:u', company_id: 'acme'), 'Signup')
+      expect(last_properties).to include('distinct_id' => '$company:acme|$user:u', '$company_id' => 'acme')
+    end
+
+    it 'sends an identity whose combined distinct id disagrees with its ids without hierarchical groups' do
+      @legacy.track(identity(distinct_id: '$company:acme|$user:old', user_id: 'new'), 'Signup')
+      expect(last_properties).to include('distinct_id' => '$company:acme|$user:old', '$user_id' => 'new')
+      @legacy.people.set(identity(distinct_id: '$company:acme|$user:old', user_id: 'new'), {'role' => 'admin'})
+      expect(last_type).to eq(:profile_update)
+      expect(last_data['$distinct_id']).to eq('$company:acme|$user:old')
+    end
+
     it 'sends an identity whose distinct id is combined with non-blank parts, or not combined, as given' do
       ['$company:c|$user: u ', '$company:acme', '$device:abc', 'user_123'].each do |distinct_id|
         @hg.track(identity(distinct_id: distinct_id), 'Signup')
@@ -781,6 +820,30 @@ describe 'Hierarchical groups' do
           .to raise_error(ArgumentError, message)
       end
       expect(@log).to be_empty
+    end
+
+    it 'refuses an identity whose combined distinct id names a different user or company' do
+      conflicting = identity(distinct_id: '$company:acme|$user:old', user_id: 'new', company_id: 'acme')
+      user_message = 'distinct_id $company:acme|$user:old names user old, but user_id is new. Nothing sent'
+      expect { @hg.people.set(conflicting, {'role' => 'admin'}) }.to raise_error(ArgumentError, user_message)
+      expect { @hg.people.set_once(conflicting, {'role' => 'admin'}) }.to raise_error(ArgumentError, user_message)
+      expect { @hg.people.unset(conflicting, ['role']) }.to raise_error(ArgumentError, user_message)
+      expect { @hg.people.union(conflicting, {'tags' => ['a']}) }.to raise_error(ArgumentError, user_message)
+      expect { @hg.people.delete_user(conflicting) }.to raise_error(ArgumentError, user_message)
+
+      company_conflict = identity(distinct_id: '$company:acme|$user:u', user_id: 'u', company_id: 'other')
+      expect { @hg.people.set(company_conflict, {'role' => 'admin'}) }
+        .to raise_error(ArgumentError, 'distinct_id $company:acme|$user:u names company acme, ' \
+                                       'but company_id is other. Nothing sent')
+      expect { @hg.people.delete_user(company_conflict) }.to raise_error(ArgumentError, /names company acme/)
+      expect(@log).to be_empty
+    end
+
+    it 'updates the profile of an identity whose combined distinct id agrees with its ids' do
+      @hg.people.set(identity(distinct_id: '$company:7|$user:42', user_id: 42, company_id: 7), {'role' => 'admin'})
+      expect(last_data).to include('$group_key' => '$user_id', '$group_id' => '42', '$company_id' => '7')
+      @hg.people.delete_user(identity(distinct_id: '$company:acme|$user:u', user_id: 'u', company_id: 'acme'))
+      expect(last_data).to include('$group_id' => 'u', '$company_id' => 'acme', '$delete' => '')
     end
 
     it 'sends a distinct id identity to /engage on a legacy tracker' do

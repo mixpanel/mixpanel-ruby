@@ -169,17 +169,31 @@ module Mixpanel
 
     # Raises ArgumentError if a $company_id or $user_id sent with a combined
     # distinct id names a different company or user than the distinct id.
-    # Values are compared as strings; nil is not checked.
-    def require_consistent_with_combined_id(distinct_id, parsed, company_id: nil, user_id: nil)
+    # Values are compared as strings; nil is not checked. company_name and
+    # user_name are the field names the message gives the values.
+    def require_consistent_with_combined_id(distinct_id, parsed, company_id: nil, user_id: nil,
+                                            company_name: '$company_id', user_name: '$user_id')
       parsed_company_id, parsed_user_id = parsed
       if !company_id.nil? && company_id.to_s != parsed_company_id
         raise ArgumentError, "distinct_id #{distinct_id} names company #{parsed_company_id}, " \
-          "but $company_id is #{company_id}. Nothing sent"
+          "but #{company_name} is #{company_id}. Nothing sent"
       end
       if !user_id.nil? && user_id.to_s != parsed_user_id
         raise ArgumentError, "distinct_id #{distinct_id} names user #{parsed_user_id}, " \
-          "but $user_id is #{user_id}. Nothing sent"
+          "but #{user_name} is #{user_id}. Nothing sent"
       end
+    end
+
+    # Raises ArgumentError if an identity's combined distinct id has a blank
+    # company or user, or names a different company or user than the
+    # identity's own company_id or user_id. Otherwise a profile update would
+    # address the distinct id's user while its events resolve to user_id.
+    def require_identity_distinct_id_agrees(identity)
+      parsed = parse_combined_distinct_id(identity.distinct_id)
+      return if parsed.nil?
+      require_consistent_with_combined_id(identity.distinct_id, parsed,
+                                          company_id: identity.company_id, user_id: identity.user_id,
+                                          company_name: 'company_id', user_name: 'user_id')
     end
 
     # A $company_id taken from optional_params on a hierarchical groups

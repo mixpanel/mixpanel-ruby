@@ -230,8 +230,9 @@ module Mixpanel
       identity = distinct_id
       HierarchicalGroups.require_identity_matches_project(identity, @hierarchical_groups)
       # A combined distinct id with a blank company or user raises
-      # ArgumentError, as it does when passed as a string.
-      HierarchicalGroups.parse_combined_distinct_id(identity.distinct_id) if @hierarchical_groups
+      # ArgumentError, as it does when passed as a string, as does one naming
+      # a different company or user than the identity's own ids.
+      HierarchicalGroups.require_identity_distinct_id_agrees(identity) if @hierarchical_groups
 
       # An identity without a distinct id sends no distinct_id: Mixpanel
       # resolves the event from $user_id, $company_id and $device_id.

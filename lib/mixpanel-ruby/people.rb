@@ -293,6 +293,7 @@ module Mixpanel
         identity = distinct_id
         HierarchicalGroups.require_identity_matches_project(identity, @hierarchical_groups)
         unless identity.distinct_id.nil?
+          HierarchicalGroups.require_identity_distinct_id_agrees(identity) if @hierarchical_groups
           return profile_update(identity.distinct_id, operation, properties, ip, optional_params)
         end
         return user_group_update(identity, operation, properties, ip, optional_params)
