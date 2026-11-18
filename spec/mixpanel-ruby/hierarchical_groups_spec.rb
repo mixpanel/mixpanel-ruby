@@ -671,6 +671,57 @@ describe 'Hierarchical groups' do
       groups.delete_group('department', 'finance')
       expect(@log.length).to eq(6)
     end
+
+    it 'refuses a company group whose id differs from the bound company' do
+      groups = @hg.for_company('acme').groups
+
+      expect { groups.set('$company_id', 'globex', {'plan' => 'pro'}) }
+        .to raise_error(ArgumentError, /\$company_id=globex does not match company acme.*for_company\(globex\)\.company/)
+      expect { groups.set_once('$company_id', 'globex', {'plan' => 'pro'}) }.to raise_error(ArgumentError)
+      expect { groups.unset('$company_id', 'globex', 'plan') }.to raise_error(ArgumentError)
+      expect { groups.union('$company_id', 'globex', {'tags' => ['a']}) }.to raise_error(ArgumentError)
+      expect { groups.remove('$company_id', 'globex', {'tags' => 'a'}) }.to raise_error(ArgumentError)
+      expect { groups.delete_group('$company_id', 'globex') }.to raise_error(ArgumentError)
+      expect(@log).to be_empty
+    end
+
+    it 'refuses a company group whose id differs from the $company_id param' do
+      expect { @hg.groups.set('$company_id', 'globex', {'plan' => 'pro'}, nil, {'$company_id' => 'acme'}) }
+        .to raise_error(ArgumentError, /\$company_id=globex does not match company acme/)
+      expect(@log).to be_empty
+    end
+
+    it 'refuses a generic company group update whose id differs from its company' do
+      expect { @hg.for_company('acme').groups.update('$group_key' => '$company_id', '$group_id' => 'globex',
+                                                     '$set' => {'plan' => 'pro'}) }
+        .to raise_error(ArgumentError, /\$company_id=globex does not match company acme/)
+      expect { @hg.groups.update('$group_key' => '$company_id', '$group_id' => 'globex',
+                                 '$set' => {'plan' => 'pro'}, '$company_id' => 'acme') }
+        .to raise_error(ArgumentError, /\$company_id=globex does not match company acme/)
+      expect(@log).to be_empty
+    end
+
+    it 'sends a company group whose id matches the bound company' do
+      @hg.for_company('acme').groups.set('$company_id', 'acme', {'plan' => 'pro'})
+
+      expect(last_data).to eq('$token' => token, '$time' => (@time_now.to_f * 1000).to_i,
+                              '$group_key' => '$company_id', '$group_id' => 'acme',
+                              '$set' => {'plan' => 'pro'}, '$company_id' => 'acme')
+    end
+
+    it 'compares a company group id and its company as strings' do
+      @hg.for_company(7).groups.set('$company_id', '7', {'plan' => 'pro'})
+      expect(last_data).to include('$group_id' => '7', '$company_id' => 7)
+
+      @hg.for_company('7').groups.set('$company_id', 7, {'plan' => 'pro'})
+      expect(last_data).to include('$group_id' => 7, '$company_id' => '7')
+    end
+
+    it 'sends a mismatched company group unchanged without hierarchical groups' do
+      @legacy.for_company('acme').groups.set('$company_id', 'globex', {'plan' => 'pro'})
+
+      expect(last_data).to include('$group_key' => '$company_id', '$group_id' => 'globex', '$company_id' => 'acme')
+    end
   end
 
   describe 'for_company' do

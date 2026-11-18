@@ -30,6 +30,8 @@ module Mixpanel
   #
   # On a hierarchical groups tracker, an update with no bound company and no
   # $company_id in optional_params raises Mixpanel::CompanyRequiredError.
+  # An update to group key '$company_id' whose group id is not that company
+  # raises ArgumentError; use Tracker#company to update a company profile.
   class Groups
 
     # You likely won't need to instantiate instances of Mixpanel::Groups
@@ -194,7 +196,9 @@ module Mixpanel
     # for an operation /groups lacks (anything but $set, $set_once, $unset,
     # $union, $remove or $delete), and
     # Mixpanel::CompanyRequiredError if no company is bound and the message has
-    # no non-empty $company_id.
+    # no non-empty $company_id. It raises ArgumentError for a '$company_id'
+    # group whose $group_id differs (as a string) from that company, since the
+    # top-level $company_id would win and update the other company's profile.
     def update(message)
       unsupported = @hierarchical_groups ? HierarchicalGroups.unsupported_operations(message) : []
       unless unsupported.empty?
@@ -213,6 +217,14 @@ module Mixpanel
         raise CompanyRequiredError, 'Group profile updates for hierarchical groups projects require a ' \
           'company. Use tracker.for_company(company_id) to send them. Nothing to send for group ' \
           "#{message['$group_key']}=#{message['$group_id']}"
+      end
+      # The top-level $company_id wins over $group_id for a company group, so a
+      # mismatch would silently update the wrong company's profile.
+      company_id = @company_id.nil? ? message_company_id : @company_id
+      if @hierarchical_groups && message['$group_key'] == '$company_id' &&
+         !HierarchicalGroups.same_company?(company_id, message['$group_id'])
+        raise ArgumentError, "Group $company_id=#{message['$group_id']} does not match company #{company_id}. " \
+          "A company profile is updated through for_company(#{message['$group_id']}).company. Nothing sent"
       end
       # $company_id must be top-level, not inside the operation payload
       data['$company_id'] = @company_id unless @company_id.nil?
