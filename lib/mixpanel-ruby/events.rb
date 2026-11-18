@@ -207,20 +207,24 @@ module Mixpanel
     # Builds the properties of an event message for a distinct id or a
     # Mixpanel::Identity. A string distinct id is sent as given in either
     # mode: Mixpanel accepts a distinct id it built itself, such as
-    # "$company:acme|$user:user_123". On a hierarchical groups tracker such a
-    # combined distinct id raises ArgumentError if properties carry a
+    # "$company:acme|$user:user_123". On a hierarchical groups tracker the
+    # event's final distinct_id (a distinct_id property replaces the
+    # argument), when combined, raises ArgumentError if properties carry a
     # $company_id or $user_id naming a different company or user, or if
     # either part is empty or only whitespace.
     def event_properties(distinct_id, properties)
       unless distinct_id.is_a?(Identity)
-        require_consistent_combined_event(distinct_id, properties) if @hierarchical_groups
-        return {
+        event = {
           'distinct_id' => distinct_id,
           'token' => @token,
           'time' => (Time.now.to_f * 1000).to_i,
           'mp_lib' => 'ruby',
           '$lib_version' => Mixpanel::VERSION,
         }.merge(properties)
+        # Check the distinct_id the event carries: a distinct_id property
+        # replaces the argument.
+        require_consistent_combined_event(event['distinct_id'], event) if @hierarchical_groups
+        return event
       end
 
       identity = distinct_id

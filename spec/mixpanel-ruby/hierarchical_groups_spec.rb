@@ -260,6 +260,55 @@ describe 'Hierarchical groups' do
                                          '$user_id' => '8', 'plan' => 'x')
     end
 
+    describe 'with a distinct_id property replacing the argument' do
+      let(:tracker) do
+        Mixpanel::Tracker.new(token, credentials: @credentials, hierarchical_groups: true) do |type, message|
+          @log << [type, JSON.load(message)]
+        end
+      end
+
+      def url_properties(url)
+        JSON.parse(Base64.urlsafe_decode64(url[/data=([^&]*)/, 1]))['properties']
+      end
+
+      it 'checks the final distinct_id and sends a consistent override' do
+        properties = {'distinct_id' => '$company:b|$user:u', '$company_id' => 'b'}
+        expected = {'distinct_id' => '$company:b|$user:u', '$company_id' => 'b'}
+
+        @hg.track('$company:a|$user:u', 'Signup', properties)
+        expect(last_properties).to include(expected)
+        tracker.import_events('$company:a|$user:u', 'Signup', properties)
+        expect(last_properties).to include(expected)
+        tracker.import('API_KEY', '$company:a|$user:u', 'Signup', properties)
+        expect(last_properties).to include(expected)
+        expect(url_properties(@hg.generate_tracking_url('$company:a|$user:u', 'Signup', properties))).to include(expected)
+      end
+
+      it 'refuses an override that conflicts with $company_id even when the argument matches' do
+        properties = {'distinct_id' => '$company:b|$user:u', '$company_id' => 'a'}
+        message = 'distinct_id $company:b|$user:u names company b, but $company_id is a. Nothing sent'
+
+        expect { @hg.track('$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
+        expect { tracker.import_events('$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
+        expect { tracker.import('API_KEY', '$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
+        expect { @hg.generate_tracking_url('$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
+        expect(@log).to be_empty
+      end
+
+      it 'refuses an override with a blank company or user' do
+        {'$company: |$user:u' => 'company', '$company:a|$user:' => 'user'}.each do |distinct_id, part|
+          properties = {'distinct_id' => distinct_id}
+          message = "distinct_id #{distinct_id.inspect} names a blank #{part}. Nothing sent"
+
+          expect { @hg.track('$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
+          expect { tracker.import_events('$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
+          expect { tracker.import('API_KEY', '$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
+          expect { @hg.generate_tracking_url('$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
+        end
+        expect(@log).to be_empty
+      end
+    end
+
     it 'refuses a combined distinct id with a blank company or user on events' do
       tracker = Mixpanel::Tracker.new(token, credentials: @credentials, hierarchical_groups: true) do |type, message|
         @log << [type, JSON.load(message)]
