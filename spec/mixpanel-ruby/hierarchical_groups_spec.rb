@@ -1218,6 +1218,108 @@ describe 'Hierarchical groups' do
     end
   end
 
+  describe 'params that would retarget a profile update' do
+    def retarget(key, value, expected)
+      "#{key} #{value.inspect} does not match the message's #{key} #{expected.inspect}, " \
+        'and would send the update to a different profile. Nothing sent'
+    end
+
+    it 'refuses a $group_id, $group_key or $token param naming another user profile' do
+      acme = @hg.for_company('acme')
+      [user_in_acme, '$company:acme|$user:user_123'].each do |user|
+        expect { @hg.people.set(user, {'role' => 'admin'}, nil, {'$group_id' => 'u2'}) }
+          .to raise_error(ArgumentError, retarget('$group_id', 'u2', 'user_123'))
+        expect { @hg.people.set(user, {'role' => 'admin'}, nil, {:'$group_id' => 'u2'}) }
+          .to raise_error(ArgumentError, retarget('$group_id', 'u2', 'user_123'))
+        expect { @hg.people.unset(user, ['role'], nil, {'$group_key' => 'department'}) }
+          .to raise_error(ArgumentError, retarget('$group_key', 'department', '$user_id'))
+        expect { @hg.people.set(user, {'role' => 'admin'}, nil, {'$token' => 'OTHER'}) }
+          .to raise_error(ArgumentError, retarget('$token', 'OTHER', token))
+        expect { acme.people.set_once(user, {'role' => 'admin'}, nil, {'$group_id' => 'u2'}) }
+          .to raise_error(ArgumentError, /\$group_id "u2"/)
+      end
+      # With user_id == company_id, a $group_key param would turn a user delete into a company delete.
+      expect { @hg.people.delete_user(identity(user_id: 'acme', company_id: 'acme'), {'$group_key' => '$company_id'}) }
+        .to raise_error(ArgumentError, retarget('$group_key', '$company_id', '$user_id'))
+      expect(@log).to be_empty
+    end
+
+    it 'refuses a $distinct_id param naming another profile than the identity' do
+      expect { @hg.people.set(user_in_acme, {'role' => 'admin'}, nil, {'$distinct_id' => '$company:acme|$user:u2'}) }
+        .to raise_error(ArgumentError, retarget('$distinct_id', '$company:acme|$user:u2', nil))
+      combined = identity(distinct_id: '$company:acme|$user:user_123')
+      expect { @hg.people.set(combined, {'role' => 'admin'}, nil, {'$distinct_id' => '$company:acme|$user:u2'}) }
+        .to raise_error(ArgumentError, /\$distinct_id "\$company:acme\|\$user:u2" does not match/)
+      expect(@log).to be_empty
+    end
+
+    it 'refuses a generic user update message naming another group or token' do
+      base = {'$distinct_id' => '$company:acme|$user:user_123', '$set' => {'role' => 'admin'}}
+      expect { @hg.people.update(base.merge('$group_id' => 'u2')) }
+        .to raise_error(ArgumentError, retarget('$group_id', 'u2', 'user_123'))
+      expect { @hg.people.update(base.merge('$group_key' => '$company_id')) }
+        .to raise_error(ArgumentError, retarget('$group_key', '$company_id', '$user_id'))
+      expect { @hg.people.update(base.merge('$token' => 'OTHER')) }
+        .to raise_error(ArgumentError, retarget('$token', 'OTHER', token))
+      expect(@log).to be_empty
+    end
+
+    it 'refuses a group or company param naming another group or token' do
+      acme = @hg.for_company('acme')
+      expect { acme.groups.set('dept', 'fin', {'a' => 1}, nil, {'$group_id' => 'other'}) }
+        .to raise_error(ArgumentError, retarget('$group_id', 'other', 'fin'))
+      expect { acme.groups.set_once('dept', 'fin', {'a' => 1}, nil, {'$group_key' => 'team'}) }
+        .to raise_error(ArgumentError, retarget('$group_key', 'team', 'dept'))
+      expect { acme.groups.remove('dept', 'fin', {'a' => 1}, nil, {'$group_id' => 'other'}) }.to raise_error(ArgumentError)
+      expect { acme.groups.union('dept', 'fin', {'a' => [1]}, nil, {'$group_id' => 'other'}) }.to raise_error(ArgumentError)
+      expect { acme.groups.unset('dept', 'fin', ['a'], nil, {'$group_id' => 'other'}) }.to raise_error(ArgumentError)
+      expect { acme.groups.delete_group('dept', 'fin', {'$group_id' => 'other'}) }.to raise_error(ArgumentError)
+      expect { acme.groups.set('dept', 'fin', {'a' => 1}, nil, {'$token' => 'OTHER'}) }
+        .to raise_error(ArgumentError, retarget('$token', 'OTHER', token))
+      expect { acme.groups.update('$group_key' => 'dept', '$group_id' => 'fin', '$set' => {}, '$token' => 'OTHER') }
+        .to raise_error(ArgumentError, retarget('$token', 'OTHER', token))
+      expect { @hg.groups.set('dept', 'fin', {'a' => 1}, nil, {'$company_id' => 'acme', '$group_id' => 'other'}) }
+        .to raise_error(ArgumentError, retarget('$group_id', 'other', 'fin'))
+      expect { acme.company.set({'tier' => 'pro'}, nil, {'$group_id' => 'globex'}) }
+        .to raise_error(ArgumentError, retarget('$group_id', 'globex', 'acme'))
+      expect { acme.company.delete({'$group_key' => '$user_id'}) }
+        .to raise_error(ArgumentError, retarget('$group_key', '$user_id', '$company_id'))
+      expect(@log).to be_empty
+    end
+
+    it 'sends params equal to the message, and ordinary params, as before' do
+      acme = @hg.for_company('acme')
+      matching = {'$group_key' => '$user_id', '$group_id' => 'user_123', '$token' => token,
+                  '$ip' => '1.2.3.4', '$time' => 1234, '$ignore_time' => true}
+      @hg.people.set(user_in_acme, {'role' => 'admin'}, nil, matching)
+      expect(last_data).to include('$group_key' => '$user_id', '$group_id' => 'user_123', '$company_id' => 'acme',
+                                   '$ip' => '1.2.3.4', '$time' => 1234, '$ignore_time' => true)
+      @hg.people.delete_user('$company:acme|$user:user_123', matching)
+      expect(last_data).to include('$group_id' => 'user_123', '$delete' => '')
+      combined = identity(distinct_id: '$company:acme|$user:user_123')
+      @hg.people.set(combined, {'role' => 'admin'}, nil, {'$distinct_id' => '$company:acme|$user:user_123'})
+      expect(last_data).to include('$group_id' => 'user_123')
+      @hg.people.update('$distinct_id' => '$company:acme|$user:user_123', '$set' => {'a' => 1},
+                        '$group_key' => '$user_id', '$group_id' => 'user_123', '$token' => token)
+      expect(last_data).to include('$group_id' => 'user_123', '$token' => token)
+      acme.groups.set('dept', 'fin', {'a' => 1}, '1.2.3.4', {'$group_key' => 'dept', '$group_id' => 'fin', '$time' => 5})
+      expect(last_data).to include('$group_key' => 'dept', '$group_id' => 'fin', '$time' => 5, '$ip' => '1.2.3.4')
+      acme.company.set({'tier' => 'pro'}, nil, {'$group_id' => 'acme', '$token' => token})
+      expect(last_data).to include('$group_key' => '$company_id', '$group_id' => 'acme')
+    end
+
+    it 'sends params naming another group or token unchanged without hierarchical groups' do
+      @legacy.groups.set('dept', 'fin', {'a' => 1}, nil, {'$group_id' => 'other', '$token' => 'OTHER'})
+      expect(last_data).to include('$group_id' => 'other', '$token' => 'OTHER')
+      @legacy.for_company('acme').company.set({'tier' => 'pro'}, nil, {'$group_id' => 'globex'})
+      expect(last_data).to include('$group_id' => 'globex')
+      @legacy.people.set('user_123', {'role' => 'admin'}, nil, {'$distinct_id' => 'other', '$token' => 'OTHER'})
+      expect(last_data).to include('$distinct_id' => 'other', '$token' => 'OTHER')
+      @legacy.people.set(identity(distinct_id: 'user_123'), {'role' => 'admin'}, nil, {'$distinct_id' => 'other'})
+      expect(last_data).to include('$distinct_id' => 'other')
+    end
+  end
+
   describe 'a tracker without hierarchical groups' do
     # Every message valid in both modes is identical in both, and the legacy
     # tracker still sends the operations a hierarchical groups tracker refuses.

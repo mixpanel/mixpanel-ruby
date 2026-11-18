@@ -292,6 +292,8 @@ module Mixpanel
       if distinct_id.is_a?(Identity)
         identity = distinct_id
         HierarchicalGroups.require_identity_matches_project(identity, @hierarchical_groups)
+        # The identity names the profile, so a $distinct_id param may not name another one.
+        HierarchicalGroups.require_param_matches(optional_params, '$distinct_id', identity.distinct_id) if @hierarchical_groups
         unless identity.distinct_id.nil?
           HierarchicalGroups.require_identity_distinct_id_agrees(identity) if @hierarchical_groups
           return profile_update(identity.distinct_id, operation, properties, ip, optional_params)
@@ -333,10 +335,13 @@ module Mixpanel
           "to update the company's profile."
       end
       require_bound_company(identity.company_id, identity.to_s)
+      group_id = HierarchicalGroups.wire_id(identity.user_id)
+      HierarchicalGroups.require_param_matches(optional_params, '$group_key', HierarchicalGroups::USER_ID_GROUP_KEY)
+      HierarchicalGroups.require_param_matches(optional_params, '$group_id', group_id)
 
       message = {
         '$group_key' => HierarchicalGroups::USER_ID_GROUP_KEY,
-        '$group_id' => HierarchicalGroups.wire_id(identity.user_id),
+        '$group_id' => group_id,
         operation => properties,
       }.merge(optional_params)
       message['$ip'] = ip if ip
@@ -366,6 +371,8 @@ module Mixpanel
       HierarchicalGroups.require_consistent_with_combined_id(message['$distinct_id'], [company_id, user_id],
                                                              company_id: message['$company_id'])
       require_bound_company(company_id, message['$distinct_id'].inspect)
+      HierarchicalGroups.require_param_matches(message, '$group_key', HierarchicalGroups::USER_ID_GROUP_KEY)
+      HierarchicalGroups.require_param_matches(message, '$group_id', user_id)
       group_message = message.reject { |key, _| key.to_s == '$distinct_id' }
       group_message['$group_key'] = HierarchicalGroups::USER_ID_GROUP_KEY
       group_message['$group_id'] = user_id

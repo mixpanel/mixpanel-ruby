@@ -73,6 +73,7 @@ module Mixpanel
     # ip address for geolocation (rather than the ip of your server)
     def set(group_key, group_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
+      require_params_match(group_key, group_id, optional_params)
       message = {
         '$group_key' => group_key,
         '$group_id' => group_id,
@@ -95,6 +96,7 @@ module Mixpanel
     #
     def set_once(group_key, group_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
+      require_params_match(group_key, group_id, optional_params)
       message = {
         '$group_key' => group_key,
         '$group_id' => group_id,
@@ -115,6 +117,7 @@ module Mixpanel
     #
     def remove(group_key, group_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
+      require_params_match(group_key, group_id, optional_params)
       message = {
         '$group_key' => group_key,
         '$group_id' => group_id,
@@ -138,6 +141,7 @@ module Mixpanel
     #
     def union(group_key, group_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
+      require_params_match(group_key, group_id, optional_params)
       message = {
         '$group_key' => group_key,
         '$group_id' => group_id,
@@ -162,6 +166,7 @@ module Mixpanel
     #
     def unset(group_key, group_id, properties, ip=nil, optional_params={})
       properties = [properties] unless properties.is_a?(Array)
+      require_params_match(group_key, group_id, optional_params)
       message = {
         '$group_key' => group_key,
         '$group_id' => group_id,
@@ -175,6 +180,7 @@ module Mixpanel
     # Permanently delete a group from \Mixpanel groups analytics (all group
     # properties on events stay)
     def delete_group(group_key, group_id, optional_params={})
+      require_params_match(group_key, group_id, optional_params)
       update({
         '$group_key' => group_key,
         '$group_id' => group_id,
@@ -209,6 +215,7 @@ module Mixpanel
           "#{HierarchicalGroups::GROUP_OPERATIONS.join(', ')}."
       end
 
+      HierarchicalGroups.require_param_matches(message, '$token', @token) if @hierarchical_groups
       data = {
         '$token' => @token,
         '$time' =>  (Time.now.to_f * 1000).to_i,
@@ -258,6 +265,14 @@ module Mixpanel
     end
 
     private
+
+    # On a hierarchical groups tracker, an optional param naming a different
+    # group than the method's group_key and group_id raises ArgumentError.
+    def require_params_match(group_key, group_id, optional_params)
+      return unless @hierarchical_groups
+      HierarchicalGroups.require_param_matches(optional_params, '$group_key', group_key)
+      HierarchicalGroups.require_param_matches(optional_params, '$group_id', group_id)
+    end
 
     def fix_property_dates(properties)
       properties.inject({}) do |ret, (key, value)|

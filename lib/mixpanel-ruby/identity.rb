@@ -206,6 +206,21 @@ module Mixpanel
       require_not_blank(company_id, '$company_id')
     end
 
+    # Optional params are merged over a message's own keys, so on a
+    # hierarchical groups project a param such as $token, $group_key or
+    # $group_id naming a different value than the message writes would
+    # silently send the update to another profile. Raises ArgumentError for
+    # such a param; one equal to the message's own value is allowed. Keys
+    # match as strings, so :$group_id is checked too.
+    def require_param_matches(params, key, expected)
+      params.each do |param_key, value|
+        next unless param_key.to_s == key
+        next if value == expected
+        raise ArgumentError, "#{key} #{value.inspect} does not match the message's #{key} #{expected.inspect}, " \
+          'and would send the update to a different profile. Nothing sent'
+      end
+    end
+
     # True for a non-empty String of only whitespace.
     def blank?(value)
       value.is_a?(String) && !value.empty? && value.match?(/\A[[:space:]]+\z/)
