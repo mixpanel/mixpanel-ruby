@@ -210,7 +210,7 @@ module Mixpanel
     # "$company:acme|$user:user_123". On a hierarchical groups tracker such a
     # combined distinct id raises ArgumentError if properties carry a
     # $company_id or $user_id naming a different company or user, or if
-    # either part is only whitespace.
+    # either part is empty or only whitespace.
     def event_properties(distinct_id, properties)
       unless distinct_id.is_a?(Identity)
         require_consistent_combined_event(distinct_id, properties) if @hierarchical_groups

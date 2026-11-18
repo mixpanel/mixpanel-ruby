@@ -150,17 +150,19 @@ module Mixpanel
     # Parses a distinct id Mixpanel built, of the form
     # <tt>$company:{company}|$user:{user}</tt>, into [company_id, user_id].
     # The company ends at the first |$user: and the user is everything after
-    # it. Returns nil unless both parts are non-empty, and raises
-    # ArgumentError if either part is only whitespace.
+    # it. Returns nil for a string not of that shape, and raises
+    # ArgumentError if either part is empty or only whitespace.
     def parse_combined_distinct_id(distinct_id)
       return nil unless distinct_id.is_a?(String) && distinct_id.start_with?(COMBINED_COMPANY_PREFIX)
       separator = distinct_id.index(COMBINED_USER_SEPARATOR, COMBINED_COMPANY_PREFIX.length)
       return nil if separator.nil?
       company_id = distinct_id[COMBINED_COMPANY_PREFIX.length...separator]
       user_id = distinct_id[(separator + COMBINED_USER_SEPARATOR.length)..-1]
-      return nil if company_id.empty? || user_id.empty?
-      if blank?(company_id) || blank?(user_id)
-        raise ArgumentError, "distinct_id #{distinct_id.inspect} names a company or user of only whitespace. Nothing sent"
+      if company_id.empty? || blank?(company_id)
+        raise ArgumentError, "distinct_id #{distinct_id.inspect} names a blank company. Nothing sent"
+      end
+      if user_id.empty? || blank?(user_id)
+        raise ArgumentError, "distinct_id #{distinct_id.inspect} names a blank user. Nothing sent"
       end
       [company_id, user_id]
     end

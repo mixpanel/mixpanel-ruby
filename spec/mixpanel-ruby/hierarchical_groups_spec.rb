@@ -260,11 +260,29 @@ describe 'Hierarchical groups' do
                                          '$user_id' => '8', 'plan' => 'x')
     end
 
-    it 'refuses a combined distinct id with a company or user of only whitespace' do
-      ['$company: |$user:u', '$company:c|$user:  ', '$company: |$user:  '].each do |distinct_id|
-        expect { @hg.track(distinct_id, 'Signup') }.to raise_error(ArgumentError, /only whitespace/)
+    it 'refuses a combined distinct id with a blank company or user on events' do
+      tracker = Mixpanel::Tracker.new(token, credentials: @credentials, hierarchical_groups: true) do |type, message|
+        @log << [type, JSON.load(message)]
+      end
+      {
+        '$company:|$user:u' => 'company', '$company: |$user:u' => 'company', '$company:|$user:' => 'company',
+        '$company: |$user:' => 'company', '$company: |$user:  ' => 'company',
+        '$company:c|$user:' => 'user', '$company:c|$user:  ' => 'user'
+      }.each do |distinct_id, part|
+        message = "distinct_id #{distinct_id.inspect} names a blank #{part}. Nothing sent"
+        expect { @hg.track(distinct_id, 'Signup') }.to raise_error(ArgumentError, message)
+        expect { tracker.import_events(distinct_id, 'Signup') }.to raise_error(ArgumentError, message)
+        expect { tracker.import('API_KEY', distinct_id, 'Signup') }.to raise_error(ArgumentError, message)
+        expect { @hg.generate_tracking_url(distinct_id, 'Signup') }.to raise_error(ArgumentError, message)
       end
       expect(@log).to be_empty
+    end
+
+    it 'sends a combined distinct id with non-blank parts, and a non-combined id, as given' do
+      ['$company:c|$user: u ', '$company:acme', '$device:abc', 'user_123'].each do |distinct_id|
+        @hg.track(distinct_id, 'Signup')
+        expect(last_properties['distinct_id']).to eq(distinct_id)
+      end
     end
 
     it 'sends a plain distinct id with any $company_id and $user_id properties unchanged' do
@@ -275,8 +293,10 @@ describe 'Hierarchical groups' do
     it 'sends a conflicting or blank combined distinct id unchanged without hierarchical groups' do
       @legacy.track('$company:c6|$user:u6', 'Signup', {'$company_id' => 'zz6', '$user_id' => 'zz6'})
       expect(last_properties).to include('distinct_id' => '$company:c6|$user:u6', '$company_id' => 'zz6', '$user_id' => 'zz6')
-      @legacy.track('$company: |$user:  ', 'Signup')
-      expect(last_properties['distinct_id']).to eq('$company: |$user:  ')
+      ['$company: |$user:  ', '$company:|$user:', '$company:c|$user:'].each do |distinct_id|
+        @legacy.track(distinct_id, 'Signup')
+        expect(last_properties['distinct_id']).to eq(distinct_id)
+      end
     end
 
     it 'never refuses a raw distinct id' do
@@ -434,9 +454,7 @@ describe 'Hierarchical groups' do
     it 'refuses a distinct id that is not a combined one on a hierarchical tracker' do
       [
         'user_123',
-        '$company:acme|$user:',
         '$company:acme',
-        '$company:|$user:user_123',
         '|$user:user_123',
         '$group:acme|$user:user_123',
         'company:acme|$user:user_123',
@@ -667,11 +685,17 @@ describe 'Hierarchical groups' do
       expect(last_data).to include('$group_id' => 'u6', '$company_id' => 'c6')
     end
 
-    it 'refuses a combined distinct id with a company or user of only whitespace' do
-      ['$company: |$user:u', '$company:c|$user:  '].each do |distinct_id|
-        expect { @hg.people.set(distinct_id, {'role' => 'admin'}) }.to raise_error(ArgumentError, /only whitespace/)
+    it 'refuses a combined distinct id with a blank company or user' do
+      {
+        '$company:|$user:u' => 'company', '$company: |$user:u' => 'company', '$company:|$user:' => 'company',
+        '$company: |$user:' => 'company', '$company:c|$user:' => 'user', '$company:c|$user:  ' => 'user'
+      }.each do |distinct_id, part|
+        message = "distinct_id #{distinct_id.inspect} names a blank #{part}. Nothing sent"
+        expect { @hg.people.set(distinct_id, {'role' => 'admin'}) }.to raise_error(ArgumentError, message)
+        expect { @hg.people.set(identity(distinct_id: distinct_id), {'role' => 'admin'}) }
+          .to raise_error(ArgumentError, message)
         expect { @hg.people.update('$distinct_id' => distinct_id, '$set' => {'a' => 1}) }
-          .to raise_error(ArgumentError, /only whitespace/)
+          .to raise_error(ArgumentError, message)
       end
       expect(@log).to be_empty
     end

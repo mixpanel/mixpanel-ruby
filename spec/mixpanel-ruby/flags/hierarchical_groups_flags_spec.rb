@@ -306,6 +306,38 @@ describe 'Hierarchical groups feature flags' do
       ])
     end
 
+    it 'drops a hierarchical exposure whose combined distinct_id has a blank company or user' do
+      tracker, calls = recording_tracker
+      provider = local_provider([flag_definition(context: 'department')], tracker, hierarchical_groups: true)
+      messages = []
+      allow(error_handler).to receive(:handle) { |error| messages << [error.class, error.message] }
+      ids = {
+        '$company:|$user:u' => 'company', '$company: |$user:u' => 'company', '$company:|$user:' => 'company',
+        '$company: |$user:' => 'company', '$company:c|$user:' => 'user', '$company:c|$user:  ' => 'user'
+      }
+
+      ids.each_key do |id|
+        expect(provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => id, 'department' => 'x' })).to eq('value-a')
+        expect(provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => id, '$company_id' => 'c', '$user_id' => 'u',
+                                                                 'department' => 'x' })).to eq('value-a')
+      end
+
+      expect(calls).to be_empty
+      expect(messages).to eq(ids.flat_map do |id, part|
+        [[Mixpanel::MixpanelError, "distinct_id #{id.inspect} names a blank #{part}. Nothing sent"]] * 2
+      end)
+    end
+
+    it 'sends a non-hierarchical exposure with a blank combined distinct_id as before' do
+      tracker, calls = recording_tracker
+      provider = local_provider([flag_definition], tracker)
+      expect(error_handler).not_to receive(:handle)
+
+      provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => '$company: |$user:' })
+
+      expect(calls.first[0]).to eq('$company: |$user:')
+    end
+
     it 'sends a hierarchical exposure whose combined distinct_id matches its ids as a string' do
       tracker, calls = recording_tracker
       provider = local_provider([flag_definition(context: 'department')], tracker, hierarchical_groups: true)

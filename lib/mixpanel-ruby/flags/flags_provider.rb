@@ -175,15 +175,12 @@ module Mixpanel
       end
 
       # The message for an exposure identity whose combined distinct id
-      # ($company:<c>|$user:<u>) names a different company or user than its
-      # $company_id or $user_id, as track refuses it, or nil if they agree.
+      # ($company:<c>|$user:<u>) has a blank company or user, or names a
+      # different company or user than its $company_id or $user_id, as track
+      # refuses it, or nil if there is no such problem.
       def combined_id_conflict(identity)
         distinct_id = identity.distinct_id
-        parsed = begin
-          Mixpanel::HierarchicalGroups.parse_combined_distinct_id(distinct_id)
-        rescue ArgumentError
-          nil
-        end
+        parsed = Mixpanel::HierarchicalGroups.parse_combined_distinct_id(distinct_id)
         return nil if parsed.nil?
         Mixpanel::HierarchicalGroups.require_consistent_with_combined_id(
           distinct_id, parsed, company_id: identity.company_id, user_id: identity.user_id
