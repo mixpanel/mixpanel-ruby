@@ -47,7 +47,8 @@ module Mixpanel
   # other distinct id raises ArgumentError and sends nothing, as does #update
   # with any other $distinct_id, or a $company_id in optional_params (or in
   # the #update message) naming a different company. User and company ids
-  # are sent as strings.
+  # are sent as strings. A $distinct_id in optional_params names the profile
+  # in place of distinct_id, the same way, and is never sent to /groups.
   #
   # Without hierarchical groups, a distinct id or an identity with a
   # distinct_id updates that profile through /engage.
@@ -302,6 +303,9 @@ module Mixpanel
       end
 
       if @hierarchical_groups
+        # optional_params are merged last, so a $distinct_id there names the
+        # profile, as it does without hierarchical groups.
+        distinct_id = distinct_id_param(optional_params, distinct_id)
         company_id, user_id = HierarchicalGroups.require_combined_distinct_id(distinct_id)
         HierarchicalGroups.require_consistent_with_combined_id(distinct_id, [company_id, user_id],
                                                                company_id: optional_params['$company_id'])
@@ -338,6 +342,9 @@ module Mixpanel
       group_id = HierarchicalGroups.wire_id(identity.user_id)
       HierarchicalGroups.require_param_matches(optional_params, '$group_key', HierarchicalGroups::USER_ID_GROUP_KEY)
       HierarchicalGroups.require_param_matches(optional_params, '$group_id', group_id)
+      # The profile is named by $group_key, $group_id and $company_id, and
+      # /groups rejects a message with a $distinct_id.
+      optional_params = optional_params.reject { |key, _| key.to_s == '$distinct_id' }
 
       message = {
         '$group_key' => HierarchicalGroups::USER_ID_GROUP_KEY,
@@ -352,6 +359,14 @@ module Mixpanel
       message['$company_id'] = HierarchicalGroups.wire_id(company_id) unless company_id.nil?
 
       @user_profiles.update(message)
+    end
+
+    # The $distinct_id in optional_params (the last one, as merging would
+    # send), or else distinct_id. Keys match as strings, so :$distinct_id
+    # counts too.
+    def distinct_id_param(optional_params, distinct_id)
+      optional_params.each { |key, value| distinct_id = value if key.to_s == '$distinct_id' }
+      distinct_id
     end
 
     # A tracker bound with Tracker#for_company refuses a user from another

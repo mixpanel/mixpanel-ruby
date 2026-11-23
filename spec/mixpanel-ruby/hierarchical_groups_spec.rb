@@ -1308,6 +1308,57 @@ describe 'Hierarchical groups' do
       expect(last_data).to include('$group_key' => '$company_id', '$group_id' => 'acme')
     end
 
+    it 'sends a user profile update to the profile a $distinct_id param names, without $distinct_id' do
+      param = {'$distinct_id' => '$company:acme|$user:u2'}
+      @hg.people.set('$company:acme|$user:user_123', {'role' => 'admin'}, nil, param)
+      expect(last_type).to eq(:group_update)
+      expect(last_data).to include('$group_key' => '$user_id', '$group_id' => 'u2', '$company_id' => 'acme',
+                                   '$set' => {'role' => 'admin'})
+      expect(last_data).not_to have_key('$distinct_id')
+      # Like a distinct_id argument, the param need not agree with the argument it replaces.
+      @hg.people.set_once('not combined', {'a' => 1}, nil, {:'$distinct_id' => '$company:globex|$user:u3'})
+      expect(last_data).to include('$group_id' => 'u3', '$company_id' => 'globex', '$set_once' => {'a' => 1})
+      expect(last_data.keys).not_to include('$distinct_id')
+      @hg.people.union('$company:acme|$user:user_123', {'l' => [1]}, nil, param)
+      expect(last_data).to include('$group_id' => 'u2', '$union' => {'l' => [1]})
+      @hg.people.unset('$company:acme|$user:user_123', 'role', nil, param)
+      expect(last_data).to include('$group_id' => 'u2', '$unset' => ['role'])
+      @hg.people.delete_user('$company:acme|$user:user_123', param.merge('$company_id' => 'acme'))
+      expect(last_data).to include('$group_id' => 'u2', '$company_id' => 'acme', '$delete' => '')
+      @hg.for_company('acme').people.set('$company:acme|$user:user_123', {'a' => 1}, nil, param)
+      expect(last_data).to include('$group_id' => 'u2', '$company_id' => 'acme')
+      combined = identity(distinct_id: '$company:acme|$user:user_123')
+      @hg.people.set(combined, {'a' => 1}, nil, {'$distinct_id' => '$company:acme|$user:user_123'})
+      expect(last_data).to include('$group_id' => 'user_123', '$company_id' => 'acme')
+      @hg.people.set(user_in_acme, {'a' => 1}, nil, {'$distinct_id' => nil})
+      expect(last_data).to include('$group_id' => 'user_123', '$company_id' => 'acme')
+      expect(@log.map { |_, message| message['data'].keys }.flatten).not_to include('$distinct_id')
+      expect(@log.length).to eq(8)
+    end
+
+    it 'refuses a $distinct_id param naming no user profile, another company or another group' do
+      expect { @hg.people.set('$company:acme|$user:user_123', {'a' => 1}, nil, {'$distinct_id' => 'user_123'}) }
+        .to raise_error(ArgumentError, /distinct id "user_123" does not name both/)
+      expect { @hg.people.set('$company:acme|$user:user_123', {'a' => 1}, nil, {'$distinct_id' => nil}) }
+        .to raise_error(ArgumentError, /distinct id nil does not name both/)
+      expect { @hg.people.set('$company:acme|$user:user_123', {'a' => 1}, nil, {'$distinct_id' => '$company: |$user:u'}) }
+        .to raise_error(ArgumentError, /names a blank company/)
+      expect do
+        @hg.people.set('$company:acme|$user:user_123', {'a' => 1}, nil,
+                       {'$distinct_id' => '$company:globex|$user:u2', '$company_id' => 'acme'})
+      end.to raise_error(ArgumentError, 'distinct_id $company:globex|$user:u2 names company globex, ' \
+                                        'but $company_id is acme. Nothing sent')
+      expect do
+        @hg.for_company('acme').people.set('$company:acme|$user:user_123', {'a' => 1}, nil,
+                                           {'$distinct_id' => '$company:globex|$user:u2'})
+      end.to raise_error(ArgumentError, /bound to company "acme", but .*user_id=u2.* belongs to company "globex"/)
+      expect do
+        @hg.people.set('$company:acme|$user:user_123', {'a' => 1}, nil,
+                       {'$distinct_id' => '$company:acme|$user:u2', '$group_id' => 'user_123'})
+      end.to raise_error(ArgumentError, /\$group_id "user_123" does not match the message's \$group_id "u2"/)
+      expect(@log).to be_empty
+    end
+
     it 'sends params naming another group or token unchanged without hierarchical groups' do
       @legacy.groups.set('dept', 'fin', {'a' => 1}, nil, {'$group_id' => 'other', '$token' => 'OTHER'})
       expect(last_data).to include('$group_id' => 'other', '$token' => 'OTHER')
