@@ -467,7 +467,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
         targeting_key: nil
       )
       allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
-        expect(ctx).to eq({ 'distinct_id' => 'user-1', 'plan' => 'premium' })
+        expect(ctx).to eq({ 'distinct_id' => 'user-1', 'plan' => 'premium', '$openfeature_provider' => true })
         Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
       end
 
@@ -480,7 +480,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
         targeting_key: 'tk-123'
       )
       allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
-        expect(ctx).to eq({ 'distinct_id' => 'user-1', 'targetingKey' => 'tk-123' })
+        expect(ctx).to eq({ 'distinct_id' => 'user-1', 'targetingKey' => 'tk-123', '$openfeature_provider' => true })
         Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
       end
 
@@ -493,7 +493,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
         targeting_key: nil
       )
       allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
-        expect(ctx).to eq({ 'distinct_id' => 'user-1', 'age' => 30 })
+        expect(ctx).to eq({ 'distinct_id' => 'user-1', 'age' => 30, '$openfeature_provider' => true })
         Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
       end
 
@@ -506,7 +506,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
         targeting_key: nil
       )
       allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
-        expect(ctx).to eq({ 'score' => 3.14 })
+        expect(ctx).to eq({ 'score' => 3.14, '$openfeature_provider' => true })
         Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
       end
 
@@ -519,7 +519,7 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
         targeting_key: nil
       )
       allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
-        expect(ctx).to eq({ 'tags' => ['a', 'b', 'c'] })
+        expect(ctx).to eq({ 'tags' => ['a', 'b', 'c'], '$openfeature_provider' => true })
         Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
       end
 
@@ -532,16 +532,16 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
         targeting_key: nil
       )
       allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
-        expect(ctx).to eq({ 'meta' => { 'nested_float' => 5, 'name' => 'test' } })
+        expect(ctx).to eq({ 'meta' => { 'nested_float' => 5, 'name' => 'test' }, '$openfeature_provider' => true })
         Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
       end
 
       provider.fetch_boolean_value(flag_key: 'flag', default_value: false, evaluation_context: eval_context)
     end
 
-    it 'passes empty hash when evaluation_context is nil' do
+    it 'passes only the provider marker when evaluation_context is nil' do
       allow(mock_flags).to receive(:get_variant) do |_key, fallback, ctx|
-        expect(ctx).to eq({})
+        expect(ctx).to eq({ '$openfeature_provider' => true })
         Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
       end
 
@@ -662,6 +662,43 @@ RSpec.describe Mixpanel::OpenFeature::Provider do
         Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
       end
       provider.fetch_boolean_value(flag_key: 'flag', default_value: false)
+    end
+  end
+
+  # --- OpenFeature provider marker (SDK-448) ---
+
+  describe 'openfeature provider marker' do
+    it 'adds $openfeature_provider => true to the context passed to get_variant' do
+      eval_context = double('EvaluationContext', fields: { 'distinct_id' => 'user-1' }, targeting_key: nil)
+      received_ctx = nil
+      expect(mock_flags).to receive(:get_variant).once do |_key, _fallback, ctx, **_kwargs|
+        received_ctx = ctx
+        Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+      end
+
+      result = provider.fetch_boolean_value(flag_key: 'flag', default_value: false, evaluation_context: eval_context)
+
+      # Guard against the provider's rescue swallowing a stub error.
+      expect(result.error_code).to be_nil
+      expect(result.value).to be true
+      expect(received_ctx).to eq({ 'distinct_id' => 'user-1', '$openfeature_provider' => true })
+    end
+
+    it 'does not let a customer attribute override the marker' do
+      eval_context = double('EvaluationContext',
+        fields: { 'distinct_id' => 'user-1', '$openfeature_provider' => false },
+        targeting_key: nil
+      )
+      received_ctx = nil
+      expect(mock_flags).to receive(:get_variant).once do |_key, _fallback, ctx, **_kwargs|
+        received_ctx = ctx
+        Mixpanel::Flags::SelectedVariant.new(variant_key: 'v1', variant_value: true)
+      end
+
+      result = provider.fetch_boolean_value(flag_key: 'flag', default_value: false, evaluation_context: eval_context)
+
+      expect(result.error_code).to be_nil
+      expect(received_ctx['$openfeature_provider']).to be true
     end
   end
 

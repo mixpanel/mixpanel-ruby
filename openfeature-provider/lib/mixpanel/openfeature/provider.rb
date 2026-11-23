@@ -150,15 +150,19 @@ module Mixpanel
       end
 
       def build_context(evaluation_context)
-        return {} if evaluation_context.nil?
-
         ctx = {}
-        if evaluation_context.respond_to?(:fields)
-          evaluation_context.fields.each { |k, v| ctx[k] = unwrap_value(v) }
+        unless evaluation_context.nil?
+          if evaluation_context.respond_to?(:fields)
+            evaluation_context.fields.each { |k, v| ctx[k] = unwrap_value(v) }
+          end
+          if evaluation_context.respond_to?(:targeting_key) && evaluation_context.targeting_key
+            ctx['targetingKey'] = unwrap_value(evaluation_context.targeting_key)
+          end
         end
-        if evaluation_context.respond_to?(:targeting_key) && evaluation_context.targeting_key
-          ctx['targetingKey'] = unwrap_value(evaluation_context.targeting_key)
-        end
+        # SDK-448: marks exposures as coming from the OpenFeature provider. The
+        # SDK copies this onto `$experiment_started`; older SDKs ignore the key.
+        # Set last so a customer attribute of the same name can't override it.
+        ctx['$openfeature_provider'] = true
         ctx
       end
 
