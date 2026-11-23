@@ -1033,6 +1033,173 @@ describe Mixpanel::Flags::LocalFlagsProvider do
     end
   end
 
+  describe 'multi-experiment flags' do
+    # The golden vectors are the cross-SDK contract for multi-experiment flags. The
+    # canonical copy lives in the analytics monorepo under
+    # go/src/mixpanel.com/flags/api/handlers/testdata/.
+    multi_experiment_cases = JSON.parse(
+      File.read(File.expand_path('../../fixtures/multi_experiment_flag_test_cases.json', __dir__))
+    )['TestMultiExperimentFlagEvaluationScenarios']
+
+    let(:multi_experiment_flag_key) { 'checkout' }
+    let(:fallback) { Mixpanel::Flags::SelectedVariant.new(variant_value: 'fallback') }
+    # Allocation buckets for 'checkout' with hash salt 'salt1'.
+    let(:context_in_bucket_9) { { 'distinct_id' => 'user23' } }
+    let(:context_in_bucket_62) { { 'distinct_id' => 'user848' } }
+
+    def experiment_entry(experiment_id, allocation, experiment_status: 'active', **fields)
+      {
+        'type' => 'experiment',
+        'experiment_id' => experiment_id,
+        'experiment_status' => experiment_status,
+        'is_experiment_active' => experiment_status == 'active',
+        'allocation' => allocation.map { |start, finish| { 'start' => start, 'end' => finish } },
+        'rollout_percentage' => 0,
+        'variant_splits' => { 'control' => 0.5, 'treatment' => 0.5 }
+      }.merge(fields.transform_keys(&:to_s))
+    end
+
+    def multi_experiment_flag(rollout, hash_salt: 'salt1')
+      {
+        'id' => 'multi-experiment-1',
+        'project_id' => 31,
+        'name' => 'Checkout',
+        'key' => 'checkout',
+        'status' => 'enabled',
+        'context' => 'distinct_id',
+        'hash_salt' => hash_salt,
+        'ruleset' => {
+          'variants' => [
+            { 'key' => 'control', 'value' => 'control', 'is_control' => true },
+            { 'key' => 'treatment', 'value' => 'treatment', 'is_control' => false }
+          ],
+          'rollout' => rollout
+        }
+      }
+    end
+
+    # Shape a variant like the golden vectors, which omit empty experiment fields.
+    def without_empty_attribution(variant)
+      {
+        'variant_key' => variant.variant_key,
+        'variant_value' => variant.variant_value,
+        'experiment_id' => variant.experiment_id,
+        'is_experiment_active' => variant.is_experiment_active
+      }.reject { |_field, value| value.nil? || value == false }
+    end
+
+    def get_multi_experiment_variant(flag, context)
+      stub_flag_definitions([flag])
+      provider.start_polling_for_definitions!
+      provider.get_variant(multi_experiment_flag_key, fallback, context)
+    end
+
+    multi_experiment_cases.each do |test_case|
+      it "matches the golden vector: #{test_case['name']}" do
+        stub_flag_definitions(test_case['flags'])
+        provider.start_polling_for_definitions!
+
+        variants = provider.get_all_variants(test_case['context'])
+
+        expect(variants.transform_values { |variant| without_empty_attribution(variant) })
+          .to eq(test_case['expected'])
+      end
+    end
+
+    it 'skips a draft experiment' do
+      flag = multi_experiment_flag([experiment_entry('e_cta', [[0, 40]], experiment_status: 'draft')])
+
+      result = get_multi_experiment_variant(flag, context_in_bucket_9)
+
+      expect(result.variant_value).to eq('fallback')
+      expect(result.variant_source).to eq(Mixpanel::Flags::VariantSource::FALLBACK)
+    end
+
+    it 'serves the fallback when the flag has no hash_salt' do
+      flag = multi_experiment_flag([experiment_entry('e_cta', [[0, 100]])], hash_salt: nil)
+
+      result = get_multi_experiment_variant(flag, context_in_bucket_9)
+
+      expect(result.variant_value).to eq('fallback')
+    end
+
+    it 'does not fall through to a later experiment when the runtime rule fails' do
+      flag = multi_experiment_flag([
+        experiment_entry('e_pro_only', [[0, 50]],
+                         runtime_evaluation_rule: { '==' => [{ 'var' => 'plan' }, 'pro'] }),
+        experiment_entry('e_everyone', [[50, 100]])
+      ])
+
+      with_matching_plan = get_multi_experiment_variant(
+        flag, context_in_bucket_9.merge('custom_properties' => { 'plan' => 'Pro' })
+      )
+      with_other_plan = get_multi_experiment_variant(
+        flag, context_in_bucket_9.merge('custom_properties' => { 'plan' => 'free' })
+      )
+
+      expect(with_matching_plan.experiment_id).to eq('e_pro_only')
+      expect(with_other_plan.variant_value).to eq('fallback')
+    end
+
+    it 'tracks the exposure with the experiment entry attribution' do
+      flag = multi_experiment_flag([
+        experiment_entry('e_cta', [[0, 40]]),
+        experiment_entry('e_search', [[40, 65]], experiment_status: 'concluded')
+      ])
+      flag['experiment_id'] = 'flag-level-experiment'
+      flag['is_experiment_active'] = true
+
+      expect(mock_tracker).to receive(:call).with(
+        'user848',
+        '$experiment_started',
+        hash_including('$experiment_id' => 'e_search', '$is_experiment_active' => false)
+      )
+
+      get_multi_experiment_variant(flag, context_in_bucket_62)
+    end
+
+    it 'uses the experiment entry attribution for a variant_override' do
+      flag = multi_experiment_flag([
+        experiment_entry('e_shipped', [[0, 100]], experiment_status: 'concluded',
+                                                  variant_override: { 'key' => 'treatment' })
+      ])
+
+      result = get_multi_experiment_variant(flag, context_in_bucket_9)
+
+      expect(result.variant_key).to eq('treatment')
+      expect(result.experiment_id).to eq('e_shipped')
+      expect(result.is_experiment_active).to eq(false)
+    end
+
+    it 'selects the variant with the mixed hash salted by the experiment id' do
+      # For 'user848' the mixed variant hash is 0.56; the plain-rollout variant hash
+      # (normalized_hash with salt 'checkoutsalt1variant') would be 0.06.
+      flag = multi_experiment_flag([
+        experiment_entry('e_cta', [[0, 100]], variant_splits: { 'control' => 0.3, 'treatment' => 0.7 })
+      ])
+
+      result = get_multi_experiment_variant(flag, context_in_bucket_62)
+
+      expect(result.variant_key).to eq('treatment')
+    end
+
+    it 'selects different variants for the same subject in different experiments' do
+      # Same subject, flag, salt and allocation: only the experiment_id differs,
+      # and it is part of the variant hash input.
+      context = { 'distinct_id' => 'user-1' }
+
+      first_experiment_variant = get_multi_experiment_variant(
+        multi_experiment_flag([experiment_entry('e_cta', [[0, 100]])]), context
+      )
+      second_experiment_variant = get_multi_experiment_variant(
+        multi_experiment_flag([experiment_entry('e_next', [[0, 100]])]), context
+      )
+
+      expect(first_experiment_variant.variant_key).to eq('treatment')
+      expect(second_experiment_variant.variant_key).to eq('control')
+    end
+  end
+
   describe 'polling' do
     it 'uses most recent polled flag definitions' do
       flag_v1 = create_test_flag(rollout_percentage: 0.0)
