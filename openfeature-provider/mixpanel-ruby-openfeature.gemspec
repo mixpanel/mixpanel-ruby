@@ -11,13 +11,13 @@ Gem::Specification.new do |spec|
   spec.description = 'An OpenFeature provider that wraps the Mixpanel Ruby SDK feature flags'
   spec.homepage = 'https://mixpanel.com'
   spec.license = 'Apache-2.0'
-  spec.required_ruby_version = '>= 3.5.0'
+  spec.required_ruby_version = '>= 3.1.0'
 
   spec.files = Dir['lib/**/*.rb']
   spec.require_paths = ['lib']
 
   spec.add_runtime_dependency 'openfeature-sdk', '~> 0.5'
-  spec.add_runtime_dependency 'mixpanel-ruby', '~> 3.3'
+  spec.add_runtime_dependency 'mixpanel-ruby', '~> 3.5'
 
   spec.add_development_dependency 'rspec', '~> 3.0'
   spec.add_development_dependency 'simplecov'
