@@ -38,8 +38,8 @@ module Mixpanel
     # Each id is a String or an Integer. nil leaves a value unset; an empty
     # string is a caller error rather than an absent value, as is a user_id or
     # company_id of only whitespace, and any other type raises ArgumentError.
-    # At least one value is required. Events and #to_flag_context send
-    # user_id, company_id and device_id as strings.
+    # At least one value is required. Events, profile updates and
+    # #to_flag_context send every id as a string.
     def initialize(distinct_id: nil, user_id: nil, company_id: nil, device_id: nil)
       @distinct_id = check_value(distinct_id, 'distinct_id')
       @user_id = check_value(user_id, 'user_id')
@@ -71,7 +71,7 @@ module Mixpanel
 
     # A feature flag evaluation context for this identity, so callers do not
     # hand-write reserved keys such as $company_id. The ids go under the keys
-    # flags read, as strings except distinct_id, the groups at the top level
+    # flags read, as strings, the groups at the top level
     # and the custom properties under custom_properties:
     #
     #     identity.to_flag_context(groups: { 'department' => 'finance' },
@@ -80,7 +80,7 @@ module Mixpanel
     #     #      'custom_properties' => { 'plan' => 'enterprise' } }
     def to_flag_context(groups: {}, custom_properties: {})
       context = groups.dup
-      context['distinct_id'] = @distinct_id unless @distinct_id.nil?
+      context['distinct_id'] = HierarchicalGroups.wire_id(@distinct_id) unless @distinct_id.nil?
       context['$user_id'] = HierarchicalGroups.wire_id(@user_id) unless @user_id.nil?
       context['$company_id'] = HierarchicalGroups.wire_id(@company_id) unless @company_id.nil?
       context['device_id'] = HierarchicalGroups.wire_id(@device_id) unless @device_id.nil?

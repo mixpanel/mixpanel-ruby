@@ -68,6 +68,16 @@ describe 'Hierarchical groups' do
       expect(last_properties['distinct_id']).to eq('5')
     end
 
+    it 'sends an Integer identity distinct id as a string on profile updates' do
+      @legacy.people.set(identity(distinct_id: 123), {'plan' => 'pro'})
+      expect(last_data['$distinct_id']).to eq('123')
+      expect(last_data['$set']).to include('plan' => 'pro')
+    end
+
+    it 'puts an Integer identity distinct id in the flag context as a string' do
+      expect(identity(distinct_id: 5).to_flag_context).to eq('distinct_id' => '5')
+    end
+
     it 'sends an Integer device id as a string' do
       @hg.track(identity(user_id: 'user_123', company_id: 'acme', device_id: 9), 'event')
       expect(last_properties['$device_id']).to eq('9')
