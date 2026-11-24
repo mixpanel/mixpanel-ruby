@@ -266,7 +266,7 @@ module Mixpanel
         missing = false
         resolved = template.gsub(CONTEXT_PLACEHOLDER) do
           value = context_value(context, Regexp.last_match(1))
-          missing = true unless non_empty_string?(value)
+          missing = true unless Mixpanel::HierarchicalGroups.non_empty_string?(value)
           value.to_s
         end
         missing ? nil : resolved
@@ -282,7 +282,8 @@ module Mixpanel
         # matches them by its resolved assignment key.
         user_id = context_value(context, '$user_id')
         company_id = context_value(context, '$company_id')
-        distinct_id = if non_empty_string?(user_id) && non_empty_string?(company_id)
+        distinct_id = if Mixpanel::HierarchicalGroups.non_empty_string?(user_id) &&
+                         Mixpanel::HierarchicalGroups.non_empty_string?(company_id)
                         "#{Mixpanel::HierarchicalGroups::COMBINED_COMPANY_PREFIX}#{company_id}" \
                           "#{Mixpanel::HierarchicalGroups::COMBINED_USER_SEPARATOR}#{user_id}"
                       elsif flag['context'] == 'distinct_id'
@@ -300,10 +301,6 @@ module Mixpanel
           variant.is_qa_tester = true
         end
         variant
-      end
-
-      def non_empty_string?(value)
-        value.is_a?(String) && !value.empty?
       end
 
       def get_matching_variant(variant_key, flag)

@@ -261,14 +261,9 @@ module Mixpanel
       return if parsed.nil?
       HierarchicalGroups.require_consistent_with_combined_id(
         distinct_id, parsed,
-        company_id: property_value(properties, '$company_id'),
-        user_id: property_value(properties, '$user_id')
+        company_id: HierarchicalGroups.lookup(properties, '$company_id'),
+        user_id: HierarchicalGroups.lookup(properties, '$user_id')
       )
-    end
-
-    def property_value(properties, key)
-      value = properties[key]
-      value.nil? ? properties[key.to_sym] : value
     end
   end
 end

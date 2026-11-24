@@ -229,6 +229,29 @@ module Mixpanel
       value.is_a?(String) && !value.empty? && value.match?(/\A[[:space:]]+\z/)
     end
 
+    # True for a String that is not empty.
+    def non_empty_string?(value)
+      value.is_a?(String) && !value.empty?
+    end
+
+    # True for a value that is not nil and not empty as a string.
+    def present?(value)
+      !value.nil? && !value.to_s.empty?
+    end
+
+    # True for a user or company id that is present and, as a string, not
+    # only whitespace, which Mixpanel::Identity refuses.
+    def present_id?(value)
+      present?(value) && !blank?(value.to_s)
+    end
+
+    # The value of a Hash under a String key, or else under the same key as
+    # a Symbol, as properties and flag contexts may use either.
+    def lookup(hash, key)
+      value = hash[key]
+      value.nil? ? hash[key.to_sym] : value
+    end
+
     def require_not_blank(value, name)
       raise ArgumentError, "#{name} must not be only whitespace" if blank?(value)
     end

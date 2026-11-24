@@ -158,16 +158,17 @@ module Mixpanel
           return context['distinct_id'] || context[:distinct_id] ? true : false
         end
 
-        present_id?(context_value(context, '$company_id')) || present?(context_value(context, 'distinct_id'))
+        Mixpanel::HierarchicalGroups.present_id?(context_value(context, '$company_id')) ||
+          Mixpanel::HierarchicalGroups.present?(context_value(context, 'distinct_id'))
       end
 
       def hierarchical_exposure_identity(context)
         distinct_id = context_value(context, 'distinct_id')
         user_id = context_value(context, '$user_id')
         company_id = context_value(context, '$company_id')
-        distinct_id = nil unless present?(distinct_id)
-        company_id = nil unless present_id?(company_id)
-        user_id = nil unless present_id?(user_id)
+        distinct_id = nil unless Mixpanel::HierarchicalGroups.present?(distinct_id)
+        company_id = nil unless Mixpanel::HierarchicalGroups.present_id?(company_id)
+        user_id = nil unless Mixpanel::HierarchicalGroups.present_id?(user_id)
 
         # User and company ids are sent as strings, as hierarchical groups events send them.
         Mixpanel::Identity.new(distinct_id: exposure_id(distinct_id), user_id: Mixpanel::HierarchicalGroups.wire_id(user_id),
@@ -201,18 +202,7 @@ module Mixpanel
       end
 
       def context_value(context, key)
-        value = context[key]
-        value.nil? ? context[key.to_sym] : value
-      end
-
-      def present?(value)
-        !value.nil? && !value.to_s.empty?
-      end
-
-      # A user or company id in the context, which Mixpanel::Identity
-      # refuses when it is only whitespace.
-      def present_id?(value)
-        present?(value) && !value.to_s.match?(/\A[[:space:]]+\z/)
+        Mixpanel::HierarchicalGroups.lookup(context, key)
       end
 
       # Dispatch the tracker call inline or via the configured executor.
