@@ -239,9 +239,9 @@ module Mixpanel
           "A company profile is updated through for_company(#{message['$group_id']}).company. Nothing sent"
       end
       # $company_id must be top-level, not inside the operation payload. It is
-      # a string on hierarchical groups projects and sent as given otherwise.
+      # always sent as a string.
       unless @company_id.nil?
-        data['$company_id'] = @hierarchical_groups ? HierarchicalGroups.wire_id(@company_id) : @company_id
+        data['$company_id'] = HierarchicalGroups.wire_id(@company_id)
       end
 
       message = {'data' => data}
@@ -383,8 +383,8 @@ module Mixpanel
         raise CompanyRequiredError, 'Company profile updates require a company. ' \
           'Use tracker.for_company(company_id).company to send them.'
       end
-      # A string on hierarchical groups projects, and as given otherwise.
-      @hierarchical_groups ? HierarchicalGroups.wire_id(@company_id) : @company_id
+      # Always a string.
+      HierarchicalGroups.wire_id(@company_id)
     end
   end
 end
