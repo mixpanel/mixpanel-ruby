@@ -240,8 +240,12 @@ module Mixpanel
       end
       # $company_id must be top-level, not inside the operation payload. It is
       # always sent as a string.
-      unless @company_id.nil?
+      if !@company_id.nil?
         data['$company_id'] = HierarchicalGroups.wire_id(@company_id)
+      elsif @hierarchical_groups
+        # Mixpanel reads $company_id only as a string, so an Integer company
+        # given in optional_params is sent as one.
+        data['$company_id'] = HierarchicalGroups.wire_id(message_company_id)
       end
 
       message = {'data' => data}

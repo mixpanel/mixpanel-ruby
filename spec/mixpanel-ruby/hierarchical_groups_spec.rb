@@ -881,9 +881,9 @@ describe 'Hierarchical groups' do
       expect(@log).to be_empty
     end
 
-    it 'sends a valid $company_id param unchanged' do
+    it 'sends a valid $company_id param as a string' do
       @hg.people.set(identity(user_id: 'user_123'), {'role' => 'admin'}, nil, {'$company_id' => 7})
-      expect(last_data).to include('$group_id' => 'user_123', '$company_id' => 7)
+      expect(last_data).to include('$group_id' => 'user_123', '$company_id' => '7')
     end
 
     it 'sends Integer identity ids as strings' do
@@ -1043,9 +1043,9 @@ describe 'Hierarchical groups' do
       expect(@log).to be_empty
     end
 
-    it 'sends a valid $company_id param unchanged' do
+    it 'sends a valid $company_id param as a string' do
       @hg.groups.set('department', 'finance', {'plan' => 'x'}, nil, {'$company_id' => 7})
-      expect(last_data['$company_id']).to eq(7)
+      expect(last_data['$company_id']).to eq('7')
       @hg.groups.set('department', 'finance', {'plan' => 'x'}, nil, {'$company_id' => ' acme '})
       expect(last_data['$company_id']).to eq(' acme ')
     end
