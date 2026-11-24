@@ -246,11 +246,10 @@ module Mixpanel
       ).merge(properties).merge(identity_event_properties(identity))
     end
 
-    # The identity's keys, with $user_id, $company_id and $device_id as
-    # strings.
+    # The identity's keys, with every id as a string.
     def identity_event_properties(identity)
       identity_properties = identity.to_properties
-      %w[$user_id $company_id $device_id].each do |key|
+      %w[distinct_id $user_id $company_id $device_id].each do |key|
         identity_properties[key] = HierarchicalGroups.wire_id(identity_properties[key]) if identity_properties.key?(key)
       end
       identity_properties

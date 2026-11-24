@@ -46,14 +46,14 @@ describe 'Hierarchical groups' do
       expect { identity(distinct_id: '') }.to raise_error(ArgumentError, /distinct_id/)
     end
 
-    it 'accepts String and Integer ids and sends user and company ids as strings' do
+    it 'accepts String and Integer ids and sends them as strings' do
       id = identity(distinct_id: 0, user_id: 42, company_id: 7, device_id: 'dev')
 
       expect(id.to_properties).to eq('distinct_id' => 0, '$user_id' => 42, '$company_id' => 7, '$device_id' => 'dev')
       @hg.track(id, 'event')
       expect(last_properties['$user_id']).to eq('42')
       expect(last_properties['$company_id']).to eq('7')
-      expect(last_properties['distinct_id']).to eq(0)
+      expect(last_properties['distinct_id']).to eq('0')
       expect(last_properties['$device_id']).to eq('dev')
     end
 
@@ -61,6 +61,11 @@ describe 'Hierarchical groups' do
       @legacy.track(identity(user_id: 42, device_id: 9), 'event')
       expect(last_properties['$user_id']).to eq('42')
       expect(last_properties['$device_id']).to eq('9')
+    end
+
+    it 'sends an Integer identity distinct id as a string' do
+      @legacy.track(identity(distinct_id: 5), 'event')
+      expect(last_properties['distinct_id']).to eq('5')
     end
 
     it 'sends an Integer device id as a string' do
