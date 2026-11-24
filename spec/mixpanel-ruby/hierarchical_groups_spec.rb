@@ -57,9 +57,29 @@ describe 'Hierarchical groups' do
       expect(last_properties['$device_id']).to eq('dev')
     end
 
-    it 'sends an Integer user id as given without hierarchical groups' do
-      @legacy.track(identity(user_id: 42, device_id: 'dev'), 'event')
-      expect(last_properties['$user_id']).to eq(42)
+    it 'sends Integer identity ids as strings without hierarchical groups' do
+      @legacy.track(identity(user_id: 42, device_id: 9), 'event')
+      expect(last_properties['$user_id']).to eq('42')
+      expect(last_properties['$device_id']).to eq('9')
+    end
+
+    it 'sends an Integer device id as a string' do
+      @hg.track(identity(user_id: 'user_123', company_id: 'acme', device_id: 9), 'event')
+      expect(last_properties['$device_id']).to eq('9')
+    end
+
+    it 'sends raw properties as given' do
+      @legacy.track('user_123', 'event', {'$user_id' => 42, '$device_id' => 9})
+      expect(last_properties).to include('$user_id' => 42, '$device_id' => 9)
+      @hg.track(identity(device_id: 'dev'), 'event', {'$user_id' => 42, '$company_id' => 7})
+      expect(last_properties).to include('$user_id' => 42, '$company_id' => 7, '$device_id' => 'dev')
+    end
+
+    it 'accepts a | in ids, which only hierarchical groups trackers refuse' do
+      id = identity(user_id: 'a|b', company_id: 'c|d', device_id: 'e|f')
+      expect(id.user_id).to eq('a|b')
+      @legacy.track(identity(user_id: 'a|b', device_id: 'e|f'), 'event')
+      expect(last_properties).to include('$user_id' => 'a|b', '$device_id' => 'e|f')
     end
 
     it 'rejects a user or company id of only whitespace' do
@@ -122,12 +142,41 @@ describe 'Hierarchical groups' do
       )
     end
 
+    it 'builds a flag context with ids as strings' do
+      expect(identity(user_id: 42, company_id: 7, device_id: 9).to_flag_context).to eq(
+        '$user_id' => '42', '$company_id' => '7', 'device_id' => '9'
+      )
+    end
+
     it 'builds a flag context from a plain distinct id' do
       expect(identity(distinct_id: 'user_123').to_flag_context).to eq('distinct_id' => 'user_123')
     end
   end
 
   describe 'events' do
+    it 'refuses an identity whose user or company id contains a |' do
+      [identity(user_id: 'a|b', company_id: 'acme'), identity(user_id: 'user_123', company_id: 'a|b'),
+       identity(company_id: 'a|b')].each do |id|
+        expect { @hg.track(id, 'Signup') }.to raise_error(ArgumentError, /must not contain '\|'/)
+      end
+      expect(@log).to be_empty
+    end
+
+    it 'accepts a | in a device id or a plain distinct id' do
+      @hg.track(identity(device_id: 'a|b'), 'Signup')
+      expect(last_properties['$device_id']).to eq('a|b')
+      @hg.track('a|b', 'Signup')
+      expect(last_properties['distinct_id']).to eq('a|b')
+    end
+
+    it 'refuses a combined distinct id whose company or user contains a |' do
+      expect { @hg.track('$company:a|b|$user:c', 'Signup') }.to raise_error(ArgumentError, /must not contain '\|'/)
+      expect { @hg.track('$company:a|$user:b|c', 'Signup') }.to raise_error(ArgumentError, /must not contain '\|'/)
+      expect(@log).to be_empty
+      @legacy.track('$company:a|$user:b|c', 'Signup')
+      expect(last_properties['distinct_id']).to eq('$company:a|$user:b|c')
+    end
+
     it 'sends user and company without a distinct id' do
       @hg.track(user_in_acme, 'Signup')
 
@@ -567,10 +616,48 @@ describe 'Hierarchical groups' do
     end
 
     it 'parses the company up to the first |$user: and the user from the rest' do
-      @hg.people.set('$company:a:b|$user:c|$user:d', {'plan' => 'pro'})
+      @hg.people.set('$company:a:b|$user:c:$user:d', {'plan' => 'pro'})
 
       expect(last_data['$company_id']).to eq('a:b')
-      expect(last_data['$group_id']).to eq('c|$user:d')
+      expect(last_data['$group_id']).to eq('c:$user:d')
+    end
+
+    it 'refuses a combined distinct id whose company or user contains a |' do
+      ['$company:a|b|$user:c', '$company:a|$user:c|$user:d', '$company:a|$user:b|c'].each do |id|
+        expect { @hg.people.set(id, {'plan' => 'pro'}) }.to raise_error(ArgumentError, /must not contain '\|'/)
+        expect { @hg.people.set(identity(distinct_id: id), {'plan' => 'pro'}) }
+          .to raise_error(ArgumentError, /must not contain '\|'/)
+        expect { @hg.people.update('$distinct_id' => id, '$set' => {'plan' => 'pro'}) }
+          .to raise_error(ArgumentError, /must not contain '\|'/)
+      end
+      expect(@log).to be_empty
+    end
+
+    it 'refuses an identity whose user or company id contains a |' do
+      [identity(user_id: 'a|b', company_id: 'acme'), identity(user_id: 'user_123', company_id: 'a|b')].each do |id|
+        expect { @hg.people.set(id, {'plan' => 'pro'}) }.to raise_error(ArgumentError, /must not contain '\|'/)
+        expect { @hg.people.delete_user(id) }.to raise_error(ArgumentError, /must not contain '\|'/)
+      end
+      expect(@log).to be_empty
+    end
+
+    it 'refuses $ignore_alias in optional_params' do
+      [user_in_acme, '$company:acme|$user:user_123'].each do |user|
+        expect { @hg.people.delete_user(user, {'$ignore_alias' => true}) }
+          .to raise_error(ArgumentError, /\$ignore_alias/)
+        expect { @hg.people.set(user, {'plan' => 'pro'}, nil, {:$ignore_alias => false}) }
+          .to raise_error(ArgumentError, /\$ignore_alias/)
+      end
+      expect { @hg.people.update('$distinct_id' => '$company:acme|$user:user_123', '$set' => {'a' => 1},
+                                 '$ignore_alias' => true) }
+        .to raise_error(ArgumentError, /\$ignore_alias/)
+      expect(@log).to be_empty
+    end
+
+    it 'sends $ignore_alias to /engage without hierarchical groups' do
+      @legacy.people.delete_user('user_123', {'$ignore_alias' => true})
+      expect(last_type).to eq(:profile_update)
+      expect(last_data['$ignore_alias']).to be true
     end
 
     it 'refuses a distinct id that is not a combined one on a hierarchical tracker' do
@@ -628,7 +715,7 @@ describe 'Hierarchical groups' do
     it 'allows non-operation keys in a generic update' do
       @hg.people.update('$distinct_id' => '$company:acme|$user:user_123', '$set' => {'plan' => 'pro'},
                         '$token' => token, '$time' => 1, '$ip' => '1.2.3.4', '$ignore_time' => true,
-                        '$ignore_alias' => true, '$mp_metadata' => {}, '$company_id' => 'acme',
+                        '$mp_metadata' => {}, '$company_id' => 'acme',
                         '$group_key' => '$user_id', '$group_id' => 'user_123', 'custom' => 1)
 
       expect(last_type).to eq(:group_update)
@@ -991,10 +1078,42 @@ describe 'Hierarchical groups' do
     it 'allows non-operation keys in a group update' do
       @hg.for_company('acme').groups.update('$group_key' => 'company', '$group_id' => 'acme',
                                             '$set' => {'seats' => 1}, '$token' => token, '$time' => 1,
-                                            '$ip' => '1.2.3.4', '$ignore_time' => true, '$ignore_alias' => true,
-                                            '$mp_metadata' => {}, '$company_id' => 'acme', '$distinct_id' => 'x')
+                                            '$ip' => '1.2.3.4', '$ignore_time' => true,
+                                            '$mp_metadata' => {}, '$company_id' => 'acme')
       expect(last_type).to eq(:group_update)
       expect(last_data['$set']).to eq('seats' => 1)
+    end
+
+    it 'refuses $ignore_alias and $distinct_id on a group or company update' do
+      acme = @hg.for_company('acme')
+      [{'$ignore_alias' => true}, {:$ignore_alias => false}].each do |params|
+        expect { acme.groups.set('department', 'finance', {'a' => 1}, nil, params) }
+          .to raise_error(ArgumentError, /\$ignore_alias/)
+        expect { acme.company.set({'a' => 1}, nil, params) }.to raise_error(ArgumentError, /\$ignore_alias/)
+        expect { @hg.groups.delete_group('department', 'finance', params.merge('$company_id' => 'acme')) }
+          .to raise_error(ArgumentError, /\$ignore_alias/)
+      end
+      [{'$distinct_id' => 'x'}, {:$distinct_id => 'x'}].each do |params|
+        expect { acme.groups.set('department', 'finance', {'a' => 1}, nil, params) }
+          .to raise_error(ArgumentError, /\$distinct_id/)
+        expect { acme.company.delete(params) }.to raise_error(ArgumentError, /\$distinct_id/)
+      end
+      expect { acme.groups.update('$group_key' => 'department', '$group_id' => 'finance', '$set' => {'a' => 1},
+                                  '$distinct_id' => 'x') }
+        .to raise_error(ArgumentError, /\$distinct_id/)
+    end
+
+    it 'sends $ignore_alias and $distinct_id on a group update without hierarchical groups' do
+      @legacy.groups.set('department', 'finance', {'a' => 1}, nil, {'$ignore_alias' => true, '$distinct_id' => 'x'})
+      expect(last_data).to include('$ignore_alias' => true, '$distinct_id' => 'x')
+    end
+
+    it 'refuses a $company_id param containing a |' do
+      expect { @hg.groups.set('department', 'finance', {'a' => 1}, nil, {'$company_id' => 'a|b'}) }
+        .to raise_error(ArgumentError, /must not contain '\|'/)
+      expect(@log).to be_empty
+      @legacy.groups.set('department', 'finance', {'a' => 1}, nil, {'$company_id' => 'a|b'})
+      expect(last_data['$company_id']).to eq('a|b')
     end
 
     it 'raises for an unsupported group operation before checking the company' do
@@ -1083,6 +1202,11 @@ describe 'Hierarchical groups' do
         expect { @hg.for_company(company_id) }.to raise_error(ArgumentError, /company_id/)
         expect { @legacy.for_company(company_id) }.to raise_error(ArgumentError, /company_id/)
       end
+    end
+
+    it 'rejects a company containing a | on a hierarchical groups tracker only' do
+      expect { @hg.for_company('a|b') }.to raise_error(ArgumentError, /must not contain '\|'/)
+      expect { @legacy.for_company('a|b') }.not_to raise_error
     end
 
     it 'sends an Integer bound company as a string' do
@@ -1174,8 +1298,8 @@ describe 'Hierarchical groups' do
          ->(g) { g.unset('$company_id', 'acme', ['Overdue Since', 'Paid Date'], nil, {'$ignore_time' => true}) }],
         [->(c) { c.delete },
          ->(g) { g.delete_group('$company_id', 'acme') }],
-        [->(c) { c.delete({'$ignore_alias' => true}) },
-         ->(g) { g.delete_group('$company_id', 'acme', {'$ignore_alias' => true}) }],
+        [->(c) { c.delete({'$ignore_time' => true}) },
+         ->(g) { g.delete_group('$company_id', 'acme', {'$ignore_time' => true}) }],
       ]
     end
 
@@ -1246,10 +1370,10 @@ describe 'Hierarchical groups' do
 
     it 'refuses a $distinct_id param naming another profile than the identity' do
       expect { @hg.people.set(user_in_acme, {'role' => 'admin'}, nil, {'$distinct_id' => '$company:acme|$user:u2'}) }
-        .to raise_error(ArgumentError, retarget('$distinct_id', '$company:acme|$user:u2', nil))
+        .to raise_error(ArgumentError, /\APass either an identity or a \$distinct_id, not both/)
       combined = identity(distinct_id: '$company:acme|$user:user_123')
       expect { @hg.people.set(combined, {'role' => 'admin'}, nil, {'$distinct_id' => '$company:acme|$user:u2'}) }
-        .to raise_error(ArgumentError, /\$distinct_id "\$company:acme\|\$user:u2" does not match/)
+        .to raise_error(ArgumentError, /\APass either an identity or a \$distinct_id, not both/)
       expect(@log).to be_empty
     end
 
@@ -1409,7 +1533,7 @@ describe 'Hierarchical groups' do
         tracker.people.set_once(id, {'plan' => 'pro'})
         tracker.people.union(id, {'tags' => ['a']})
         tracker.people.unset(id, ['plan', 'tier'])
-        tracker.people.delete_user(id, {'$ignore_alias' => true})
+        tracker.people.delete_user(id, {'$ignore_time' => true})
         tracker.people.update('$distinct_id' => id, '$set' => {'plan' => 'pro'})
       end
       without_distinct_id = proc do |log|

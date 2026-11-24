@@ -105,12 +105,22 @@ describe 'Hierarchical groups feature flags' do
       expect(keys.uniq).to eq(['pre-company_123-mid-user_123-end'])
     end
 
-    it 'stringifies non-string context values' do
+    it 'falls back to the raw context value when a placeholder value is not a String' do
       provider = local_provider([flag_definition(context_value_template: template)], tracker)
       keys = hashed_keys
 
       provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => 'raw', '$company_id' => 42, '$user_id' => 7 })
-      expect(keys.uniq).to eq(['$company:42|$user:7'])
+      provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => 'raw', '$company_id' => 'acme', '$user_id' => 7 })
+      expect(keys.uniq).to eq(['raw'])
+    end
+
+    it 'falls back to the raw context value when a placeholder value is empty' do
+      provider = local_provider([flag_definition(context_value_template: template)], tracker)
+      keys = hashed_keys
+
+      provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => 'raw', '$company_id' => '', '$user_id' => 'u' })
+      provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => 'raw', '$company_id' => 'acme', '$user_id' => '' })
+      expect(keys.uniq).to eq(['raw'])
     end
 
     it 'reads placeholder values from symbol keys' do
@@ -241,17 +251,60 @@ describe 'Hierarchical groups feature flags' do
         .to eq('treatment-value')
     end
 
-    it 'matches a flag on another property by the raw context distinct_id' do
+    it 'matches a flag on another property by the combined user and company id' do
+      provider = local_provider(
+        [flag_definition(context: 'department', context_value_template: '$company:{$company_id}|department:{department}',
+                         test_users: { '$company:acme|$user:user-123' => 'treatment',
+                                       '$company:acme|department:finance' => 'treatment' })],
+        tracker
+      )
+      result = provider.get_variant('hg_flag', Mixpanel::Flags::SelectedVariant.new(variant_value: fallback),
+                                    hg_context.merge('department' => 'finance', 'distinct_id' => 'other'))
+      expect(result.variant_value).to eq('treatment-value')
+      expect(result.is_qa_tester).to be true
+    end
+
+    it 'matches a flag on another property by the raw context distinct_id without a user and company' do
       provider = local_provider(
         [flag_definition(context: 'department', context_value_template: '$company:{$company_id}|department:{department}',
                          test_users: { 'user-123' => 'treatment', '$company:acme|department:finance' => 'treatment' })],
         tracker
       )
-      expect(provider.get_variant_value('hg_flag', fallback, hg_context.merge('department' => 'finance')))
+      expect(provider.get_variant_value('hg_flag', fallback, { '$company_id' => 'acme', 'department' => 'finance' }))
         .to eq('value-a')
       expect(provider.get_variant_value('hg_flag', fallback,
-                                        hg_context.merge('department' => 'finance', 'distinct_id' => 'user-123')))
+                                        { '$company_id' => 'acme', 'department' => 'finance', 'distinct_id' => 'user-123' }))
         .to eq('treatment-value')
+    end
+
+    it 'looks up the combined id for a distinct_id flag without a template' do
+      provider = local_provider([flag_definition(test_users: test_users)], tracker)
+      expect(provider.get_variant_value('hg_flag', fallback, hg_context.merge('distinct_id' => 'user-123')))
+        .to eq('treatment-value')
+    end
+
+    it 'uses the combined id only for non-empty String user and company ids' do
+      provider = local_provider(
+        [flag_definition(context: 'device_id', test_users: { 'user-123' => 'treatment', '$company:7|$user:8' => 'control' })],
+        tracker
+      )
+      [{ '$company_id' => 7, '$user_id' => 8 }, { '$company_id' => '', '$user_id' => 'user-123' },
+       { '$company_id' => 'acme' }].each do |ids|
+        expect(provider.get_variant_value('hg_flag', fallback, ids.merge('device_id' => 'd', 'distinct_id' => 'user-123')))
+          .to eq('treatment-value')
+      end
+    end
+
+    it 'looks up the combined id whether or not the project uses hierarchical groups' do
+      [true, false].each do |hierarchical_groups|
+        provider = local_provider(
+          [flag_definition(context: 'device_id', test_users: test_users)], tracker, hierarchical_groups: hierarchical_groups
+        )
+        expect(provider.get_variant_value('hg_flag', fallback,
+                                          hg_context.merge('device_id' => 'd', 'distinct_id' => 'user-123'),
+                                          report_exposure: false))
+          .to eq('treatment-value')
+      end
     end
   end
 
@@ -304,6 +357,22 @@ describe 'Hierarchical groups feature flags' do
         [Mixpanel::MixpanelError, "distinct_id #{id} names company acme, but $company_id is other. Nothing sent"],
         [Mixpanel::MixpanelError, "distinct_id #{id} names user user-123, but $user_id is user-9. Nothing sent"]
       ])
+    end
+
+    it 'drops a hierarchical exposure whose user or company id contains a |' do
+      tracker, calls = recording_tracker
+      provider = local_provider([flag_definition(context: 'department')], tracker, hierarchical_groups: true)
+      messages = []
+      allow(error_handler).to receive(:handle) { |error| messages << error.message }
+
+      [{ '$company_id' => 'a|b', '$user_id' => 'u' }, { '$company_id' => 'acme', '$user_id' => 'a|b' },
+       { 'distinct_id' => '$company:acme|$user:a|b' }].each do |ids|
+        expect(provider.get_variant_value('hg_flag', fallback, ids.merge('department' => 'x'))).to eq('value-a')
+      end
+
+      expect(calls).to be_empty
+      expect(messages.size).to eq(3)
+      messages.each { |message| expect(message).to match(/must not contain '\|'/) }
     end
 
     it 'drops a hierarchical exposure whose combined distinct_id has a blank company or user' do

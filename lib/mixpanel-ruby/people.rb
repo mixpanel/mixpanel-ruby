@@ -235,6 +235,9 @@ module Mixpanel
     #   {"$ignore_alias"=>true}
     #
     # Like #set, accepts a Mixpanel::Identity in place of distinct_id.
+    #
+    # On a hierarchical groups tracker, which has no aliases, $ignore_alias
+    # in optional_params raises ArgumentError and nothing is sent.
     def delete_user(distinct_id, optional_params={})
       profile_update(distinct_id, '$delete', '', nil, optional_params)
     end
@@ -294,7 +297,7 @@ module Mixpanel
         identity = distinct_id
         HierarchicalGroups.require_identity_matches_project(identity, @hierarchical_groups)
         # The identity names the profile, so a $distinct_id param may not name another one.
-        HierarchicalGroups.require_param_matches(optional_params, '$distinct_id', identity.distinct_id) if @hierarchical_groups
+        require_no_distinct_id_param(optional_params, identity) if @hierarchical_groups
         unless identity.distinct_id.nil?
           HierarchicalGroups.require_identity_distinct_id_agrees(identity) if @hierarchical_groups
           return profile_update(identity.distinct_id, operation, properties, ip, optional_params)
@@ -367,6 +370,18 @@ module Mixpanel
     def distinct_id_param(optional_params, distinct_id)
       optional_params.each { |key, value| distinct_id = value if key.to_s == '$distinct_id' }
       distinct_id
+    end
+
+    # An identity names the profile, so on a hierarchical groups tracker a
+    # $distinct_id param other than the identity's own distinct_id raises
+    # ArgumentError. Keys match as strings.
+    def require_no_distinct_id_param(optional_params, identity)
+      optional_params.each do |key, value|
+        next unless key.to_s == '$distinct_id'
+        next if value == identity.distinct_id
+        raise ArgumentError, "Pass either an identity or a $distinct_id, not both: #{identity} was passed " \
+          "with $distinct_id #{value.inspect} in optional_params. Nothing sent"
+      end
     end
 
     # A tracker bound with Tracker#for_company refuses a user from another

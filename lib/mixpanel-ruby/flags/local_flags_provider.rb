@@ -256,16 +256,17 @@ module Mixpanel
         response
       end
 
-      # Fills a context_value_template with the string values of its placeholder
-      # keys from the evaluation context. Returns nil when there is no template
-      # or any placeholder's key is absent or nil.
+      # Fills a context_value_template with the values of its placeholder keys
+      # from the evaluation context, as the service does. Returns nil when
+      # there is no template or any placeholder's value is not a non-empty
+      # String.
       def resolve_context_value_template(template, context)
         return nil if template.nil? || template.empty?
 
         missing = false
         resolved = template.gsub(CONTEXT_PLACEHOLDER) do
           value = context_value(context, Regexp.last_match(1))
-          missing = true if value.nil?
+          missing = true unless non_empty_string?(value)
           value.to_s
         end
         missing ? nil : resolved
@@ -275,9 +276,16 @@ module Mixpanel
         test_users = flag.dig('ruleset', 'test', 'users')
         return nil unless test_users
 
-        # Test users are keyed by distinct id. A flag assigned on distinct_id
+        # Test users are keyed by distinct id. With a user and company in the
+        # context that is the distinct id Mixpanel builds from them, for every
+        # flag, as the service does. Otherwise a flag assigned on distinct_id
         # matches them by its resolved assignment key.
-        distinct_id = if flag['context'] == 'distinct_id'
+        user_id = context_value(context, '$user_id')
+        company_id = context_value(context, '$company_id')
+        distinct_id = if non_empty_string?(user_id) && non_empty_string?(company_id)
+                        "#{Mixpanel::HierarchicalGroups::COMBINED_COMPANY_PREFIX}#{company_id}" \
+                          "#{Mixpanel::HierarchicalGroups::COMBINED_USER_SEPARATOR}#{user_id}"
+                      elsif flag['context'] == 'distinct_id'
                         assignment_key
                       else
                         context['distinct_id'] || context[:distinct_id]
@@ -292,6 +300,10 @@ module Mixpanel
           variant.is_qa_tester = true
         end
         variant
+      end
+
+      def non_empty_string?(value)
+        value.is_a?(String) && !value.empty?
       end
 
       def get_matching_variant(variant_key, flag)

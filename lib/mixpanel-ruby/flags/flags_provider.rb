@@ -174,11 +174,14 @@ module Mixpanel
                                company_id: Mixpanel::HierarchicalGroups.wire_id(company_id))
       end
 
-      # The message for an exposure identity whose combined distinct id
-      # ($company:<c>|$user:<u>) has a blank company or user, or names a
-      # different company or user than its $company_id or $user_id, as track
-      # refuses it, or nil if there is no such problem.
+      # The message for an exposure identity whose user or company id
+      # contains a |, or whose combined distinct id ($company:<c>|$user:<u>)
+      # has a blank company or user, or names a different company or user
+      # than its $company_id or $user_id, as track refuses it, or nil if there
+      # is no such problem.
       def combined_id_conflict(identity)
+        Mixpanel::HierarchicalGroups.require_no_separator(identity.user_id, '$user_id')
+        Mixpanel::HierarchicalGroups.require_no_separator(identity.company_id, '$company_id')
         distinct_id = identity.distinct_id
         parsed = Mixpanel::HierarchicalGroups.parse_combined_distinct_id(distinct_id)
         return nil if parsed.nil?

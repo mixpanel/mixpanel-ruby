@@ -46,7 +46,7 @@ module Mixpanel
       @token = token
       @error_handler = error_handler || ErrorHandler.new
       @hierarchical_groups = hierarchical_groups ? true : false
-      HierarchicalGroups.require_company_id(company_id) unless company_id.nil?
+      HierarchicalGroups.require_company_id(company_id, @hierarchical_groups) unless company_id.nil?
       @company_id = company_id
 
       if block
@@ -202,7 +202,8 @@ module Mixpanel
     #
     # On a hierarchical groups tracker, raises Mixpanel::UnsupportedOperationError
     # for an operation /groups lacks (anything but $set, $set_once, $unset,
-    # $union, $remove or $delete), and
+    # $union, $remove or $delete), ArgumentError for a message with an
+    # $ignore_alias or $distinct_id key, which /groups rejects, and
     # Mixpanel::CompanyRequiredError if no company is bound and the message has
     # no non-empty $company_id. It raises ArgumentError for a '$company_id'
     # group whose $group_id differs (as a string) from that company, since the
@@ -215,6 +216,7 @@ module Mixpanel
           "#{HierarchicalGroups::GROUP_OPERATIONS.join(', ')}."
       end
 
+      require_no_rejected_keys(message) if @hierarchical_groups
       HierarchicalGroups.require_param_matches(message, '$token', @token) if @hierarchical_groups
       data = {
         '$token' => @token,
@@ -260,11 +262,28 @@ module Mixpanel
     # error handler. The receiver is unchanged. Tracker#for_company is the
     # usual way to get one.
     def for_company(company_id) # :nodoc:
-      HierarchicalGroups.require_company_id(company_id)
+      HierarchicalGroups.require_company_id(company_id, @hierarchical_groups)
       Groups.new(@token, @error_handler, hierarchical_groups: @hierarchical_groups, company_id: company_id, &@sink)
     end
 
     private
+
+    # /groups rejects a whole message carrying $ignore_alias or $distinct_id,
+    # so on a hierarchical groups tracker either raises ArgumentError rather
+    # than sending a message that is dropped. Keys match as strings.
+    def require_no_rejected_keys(message)
+      message.each_key do |key|
+        case key.to_s
+        when '$ignore_alias'
+          raise ArgumentError, '$ignore_alias is not supported on profile updates for hierarchical groups ' \
+            'projects, which have no aliases; /groups rejects a message with it. Nothing sent'
+        when '$distinct_id'
+          raise ArgumentError, '$distinct_id is not supported on group profile updates for hierarchical ' \
+            'groups projects, which name the profile by $group_key and $group_id; /groups rejects a ' \
+            'message with it. Nothing sent'
+        end
+      end
+    end
 
     # On a hierarchical groups tracker, an optional param naming a different
     # group than the method's group_key and group_id raises ArgumentError.

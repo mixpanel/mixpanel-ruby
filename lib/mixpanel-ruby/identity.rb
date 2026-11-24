@@ -38,8 +38,8 @@ module Mixpanel
     # Each id is a String or an Integer. nil leaves a value unset; an empty
     # string is a caller error rather than an absent value, as is a user_id or
     # company_id of only whitespace, and any other type raises ArgumentError.
-    # At least one value is required. On a hierarchical groups tracker events
-    # send user_id and company_id as strings.
+    # At least one value is required. Events and #to_flag_context send
+    # user_id, company_id and device_id as strings.
     def initialize(distinct_id: nil, user_id: nil, company_id: nil, device_id: nil)
       @distinct_id = check_value(distinct_id, 'distinct_id')
       @user_id = check_value(user_id, 'user_id')
@@ -71,8 +71,8 @@ module Mixpanel
 
     # A feature flag evaluation context for this identity, so callers do not
     # hand-write reserved keys such as $company_id. The ids go under the keys
-    # flags read, the groups at the top level and the custom properties under
-    # custom_properties:
+    # flags read, as strings except distinct_id, the groups at the top level
+    # and the custom properties under custom_properties:
     #
     #     identity.to_flag_context(groups: { 'department' => 'finance' },
     #                              custom_properties: { 'plan' => 'enterprise' })
@@ -81,9 +81,9 @@ module Mixpanel
     def to_flag_context(groups: {}, custom_properties: {})
       context = groups.dup
       context['distinct_id'] = @distinct_id unless @distinct_id.nil?
-      context['$user_id'] = @user_id unless @user_id.nil?
-      context['$company_id'] = @company_id unless @company_id.nil?
-      context['device_id'] = @device_id unless @device_id.nil?
+      context['$user_id'] = HierarchicalGroups.wire_id(@user_id) unless @user_id.nil?
+      context['$company_id'] = HierarchicalGroups.wire_id(@company_id) unless @company_id.nil?
+      context['device_id'] = HierarchicalGroups.wire_id(@device_id) unless @device_id.nil?
       context['custom_properties'] = custom_properties.dup unless custom_properties.empty?
       context
     end
@@ -151,7 +151,7 @@ module Mixpanel
     # <tt>$company:{company}|$user:{user}</tt>, into [company_id, user_id].
     # The company ends at the first |$user: and the user is everything after
     # it. Returns nil for a string not of that shape, and raises
-    # ArgumentError if either part is empty or only whitespace.
+    # ArgumentError if either part is empty, only whitespace, or contains a |.
     def parse_combined_distinct_id(distinct_id)
       return nil unless distinct_id.is_a?(String) && distinct_id.start_with?(COMBINED_COMPANY_PREFIX)
       separator = distinct_id.index(COMBINED_USER_SEPARATOR, COMBINED_COMPANY_PREFIX.length)
@@ -164,6 +164,8 @@ module Mixpanel
       if user_id.empty? || blank?(user_id)
         raise ArgumentError, "distinct_id #{distinct_id.inspect} names a blank user. Nothing sent"
       end
+      require_no_separator(company_id, "The company in distinct_id #{distinct_id.inspect}")
+      require_no_separator(user_id, "The user in distinct_id #{distinct_id.inspect}")
       [company_id, user_id]
     end
 
@@ -199,11 +201,12 @@ module Mixpanel
     # A $company_id taken from optional_params on a hierarchical groups
     # project. nil and the empty string are left to the caller to treat as
     # missing; anything else must be a String or an Integer that is not only
-    # whitespace, or ArgumentError is raised.
+    # whitespace and has no |, or ArgumentError is raised.
     def require_valid_company_param(company_id)
       return if company_id.nil? || company_id == ''
       require_id_type(company_id, '$company_id')
       require_not_blank(company_id, '$company_id')
+      require_no_separator(company_id, '$company_id')
     end
 
     # Optional params are merged over a message's own keys, so on a
@@ -228,6 +231,15 @@ module Mixpanel
 
     def require_not_blank(value, name)
       raise ArgumentError, "#{name} must not be only whitespace" if blank?(value)
+    end
+
+    # On hierarchical groups projects Mixpanel joins the company and user into
+    # one distinct id with |, so a user or company id containing | cannot be
+    # told apart from that separator and /groups drops the record. Raises
+    # ArgumentError for such an id. Integers never contain one.
+    def require_no_separator(value, name)
+      return unless value.is_a?(String) && value.include?('|')
+      raise ArgumentError, "#{name} #{value.inspect} must not contain '|' on hierarchical groups projects. Nothing sent"
     end
 
     # An id as it is written to a hierarchical groups message: as a string,
@@ -282,14 +294,20 @@ module Mixpanel
         raise ArgumentError, "#{identity} requires a hierarchical groups tracker: " \
           'Mixpanel::Tracker.new(token, hierarchical_groups: true)'
       end
+      return unless hierarchical_groups
+      require_no_separator(identity.user_id, 'user_id')
+      require_no_separator(identity.company_id, 'company_id')
     end
 
-    def require_company_id(company_id)
+    # A company id bound by for_company. On a hierarchical groups project it
+    # must not contain a |, either.
+    def require_company_id(company_id, hierarchical_groups = false)
       if company_id.nil? || (company_id.respond_to?(:empty?) && company_id.empty?)
         raise ArgumentError, 'company_id must be non-empty'
       end
       require_id_type(company_id, 'company_id')
       require_not_blank(company_id, 'company_id')
+      require_no_separator(company_id, 'company_id') if hierarchical_groups
     end
   end
 end
