@@ -234,8 +234,12 @@ module Mixpanel
     #
     #    acme = tracker.for_company('acme')
     #    acme.company.set(company_properties)
-    #    acme.groups.set('$user_id', 'user_123', user_properties)
     #    acme.groups.set('department', 'finance', department_properties)
+    #
+    # for_company is meant for writes that carry no identity: the company's
+    # own profile and custom group profiles. Send events and user profiles
+    # with a Mixpanel::Identity that names the company. Events from a bound
+    # tracker don't add the bound company.
     #
     # The returned tracker shares this tracker's consumer, error handler and
     # feature flag providers, and this tracker is unchanged. Events are not
