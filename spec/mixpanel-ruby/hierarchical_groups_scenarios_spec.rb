@@ -152,7 +152,7 @@ describe 'Hierarchical groups scenarios' do
   end
 
   it 'Set User Property With Distinct ID (Unsupported)' do
-    expect { @hg.people.set(user_id, {'plan' => 'pro'}) }.to raise_error(ArgumentError, /user and a company/)
+    expect { @hg.people.set(user_id, {'plan' => 'pro'}) }.to raise_error(Mixpanel::InvalidIdentityError, /user and a company/)
 
     expect_nothing_sent
   end
@@ -342,7 +342,7 @@ describe 'Hierarchical groups scenarios' do
   it 'Set User Property Without User' do
     company_only = Mixpanel::Identity.new(company_id: company_id)
 
-    expect { @hg.people.set(company_only, {'plan' => 'pro'}) }.to raise_error(ArgumentError, /require a user id/)
+    expect { @hg.people.set(company_only, {'plan' => 'pro'}) }.to raise_error(Mixpanel::InvalidIdentityError, /require a user id/)
     expect_nothing_sent
   end
 
@@ -359,8 +359,8 @@ describe 'Hierarchical groups scenarios' do
   end
 
   it 'Company Identity Without Hierarchical Groups' do
-    expect { @legacy.track(user, 'Signup') }.to raise_error(ArgumentError, /hierarchical groups tracker/)
-    expect { @legacy.people.set(user, {'plan' => 'pro'}) }.to raise_error(ArgumentError, /hierarchical groups tracker/)
+    expect { @legacy.track(user, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, /hierarchical groups tracker/)
+    expect { @legacy.people.set(user, {'plan' => 'pro'}) }.to raise_error(Mixpanel::InvalidIdentityError, /hierarchical groups tracker/)
     expect_nothing_sent
   end
 

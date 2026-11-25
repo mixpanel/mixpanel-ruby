@@ -31,9 +31,9 @@ module Mixpanel
   # On a hierarchical groups tracker, an update with no bound company and no
   # $company_id in optional_params raises Mixpanel::CompanyRequiredError,
   # and a $company_id there that is not a String or an Integer, or is only
-  # whitespace, raises ArgumentError. A bound company is sent as a string.
+  # whitespace, raises Mixpanel::InvalidIdentityError. A bound company is sent as a string.
   # An update to group key '$company_id' whose group id is not that company
-  # raises ArgumentError; use Tracker#company to update a company profile.
+  # raises Mixpanel::InvalidIdentityError; use Tracker#company to update a company profile.
   class Groups
 
     # You likely won't need to instantiate instances of Mixpanel::Groups
@@ -202,10 +202,10 @@ module Mixpanel
     #
     # On a hierarchical groups tracker, raises Mixpanel::UnsupportedOperationError
     # for an operation /groups lacks (anything but $set, $set_once, $unset,
-    # $union, $remove or $delete), ArgumentError for a message with an
+    # $union, $remove or $delete), Mixpanel::UnsupportedOperationError for a message with an
     # $ignore_alias or $distinct_id key, which /groups rejects, and
     # Mixpanel::CompanyRequiredError if no company is bound and the message has
-    # no non-empty $company_id. It raises ArgumentError for a '$company_id'
+    # no non-empty $company_id. It raises Mixpanel::InvalidIdentityError for a '$company_id'
     # group whose $group_id differs (as a string) from that company, since the
     # top-level $company_id would win and update the other company's profile.
     def update(message)
@@ -235,7 +235,7 @@ module Mixpanel
       company_id = @company_id.nil? ? message_company_id : @company_id
       if @hierarchical_groups && message['$group_key'] == '$company_id' &&
          !HierarchicalGroups.same_company?(company_id, message['$group_id'])
-        raise ArgumentError, "Group $company_id=#{message['$group_id']} does not match company #{company_id}. " \
+        raise InvalidIdentityError, "Group $company_id=#{message['$group_id']} does not match company #{company_id}. " \
           "A company profile is updated through for_company(#{message['$group_id']}).company. Nothing sent"
       end
       # $company_id must be top-level, not inside the operation payload. It is
@@ -273,16 +273,16 @@ module Mixpanel
     private
 
     # /groups rejects a whole message carrying $ignore_alias or $distinct_id,
-    # so on a hierarchical groups tracker either raises ArgumentError rather
+    # so on a hierarchical groups tracker either raises Mixpanel::UnsupportedOperationError rather
     # than sending a message that is dropped. Keys match as strings.
     def require_no_rejected_keys(message)
       message.each_key do |key|
         case key.to_s
         when '$ignore_alias'
-          raise ArgumentError, '$ignore_alias is not supported on profile updates for hierarchical groups ' \
+          raise UnsupportedOperationError, '$ignore_alias is not supported on profile updates for hierarchical groups ' \
             'projects, which have no aliases; /groups rejects a message with it. Nothing sent'
         when '$distinct_id'
-          raise ArgumentError, '$distinct_id is not supported on group profile updates for hierarchical ' \
+          raise UnsupportedOperationError, '$distinct_id is not supported on group profile updates for hierarchical ' \
             'groups projects, which name the profile by $group_key and $group_id; /groups rejects a ' \
             'message with it. Nothing sent'
         end
@@ -290,7 +290,7 @@ module Mixpanel
     end
 
     # On a hierarchical groups tracker, an optional param naming a different
-    # group than the method's group_key and group_id raises ArgumentError.
+    # group than the method's group_key and group_id raises Mixpanel::InvalidIdentityError.
     def require_params_match(group_key, group_id, optional_params)
       return unless @hierarchical_groups
       HierarchicalGroups.require_param_matches(optional_params, '$group_key', group_key)

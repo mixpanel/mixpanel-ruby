@@ -66,7 +66,7 @@ module Mixpanel
     #
     #     tracker.track(Mixpanel::Identity.new(user_id: '12345', company_id: 'acme'), 'Signup')
     #
-    # Raises ArgumentError if the identity does not match the project (see
+    # Raises Mixpanel::InvalidIdentityError if the identity does not match the project (see
     # Mixpanel::Identity).
     def track(distinct_id, event, properties={}, ip=nil)
       properties = event_properties(distinct_id, properties)
@@ -209,7 +209,7 @@ module Mixpanel
     # mode: Mixpanel accepts a distinct id it built itself, such as
     # "$company:acme|$user:user_123". On a hierarchical groups tracker the
     # event's final distinct_id (a distinct_id property replaces the
-    # argument), when combined, raises ArgumentError if properties carry a
+    # argument), when combined, raises Mixpanel::InvalidIdentityError if properties carry a
     # $company_id or $user_id naming a different company or user, or if
     # either part is empty or only whitespace.
     def event_properties(distinct_id, properties)
@@ -230,7 +230,7 @@ module Mixpanel
       identity = distinct_id
       HierarchicalGroups.require_identity_matches_project(identity, @hierarchical_groups)
       # A combined distinct id with a blank company or user raises
-      # ArgumentError, as it does when passed as a string, as does one naming
+      # Mixpanel::InvalidIdentityError, as it does when passed as a string, as does one naming
       # a different company or user than the identity's own ids.
       HierarchicalGroups.require_identity_distinct_id_agrees(identity) if @hierarchical_groups
 

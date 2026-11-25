@@ -38,13 +38,13 @@ module Mixpanel
   # The company comes from the identity, or else the company the tracker is
   # bound to by Tracker#for_company, or else a $company_id in optional_params,
   # so these updates do not need Tracker#for_company. On a tracker bound with
-  # #for_company, a user from another company raises ArgumentError and sends
+  # #for_company, a user from another company raises Mixpanel::InvalidIdentityError and sends
   # nothing.
   #
   # A distinct id, as a string or as an identity's distinct_id, must be one
   # Mixpanel built, of the form <tt>$company:{company}|$user:{user}</tt>. It
   # sends the same update as the identity with that user and company. Any
-  # other distinct id raises ArgumentError and sends nothing, as does #update
+  # other distinct id raises Mixpanel::InvalidIdentityError and sends nothing, as does #update
   # with any other $distinct_id, or a $company_id in optional_params (or in
   # the #update message) naming a different company. User and company ids
   # are sent as strings. A $distinct_id in optional_params names the profile
@@ -237,7 +237,7 @@ module Mixpanel
     # Like #set, accepts a Mixpanel::Identity in place of distinct_id.
     #
     # On a hierarchical groups tracker, which has no aliases, $ignore_alias
-    # in optional_params raises ArgumentError and nothing is sent.
+    # in optional_params raises Mixpanel::UnsupportedOperationError and nothing is sent.
     def delete_user(distinct_id, optional_params={})
       profile_update(distinct_id, '$delete', '', nil, optional_params)
     end
@@ -255,7 +255,7 @@ module Mixpanel
     # if the message carries an operation other than $set, $set_once, $unset,
     # $union, $remove or $delete. Otherwise the message's
     # $distinct_id must be of the form <tt>$company:{company}|$user:{user}</tt>,
-    # or ArgumentError is raised. The message is sent to /groups with
+    # or Mixpanel::InvalidIdentityError is raised. The message is sent to /groups with
     # $distinct_id replaced by the $user_id group profile and company it names.
     def update(message)
       if @hierarchical_groups
@@ -330,15 +330,15 @@ module Mixpanel
     # the identity's company.
     def user_group_update(identity, operation, properties, ip, optional_params)
       unless @hierarchical_groups
-        raise ArgumentError, "#{identity} cannot identify a profile on this project. " \
+        raise InvalidIdentityError, "#{identity} cannot identify a profile on this project. " \
           'User profiles are addressed by distinct id unless the project uses hierarchical groups.'
       end
       if identity.user_id.nil?
         if identity.company_id.nil?
-          raise ArgumentError, "#{identity} names no user, so it cannot identify a profile. " \
+          raise InvalidIdentityError, "#{identity} names no user, so it cannot identify a profile. " \
             'Device ids identify anonymous events, not profiles.'
         end
-        raise ArgumentError, "User profile updates require a user id, and #{identity} has none. " \
+        raise InvalidIdentityError, "User profile updates require a user id, and #{identity} has none. " \
           'Use tracker.for_company(company_id).company.set(properties) ' \
           "to update the company's profile."
       end
@@ -375,12 +375,12 @@ module Mixpanel
 
     # An identity names the profile, so on a hierarchical groups tracker a
     # $distinct_id param other than the identity's own distinct_id raises
-    # ArgumentError. Keys match as strings.
+    # Mixpanel::InvalidIdentityError. Keys match as strings.
     def require_no_distinct_id_param(optional_params, identity)
       optional_params.each do |key, value|
         next unless key.to_s == '$distinct_id'
         next if value == identity.distinct_id
-        raise ArgumentError, "Pass either an identity or a $distinct_id, not both: #{identity} was passed " \
+        raise InvalidIdentityError, "Pass either an identity or a $distinct_id, not both: #{identity} was passed " \
           "with $distinct_id #{value.inspect} in optional_params. Nothing sent"
       end
     end
@@ -390,7 +390,7 @@ module Mixpanel
     def require_bound_company(company_id, described)
       return if company_id.nil? || @company_id.nil? || HierarchicalGroups.same_company?(company_id, @company_id)
 
-      raise ArgumentError, "This tracker is bound to company #{@company_id.inspect}, but #{described} " \
+      raise InvalidIdentityError, "This tracker is bound to company #{@company_id.inspect}, but #{described} " \
         "belongs to company #{company_id.inspect}. Update the user through a tracker for that " \
         'company, or one without for_company.'
     end
@@ -417,7 +417,7 @@ module Mixpanel
     def refuse_engage_only_operation(distinct_id, operation, method_name)
       raise_unsupported_operation(operation) if @hierarchical_groups
       if distinct_id.is_a?(Identity)
-        raise ArgumentError, "#{method_name} does not accept a Mixpanel::Identity; pass a distinct id"
+        raise InvalidIdentityError, "#{method_name} does not accept a Mixpanel::Identity; pass a distinct id"
       end
     end
 

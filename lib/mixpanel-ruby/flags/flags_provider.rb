@@ -195,7 +195,7 @@ module Mixpanel
           distinct_id, parsed, company_id: identity.company_id, user_id: identity.user_id
         )
         nil
-      rescue ArgumentError => e
+      rescue InvalidIdentityError => e
         e.message
       end
 

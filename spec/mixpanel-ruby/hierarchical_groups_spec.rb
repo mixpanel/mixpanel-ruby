@@ -37,13 +37,32 @@ describe 'Hierarchical groups' do
     last_data['properties']
   end
 
+  describe 'errors' do
+    it 'are all Mixpanel::MixpanelErrors' do
+      [Mixpanel::InvalidIdentityError, Mixpanel::UnsupportedOperationError,
+       Mixpanel::CompanyRequiredError].each do |error|
+        expect(error.superclass).to eq(Mixpanel::MixpanelError)
+        expect(error.ancestors).not_to include(ArgumentError)
+      end
+    end
+
+    it 'raises identity misuse to the caller rather than the error handler' do
+      handled = []
+      handler = Class.new(Mixpanel::ErrorHandler) { define_method(:handle) { |e| handled << e } }.new
+      tracker = Mixpanel::Tracker.new(token, handler, hierarchical_groups: true) { |*| }
+      expect { tracker.track(identity(user_id: 'a|b', company_id: 'acme'), 'Signup') }
+        .to raise_error(Mixpanel::InvalidIdentityError, /must not contain '\|'/)
+      expect(handled).to be_empty
+    end
+  end
+
   describe 'Mixpanel::Identity' do
     it 'rejects empty values' do
       # An empty string is a caller error; nil simply leaves the value unset.
-      expect { identity(user_id: '') }.to raise_error(ArgumentError, /user_id/)
-      expect { identity(company_id: '') }.to raise_error(ArgumentError, /company_id/)
-      expect { identity(device_id: '') }.to raise_error(ArgumentError, /device_id/)
-      expect { identity(distinct_id: '') }.to raise_error(ArgumentError, /distinct_id/)
+      expect { identity(user_id: '') }.to raise_error(Mixpanel::InvalidIdentityError, /user_id/)
+      expect { identity(company_id: '') }.to raise_error(Mixpanel::InvalidIdentityError, /company_id/)
+      expect { identity(device_id: '') }.to raise_error(Mixpanel::InvalidIdentityError, /device_id/)
+      expect { identity(distinct_id: '') }.to raise_error(Mixpanel::InvalidIdentityError, /distinct_id/)
     end
 
     it 'accepts String and Integer ids and sends them as strings' do
@@ -99,8 +118,8 @@ describe 'Hierarchical groups' do
 
     it 'rejects a user or company id of only whitespace' do
       ['  ', ' ', "\t\n"].each do |blank|
-        expect { identity(user_id: blank, company_id: 'acme') }.to raise_error(ArgumentError, /user_id/)
-        expect { identity(user_id: 'user_123', company_id: blank) }.to raise_error(ArgumentError, /company_id/)
+        expect { identity(user_id: blank, company_id: 'acme') }.to raise_error(Mixpanel::InvalidIdentityError, /user_id/)
+        expect { identity(user_id: 'user_123', company_id: blank) }.to raise_error(Mixpanel::InvalidIdentityError, /company_id/)
       end
     end
 
@@ -112,14 +131,14 @@ describe 'Hierarchical groups' do
     it 'rejects ids that are not a String or an Integer' do
       %i[distinct_id user_id company_id device_id].each do |name|
         [true, false, 1.5, ['a'], {'a' => 1}, :a].each do |value|
-          expect { identity(name => value) }.to raise_error(ArgumentError, /#{name}/)
+          expect { identity(name => value) }.to raise_error(Mixpanel::InvalidIdentityError, /#{name}/)
         end
       end
     end
 
     it 'needs at least one value' do
-      expect { Mixpanel::Identity.new }.to raise_error(ArgumentError)
-      expect { identity(user_id: nil, company_id: nil) }.to raise_error(ArgumentError)
+      expect { Mixpanel::Identity.new }.to raise_error(Mixpanel::InvalidIdentityError)
+      expect { identity(user_id: nil, company_id: nil) }.to raise_error(Mixpanel::InvalidIdentityError)
     end
 
     it 'treats nil as unset' do
@@ -172,7 +191,7 @@ describe 'Hierarchical groups' do
     it 'refuses an identity whose user or company id contains a |' do
       [identity(user_id: 'a|b', company_id: 'acme'), identity(user_id: 'user_123', company_id: 'a|b'),
        identity(company_id: 'a|b')].each do |id|
-        expect { @hg.track(id, 'Signup') }.to raise_error(ArgumentError, /must not contain '\|'/)
+        expect { @hg.track(id, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, /must not contain '\|'/)
       end
       expect(@log).to be_empty
     end
@@ -185,8 +204,8 @@ describe 'Hierarchical groups' do
     end
 
     it 'refuses a combined distinct id whose company or user contains a |' do
-      expect { @hg.track('$company:a|b|$user:c', 'Signup') }.to raise_error(ArgumentError, /must not contain '\|'/)
-      expect { @hg.track('$company:a|$user:b|c', 'Signup') }.to raise_error(ArgumentError, /must not contain '\|'/)
+      expect { @hg.track('$company:a|b|$user:c', 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, /must not contain '\|'/)
+      expect { @hg.track('$company:a|$user:b|c', 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, /must not contain '\|'/)
       expect(@log).to be_empty
       @legacy.track('$company:a|$user:b|c', 'Signup')
       expect(last_properties['distinct_id']).to eq('$company:a|$user:b|c')
@@ -308,12 +327,12 @@ describe 'Hierarchical groups' do
       combined = '$company:c6|$user:u6'
 
       expect { @hg.track(combined, 'Signup', {'$company_id' => 'zz6'}) }
-        .to raise_error(ArgumentError, 'distinct_id $company:c6|$user:u6 names company c6, but $company_id is zz6. Nothing sent')
+        .to raise_error(Mixpanel::InvalidIdentityError, 'distinct_id $company:c6|$user:u6 names company c6, but $company_id is zz6. Nothing sent')
       expect { @hg.track(combined, 'Signup', {'$user_id' => 'zz6'}) }
-        .to raise_error(ArgumentError, 'distinct_id $company:c6|$user:u6 names user u6, but $user_id is zz6. Nothing sent')
-      expect { @hg.track(combined, 'Signup', {:'$company_id' => 'zz6'}) }.to raise_error(ArgumentError)
-      expect { tracker.import_events(combined, 'Signup', {'$company_id' => 'zz6'}) }.to raise_error(ArgumentError)
-      expect { tracker.import('API_KEY', combined, 'Signup', {'$user_id' => 'zz6'}) }.to raise_error(ArgumentError)
+        .to raise_error(Mixpanel::InvalidIdentityError, 'distinct_id $company:c6|$user:u6 names user u6, but $user_id is zz6. Nothing sent')
+      expect { @hg.track(combined, 'Signup', {:'$company_id' => 'zz6'}) }.to raise_error(Mixpanel::InvalidIdentityError)
+      expect { tracker.import_events(combined, 'Signup', {'$company_id' => 'zz6'}) }.to raise_error(Mixpanel::InvalidIdentityError)
+      expect { tracker.import('API_KEY', combined, 'Signup', {'$user_id' => 'zz6'}) }.to raise_error(Mixpanel::InvalidIdentityError)
       expect(@log).to be_empty
     end
 
@@ -352,10 +371,10 @@ describe 'Hierarchical groups' do
         properties = {'distinct_id' => '$company:b|$user:u', '$company_id' => 'a'}
         message = 'distinct_id $company:b|$user:u names company b, but $company_id is a. Nothing sent'
 
-        expect { @hg.track('$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
-        expect { tracker.import_events('$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
-        expect { tracker.import('API_KEY', '$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
-        expect { @hg.generate_tracking_url('$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
+        expect { @hg.track('$company:a|$user:u', 'Signup', properties) }.to raise_error(Mixpanel::InvalidIdentityError, message)
+        expect { tracker.import_events('$company:a|$user:u', 'Signup', properties) }.to raise_error(Mixpanel::InvalidIdentityError, message)
+        expect { tracker.import('API_KEY', '$company:a|$user:u', 'Signup', properties) }.to raise_error(Mixpanel::InvalidIdentityError, message)
+        expect { @hg.generate_tracking_url('$company:a|$user:u', 'Signup', properties) }.to raise_error(Mixpanel::InvalidIdentityError, message)
         expect(@log).to be_empty
       end
 
@@ -364,10 +383,10 @@ describe 'Hierarchical groups' do
           properties = {'distinct_id' => distinct_id}
           message = "distinct_id #{distinct_id.inspect} names a blank #{part}. Nothing sent"
 
-          expect { @hg.track('$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
-          expect { tracker.import_events('$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
-          expect { tracker.import('API_KEY', '$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
-          expect { @hg.generate_tracking_url('$company:a|$user:u', 'Signup', properties) }.to raise_error(ArgumentError, message)
+          expect { @hg.track('$company:a|$user:u', 'Signup', properties) }.to raise_error(Mixpanel::InvalidIdentityError, message)
+          expect { tracker.import_events('$company:a|$user:u', 'Signup', properties) }.to raise_error(Mixpanel::InvalidIdentityError, message)
+          expect { tracker.import('API_KEY', '$company:a|$user:u', 'Signup', properties) }.to raise_error(Mixpanel::InvalidIdentityError, message)
+          expect { @hg.generate_tracking_url('$company:a|$user:u', 'Signup', properties) }.to raise_error(Mixpanel::InvalidIdentityError, message)
         end
         expect(@log).to be_empty
       end
@@ -383,10 +402,10 @@ describe 'Hierarchical groups' do
         '$company:c|$user:' => 'user', '$company:c|$user:  ' => 'user'
       }.each do |distinct_id, part|
         message = "distinct_id #{distinct_id.inspect} names a blank #{part}. Nothing sent"
-        expect { @hg.track(distinct_id, 'Signup') }.to raise_error(ArgumentError, message)
-        expect { tracker.import_events(distinct_id, 'Signup') }.to raise_error(ArgumentError, message)
-        expect { tracker.import('API_KEY', distinct_id, 'Signup') }.to raise_error(ArgumentError, message)
-        expect { @hg.generate_tracking_url(distinct_id, 'Signup') }.to raise_error(ArgumentError, message)
+        expect { @hg.track(distinct_id, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, message)
+        expect { tracker.import_events(distinct_id, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, message)
+        expect { tracker.import('API_KEY', distinct_id, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, message)
+        expect { @hg.generate_tracking_url(distinct_id, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, message)
       end
       expect(@log).to be_empty
     end
@@ -402,10 +421,10 @@ describe 'Hierarchical groups' do
       }.each do |distinct_id, part|
         message = "distinct_id #{distinct_id.inspect} names a blank #{part}. Nothing sent"
         [identity(distinct_id: distinct_id), identity(distinct_id: distinct_id, user_id: 'u', company_id: 'c')].each do |id|
-          expect { @hg.track(id, 'Signup') }.to raise_error(ArgumentError, message)
-          expect { tracker.import_events(id, 'Signup') }.to raise_error(ArgumentError, message)
-          expect { tracker.import('API_KEY', id, 'Signup') }.to raise_error(ArgumentError, message)
-          expect { @hg.generate_tracking_url(id, 'Signup') }.to raise_error(ArgumentError, message)
+          expect { @hg.track(id, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, message)
+          expect { tracker.import_events(id, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, message)
+          expect { tracker.import('API_KEY', id, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, message)
+          expect { @hg.generate_tracking_url(id, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, message)
         end
       end
       expect(@log).to be_empty
@@ -425,10 +444,10 @@ describe 'Hierarchical groups' do
         identity(distinct_id: '$company:acme|$user:u', company_id: 7) =>
           'distinct_id $company:acme|$user:u names company acme, but company_id is 7. Nothing sent'
       }.each do |id, message|
-        expect { @hg.track(id, 'Signup') }.to raise_error(ArgumentError, message)
-        expect { tracker.import_events(id, 'Signup') }.to raise_error(ArgumentError, message)
-        expect { tracker.import('API_KEY', id, 'Signup') }.to raise_error(ArgumentError, message)
-        expect { @hg.generate_tracking_url(id, 'Signup') }.to raise_error(ArgumentError, message)
+        expect { @hg.track(id, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, message)
+        expect { tracker.import_events(id, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, message)
+        expect { tracker.import('API_KEY', id, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, message)
+        expect { @hg.generate_tracking_url(id, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, message)
       end
       expect(@log).to be_empty
     end
@@ -501,9 +520,9 @@ describe 'Hierarchical groups' do
     it 'requires a hierarchical tracker for a hierarchical identity' do
       tracker = Mixpanel::Tracker.new(token, credentials: @credentials) { |*args| @log << args }
 
-      expect { @legacy.track(user_in_acme, 'Signup') }.to raise_error(ArgumentError, /hierarchical_groups: true/)
-      expect { tracker.import_events(user_in_acme, 'Signup') }.to raise_error(ArgumentError)
-      expect { @legacy.track(identity(company_id: 'acme'), 'Renewed') }.to raise_error(ArgumentError)
+      expect { @legacy.track(user_in_acme, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError, /hierarchical_groups: true/)
+      expect { tracker.import_events(user_in_acme, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError)
+      expect { @legacy.track(identity(company_id: 'acme'), 'Renewed') }.to raise_error(Mixpanel::InvalidIdentityError)
       expect(@log).to be_empty
     end
 
@@ -512,7 +531,7 @@ describe 'Hierarchical groups' do
       tracker = Mixpanel::Tracker.new(token, handler) { |*args| }
       expect(handler).not_to receive(:handle)
 
-      expect { tracker.track(user_in_acme, 'Signup') }.to raise_error(ArgumentError)
+      expect { tracker.track(user_in_acme, 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError)
     end
   end
 
@@ -543,13 +562,13 @@ describe 'Hierarchical groups' do
 
     it 'requires a hierarchical tracker for a hierarchical identity' do
       expect { @legacy.generate_tracking_url(user_in_acme, 'Signup') }
-        .to raise_error(ArgumentError, /hierarchical_groups: true/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /hierarchical_groups: true/)
     end
 
     it 'refuses a conflicting combined distinct id like track' do
       expect { @hg.generate_tracking_url('$company:c6|$user:u6', 'Signup', {'$company_id' => 'zz6'}) }
-        .to raise_error(ArgumentError, /names company c6, but \$company_id is zz6/)
-      expect { @hg.generate_tracking_url('$company: |$user:u6', 'Signup') }.to raise_error(ArgumentError)
+        .to raise_error(Mixpanel::InvalidIdentityError, /names company c6, but \$company_id is zz6/)
+      expect { @hg.generate_tracking_url('$company: |$user:u6', 'Signup') }.to raise_error(Mixpanel::InvalidIdentityError)
     end
 
     it 'builds the same url for a string distinct id on both kinds of tracker' do
@@ -592,9 +611,9 @@ describe 'Hierarchical groups' do
     it 'refuses an identity for $add and $append on a legacy tracker' do
       id = identity(distinct_id: 'user_123')
 
-      expect { @legacy.people.increment(id, {'logins' => 1}) }.to raise_error(ArgumentError, /increment/)
-      expect { @legacy.people.append(id, {'plan' => 'pro'}) }.to raise_error(ArgumentError, /append/)
-      expect { @legacy.people.track_charge(id, 9.99) }.to raise_error(ArgumentError)
+      expect { @legacy.people.increment(id, {'logins' => 1}) }.to raise_error(Mixpanel::InvalidIdentityError, /increment/)
+      expect { @legacy.people.append(id, {'plan' => 'pro'}) }.to raise_error(Mixpanel::InvalidIdentityError, /append/)
+      expect { @legacy.people.track_charge(id, 9.99) }.to raise_error(Mixpanel::InvalidIdentityError)
       expect(@log).to be_empty
     end
 
@@ -639,19 +658,19 @@ describe 'Hierarchical groups' do
 
     it 'refuses a combined distinct id whose company or user contains a |' do
       ['$company:a|b|$user:c', '$company:a|$user:c|$user:d', '$company:a|$user:b|c'].each do |id|
-        expect { @hg.people.set(id, {'plan' => 'pro'}) }.to raise_error(ArgumentError, /must not contain '\|'/)
+        expect { @hg.people.set(id, {'plan' => 'pro'}) }.to raise_error(Mixpanel::InvalidIdentityError, /must not contain '\|'/)
         expect { @hg.people.set(identity(distinct_id: id), {'plan' => 'pro'}) }
-          .to raise_error(ArgumentError, /must not contain '\|'/)
+          .to raise_error(Mixpanel::InvalidIdentityError, /must not contain '\|'/)
         expect { @hg.people.update('$distinct_id' => id, '$set' => {'plan' => 'pro'}) }
-          .to raise_error(ArgumentError, /must not contain '\|'/)
+          .to raise_error(Mixpanel::InvalidIdentityError, /must not contain '\|'/)
       end
       expect(@log).to be_empty
     end
 
     it 'refuses an identity whose user or company id contains a |' do
       [identity(user_id: 'a|b', company_id: 'acme'), identity(user_id: 'user_123', company_id: 'a|b')].each do |id|
-        expect { @hg.people.set(id, {'plan' => 'pro'}) }.to raise_error(ArgumentError, /must not contain '\|'/)
-        expect { @hg.people.delete_user(id) }.to raise_error(ArgumentError, /must not contain '\|'/)
+        expect { @hg.people.set(id, {'plan' => 'pro'}) }.to raise_error(Mixpanel::InvalidIdentityError, /must not contain '\|'/)
+        expect { @hg.people.delete_user(id) }.to raise_error(Mixpanel::InvalidIdentityError, /must not contain '\|'/)
       end
       expect(@log).to be_empty
     end
@@ -659,13 +678,13 @@ describe 'Hierarchical groups' do
     it 'refuses $ignore_alias in optional_params' do
       [user_in_acme, '$company:acme|$user:user_123'].each do |user|
         expect { @hg.people.delete_user(user, {'$ignore_alias' => true}) }
-          .to raise_error(ArgumentError, /\$ignore_alias/)
+          .to raise_error(Mixpanel::UnsupportedOperationError, /\$ignore_alias/)
         expect { @hg.people.set(user, {'plan' => 'pro'}, nil, {:$ignore_alias => false}) }
-          .to raise_error(ArgumentError, /\$ignore_alias/)
+          .to raise_error(Mixpanel::UnsupportedOperationError, /\$ignore_alias/)
       end
       expect { @hg.people.update('$distinct_id' => '$company:acme|$user:user_123', '$set' => {'a' => 1},
                                  '$ignore_alias' => true) }
-        .to raise_error(ArgumentError, /\$ignore_alias/)
+        .to raise_error(Mixpanel::UnsupportedOperationError, /\$ignore_alias/)
       expect(@log).to be_empty
     end
 
@@ -684,11 +703,11 @@ describe 'Hierarchical groups' do
         'company:acme|$user:user_123',
         '$user:user_123|$company:acme',
       ].each do |id|
-        expect { @hg.people.set(id, {'plan' => 'pro'}) }.to raise_error(ArgumentError, /user and a company/)
-        expect { @hg.people.unset(id, 'plan') }.to raise_error(ArgumentError, /\$company:\{company\}\|\$user:\{user\}/)
-        expect { @hg.people.delete_user(id) }.to raise_error(ArgumentError, /Mixpanel::Identity/)
-        expect { @hg.people.set(identity(distinct_id: id), {'plan' => 'pro'}) }.to raise_error(ArgumentError)
-        expect { @hg.people.update('$distinct_id' => id, '$set' => {'plan' => 'pro'}) }.to raise_error(ArgumentError)
+        expect { @hg.people.set(id, {'plan' => 'pro'}) }.to raise_error(Mixpanel::InvalidIdentityError, /user and a company/)
+        expect { @hg.people.unset(id, 'plan') }.to raise_error(Mixpanel::InvalidIdentityError, /\$company:\{company\}\|\$user:\{user\}/)
+        expect { @hg.people.delete_user(id) }.to raise_error(Mixpanel::InvalidIdentityError, /Mixpanel::Identity/)
+        expect { @hg.people.set(identity(distinct_id: id), {'plan' => 'pro'}) }.to raise_error(Mixpanel::InvalidIdentityError)
+        expect { @hg.people.update('$distinct_id' => id, '$set' => {'plan' => 'pro'}) }.to raise_error(Mixpanel::InvalidIdentityError)
       end
       expect(@log).to be_empty
     end
@@ -744,7 +763,7 @@ describe 'Hierarchical groups' do
     end
 
     it 'refuses a generic update without a $distinct_id on a hierarchical tracker' do
-      expect { @hg.people.update('$set' => {'plan' => 'pro'}) }.to raise_error(ArgumentError)
+      expect { @hg.people.update('$set' => {'plan' => 'pro'}) }.to raise_error(Mixpanel::InvalidIdentityError)
       expect(@log).to be_empty
     end
 
@@ -786,7 +805,7 @@ describe 'Hierarchical groups' do
     end
 
     it 'requires a hierarchical tracker for a hierarchical identity' do
-      expect { @legacy.people.set(user_in_acme, {'role' => 'admin'}) }.to raise_error(ArgumentError)
+      expect { @legacy.people.set(user_in_acme, {'role' => 'admin'}) }.to raise_error(Mixpanel::InvalidIdentityError)
     end
 
     it 'accepts a user from the bound company' do
@@ -799,9 +818,9 @@ describe 'Hierarchical groups' do
       bound = @hg.for_company('other')
 
       expect { bound.people.set(user_in_acme, {'role' => 'admin'}) }
-        .to raise_error(ArgumentError, /bound to company "other".*belongs to company "acme"/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /bound to company "other".*belongs to company "acme"/)
       expect { bound.people.set('$company:acme|$user:user_123', {'role' => 'admin'}) }
-        .to raise_error(ArgumentError, /belongs to company "acme"/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /belongs to company "acme"/)
       expect(@log).to be_empty
     end
 
@@ -825,7 +844,7 @@ describe 'Hierarchical groups' do
       expect(last_data['$company_id']).to eq('7')
       expect(last_data['$group_id']).to eq('1')
       expect { @hg.for_company(8).people.set(identity(user_id: 1, company_id: 7), {'role' => 'admin'}) }
-        .to raise_error(ArgumentError, /bound to company 8/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /bound to company 8/)
     end
 
     it 'leaves the unbound tracker people unchanged' do
@@ -876,7 +895,7 @@ describe 'Hierarchical groups' do
     it 'refuses a $company_id param that is not a String or an Integer, or is only whitespace' do
       [{'x' => 1}, true, 1.5, ['acme'], '  ', ' '].each do |company_id|
         expect { @hg.people.set(identity(user_id: 'user_123'), {'role' => 'admin'}, nil, {'$company_id' => company_id}) }
-          .to raise_error(ArgumentError, /\$company_id/)
+          .to raise_error(Mixpanel::InvalidIdentityError, /\$company_id/)
       end
       expect(@log).to be_empty
     end
@@ -894,11 +913,11 @@ describe 'Hierarchical groups' do
     it 'refuses a combined distinct id whose $company_id param differs' do
       combined = '$company:c6|$user:u6'
       expect { @hg.people.set(combined, {'role' => 'admin'}, nil, {'$company_id' => 'zz6'}) }
-        .to raise_error(ArgumentError, 'distinct_id $company:c6|$user:u6 names company c6, but $company_id is zz6. Nothing sent')
+        .to raise_error(Mixpanel::InvalidIdentityError, 'distinct_id $company:c6|$user:u6 names company c6, but $company_id is zz6. Nothing sent')
       expect { @hg.people.update('$distinct_id' => combined, '$set' => {'role' => 'admin'}, '$company_id' => 'zz6') }
-        .to raise_error(ArgumentError, /names company c6, but \$company_id is zz6/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /names company c6, but \$company_id is zz6/)
       expect { @hg.people.set(identity(distinct_id: combined), {'role' => 'admin'}, nil, {'$company_id' => 'zz6'}) }
-        .to raise_error(ArgumentError, /names company c6/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /names company c6/)
       expect(@log).to be_empty
     end
 
@@ -915,11 +934,11 @@ describe 'Hierarchical groups' do
         '$company: |$user:' => 'company', '$company:c|$user:' => 'user', '$company:c|$user:  ' => 'user'
       }.each do |distinct_id, part|
         message = "distinct_id #{distinct_id.inspect} names a blank #{part}. Nothing sent"
-        expect { @hg.people.set(distinct_id, {'role' => 'admin'}) }.to raise_error(ArgumentError, message)
+        expect { @hg.people.set(distinct_id, {'role' => 'admin'}) }.to raise_error(Mixpanel::InvalidIdentityError, message)
         expect { @hg.people.set(identity(distinct_id: distinct_id), {'role' => 'admin'}) }
-          .to raise_error(ArgumentError, message)
+          .to raise_error(Mixpanel::InvalidIdentityError, message)
         expect { @hg.people.update('$distinct_id' => distinct_id, '$set' => {'a' => 1}) }
-          .to raise_error(ArgumentError, message)
+          .to raise_error(Mixpanel::InvalidIdentityError, message)
       end
       expect(@log).to be_empty
     end
@@ -927,17 +946,17 @@ describe 'Hierarchical groups' do
     it 'refuses an identity whose combined distinct id names a different user or company' do
       conflicting = identity(distinct_id: '$company:acme|$user:old', user_id: 'new', company_id: 'acme')
       user_message = 'distinct_id $company:acme|$user:old names user old, but user_id is new. Nothing sent'
-      expect { @hg.people.set(conflicting, {'role' => 'admin'}) }.to raise_error(ArgumentError, user_message)
-      expect { @hg.people.set_once(conflicting, {'role' => 'admin'}) }.to raise_error(ArgumentError, user_message)
-      expect { @hg.people.unset(conflicting, ['role']) }.to raise_error(ArgumentError, user_message)
-      expect { @hg.people.union(conflicting, {'tags' => ['a']}) }.to raise_error(ArgumentError, user_message)
-      expect { @hg.people.delete_user(conflicting) }.to raise_error(ArgumentError, user_message)
+      expect { @hg.people.set(conflicting, {'role' => 'admin'}) }.to raise_error(Mixpanel::InvalidIdentityError, user_message)
+      expect { @hg.people.set_once(conflicting, {'role' => 'admin'}) }.to raise_error(Mixpanel::InvalidIdentityError, user_message)
+      expect { @hg.people.unset(conflicting, ['role']) }.to raise_error(Mixpanel::InvalidIdentityError, user_message)
+      expect { @hg.people.union(conflicting, {'tags' => ['a']}) }.to raise_error(Mixpanel::InvalidIdentityError, user_message)
+      expect { @hg.people.delete_user(conflicting) }.to raise_error(Mixpanel::InvalidIdentityError, user_message)
 
       company_conflict = identity(distinct_id: '$company:acme|$user:u', user_id: 'u', company_id: 'other')
       expect { @hg.people.set(company_conflict, {'role' => 'admin'}) }
-        .to raise_error(ArgumentError, 'distinct_id $company:acme|$user:u names company acme, ' \
+        .to raise_error(Mixpanel::InvalidIdentityError, 'distinct_id $company:acme|$user:u names company acme, ' \
                                        'but company_id is other. Nothing sent')
-      expect { @hg.people.delete_user(company_conflict) }.to raise_error(ArgumentError, /names company acme/)
+      expect { @hg.people.delete_user(company_conflict) }.to raise_error(Mixpanel::InvalidIdentityError, /names company acme/)
       expect(@log).to be_empty
     end
 
@@ -967,13 +986,13 @@ describe 'Hierarchical groups' do
     it 'rejects a device identity on both kinds of tracker' do
       device = identity(device_id: 'device_abc')
 
-      expect { @hg.people.set(device, {'plan' => 'pro'}) }.to raise_error(ArgumentError, /names no user/)
-      expect { @legacy.people.set(device, {'plan' => 'pro'}) }.to raise_error(ArgumentError, /cannot identify a profile/)
+      expect { @hg.people.set(device, {'plan' => 'pro'}) }.to raise_error(Mixpanel::InvalidIdentityError, /names no user/)
+      expect { @legacy.people.set(device, {'plan' => 'pro'}) }.to raise_error(Mixpanel::InvalidIdentityError, /cannot identify a profile/)
     end
 
     it 'rejects a company-only identity and points at the company profile' do
       expect { @hg.people.set(identity(company_id: 'acme'), {'tier' => 'ent'}) }
-        .to raise_error(ArgumentError, /for_company\(company_id\)\.company\.set/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /for_company\(company_id\)\.company\.set/)
     end
 
     it 'keeps $add and $append refused on a company-bound tracker' do
@@ -1036,10 +1055,10 @@ describe 'Hierarchical groups' do
     it 'refuses a $company_id param that is not a String or an Integer, or is only whitespace' do
       [{'x' => 1}, true, false, 1.5, ['acme'], :acme, '  ', " \t"].each do |company_id|
         expect { @hg.groups.set('department', 'finance', {'plan' => 'x'}, nil, {'$company_id' => company_id}) }
-          .to raise_error(ArgumentError, /\$company_id/)
+          .to raise_error(Mixpanel::InvalidIdentityError, /\$company_id/)
       end
       expect { @hg.groups.update('$group_key' => 'department', '$group_id' => 'f', '$set' => {}, '$company_id' => {'x' => 1}) }
-        .to raise_error(ArgumentError)
+        .to raise_error(Mixpanel::InvalidIdentityError)
       expect(@log).to be_empty
     end
 
@@ -1103,19 +1122,19 @@ describe 'Hierarchical groups' do
       acme = @hg.for_company('acme')
       [{'$ignore_alias' => true}, {:$ignore_alias => false}].each do |params|
         expect { acme.groups.set('department', 'finance', {'a' => 1}, nil, params) }
-          .to raise_error(ArgumentError, /\$ignore_alias/)
-        expect { acme.company.set({'a' => 1}, nil, params) }.to raise_error(ArgumentError, /\$ignore_alias/)
+          .to raise_error(Mixpanel::UnsupportedOperationError, /\$ignore_alias/)
+        expect { acme.company.set({'a' => 1}, nil, params) }.to raise_error(Mixpanel::UnsupportedOperationError, /\$ignore_alias/)
         expect { @hg.groups.delete_group('department', 'finance', params.merge('$company_id' => 'acme')) }
-          .to raise_error(ArgumentError, /\$ignore_alias/)
+          .to raise_error(Mixpanel::UnsupportedOperationError, /\$ignore_alias/)
       end
       [{'$distinct_id' => 'x'}, {:$distinct_id => 'x'}].each do |params|
         expect { acme.groups.set('department', 'finance', {'a' => 1}, nil, params) }
-          .to raise_error(ArgumentError, /\$distinct_id/)
-        expect { acme.company.delete(params) }.to raise_error(ArgumentError, /\$distinct_id/)
+          .to raise_error(Mixpanel::UnsupportedOperationError, /\$distinct_id/)
+        expect { acme.company.delete(params) }.to raise_error(Mixpanel::UnsupportedOperationError, /\$distinct_id/)
       end
       expect { acme.groups.update('$group_key' => 'department', '$group_id' => 'finance', '$set' => {'a' => 1},
                                   '$distinct_id' => 'x') }
-        .to raise_error(ArgumentError, /\$distinct_id/)
+        .to raise_error(Mixpanel::UnsupportedOperationError, /\$distinct_id/)
     end
 
     it 'sends $ignore_alias and $distinct_id on a group update without hierarchical groups' do
@@ -1125,7 +1144,7 @@ describe 'Hierarchical groups' do
 
     it 'refuses a $company_id param containing a |' do
       expect { @hg.groups.set('department', 'finance', {'a' => 1}, nil, {'$company_id' => 'a|b'}) }
-        .to raise_error(ArgumentError, /must not contain '\|'/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /must not contain '\|'/)
       expect(@log).to be_empty
       @legacy.groups.set('department', 'finance', {'a' => 1}, nil, {'$company_id' => 'a|b'})
       expect(last_data['$company_id']).to eq('a|b')
@@ -1158,28 +1177,28 @@ describe 'Hierarchical groups' do
       groups = @hg.for_company('acme').groups
 
       expect { groups.set('$company_id', 'globex', {'plan' => 'pro'}) }
-        .to raise_error(ArgumentError, /\$company_id=globex does not match company acme.*for_company\(globex\)\.company/)
-      expect { groups.set_once('$company_id', 'globex', {'plan' => 'pro'}) }.to raise_error(ArgumentError)
-      expect { groups.unset('$company_id', 'globex', 'plan') }.to raise_error(ArgumentError)
-      expect { groups.union('$company_id', 'globex', {'tags' => ['a']}) }.to raise_error(ArgumentError)
-      expect { groups.remove('$company_id', 'globex', {'tags' => 'a'}) }.to raise_error(ArgumentError)
-      expect { groups.delete_group('$company_id', 'globex') }.to raise_error(ArgumentError)
+        .to raise_error(Mixpanel::InvalidIdentityError, /\$company_id=globex does not match company acme.*for_company\(globex\)\.company/)
+      expect { groups.set_once('$company_id', 'globex', {'plan' => 'pro'}) }.to raise_error(Mixpanel::InvalidIdentityError)
+      expect { groups.unset('$company_id', 'globex', 'plan') }.to raise_error(Mixpanel::InvalidIdentityError)
+      expect { groups.union('$company_id', 'globex', {'tags' => ['a']}) }.to raise_error(Mixpanel::InvalidIdentityError)
+      expect { groups.remove('$company_id', 'globex', {'tags' => 'a'}) }.to raise_error(Mixpanel::InvalidIdentityError)
+      expect { groups.delete_group('$company_id', 'globex') }.to raise_error(Mixpanel::InvalidIdentityError)
       expect(@log).to be_empty
     end
 
     it 'refuses a company group whose id differs from the $company_id param' do
       expect { @hg.groups.set('$company_id', 'globex', {'plan' => 'pro'}, nil, {'$company_id' => 'acme'}) }
-        .to raise_error(ArgumentError, /\$company_id=globex does not match company acme/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /\$company_id=globex does not match company acme/)
       expect(@log).to be_empty
     end
 
     it 'refuses a generic company group update whose id differs from its company' do
       expect { @hg.for_company('acme').groups.update('$group_key' => '$company_id', '$group_id' => 'globex',
                                                      '$set' => {'plan' => 'pro'}) }
-        .to raise_error(ArgumentError, /\$company_id=globex does not match company acme/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /\$company_id=globex does not match company acme/)
       expect { @hg.groups.update('$group_key' => '$company_id', '$group_id' => 'globex',
                                  '$set' => {'plan' => 'pro'}, '$company_id' => 'acme') }
-        .to raise_error(ArgumentError, /\$company_id=globex does not match company acme/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /\$company_id=globex does not match company acme/)
       expect(@log).to be_empty
     end
 
@@ -1208,19 +1227,19 @@ describe 'Hierarchical groups' do
 
   describe 'for_company' do
     it 'rejects an empty company' do
-      expect { @hg.for_company('') }.to raise_error(ArgumentError)
-      expect { @hg.for_company(nil) }.to raise_error(ArgumentError)
+      expect { @hg.for_company('') }.to raise_error(Mixpanel::InvalidIdentityError)
+      expect { @hg.for_company(nil) }.to raise_error(Mixpanel::InvalidIdentityError)
     end
 
     it 'rejects a company of only whitespace on both kinds of tracker' do
       ['  ', ' ', "\t"].each do |company_id|
-        expect { @hg.for_company(company_id) }.to raise_error(ArgumentError, /company_id/)
-        expect { @legacy.for_company(company_id) }.to raise_error(ArgumentError, /company_id/)
+        expect { @hg.for_company(company_id) }.to raise_error(Mixpanel::InvalidIdentityError, /company_id/)
+        expect { @legacy.for_company(company_id) }.to raise_error(Mixpanel::InvalidIdentityError, /company_id/)
       end
     end
 
     it 'rejects a company containing a | on a hierarchical groups tracker only' do
-      expect { @hg.for_company('a|b') }.to raise_error(ArgumentError, /must not contain '\|'/)
+      expect { @hg.for_company('a|b') }.to raise_error(Mixpanel::InvalidIdentityError, /must not contain '\|'/)
       expect { @legacy.for_company('a|b') }.not_to raise_error
     end
 
@@ -1239,7 +1258,7 @@ describe 'Hierarchical groups' do
 
     it 'rejects companies that are not a String or an Integer' do
       [true, false, 1.5, ['acme'], {'id' => 'acme'}, :acme].each do |company_id|
-        expect { @hg.for_company(company_id) }.to raise_error(ArgumentError, /company_id/)
+        expect { @hg.for_company(company_id) }.to raise_error(Mixpanel::InvalidIdentityError, /company_id/)
       end
     end
 
@@ -1367,62 +1386,62 @@ describe 'Hierarchical groups' do
       acme = @hg.for_company('acme')
       [user_in_acme, '$company:acme|$user:user_123'].each do |user|
         expect { @hg.people.set(user, {'role' => 'admin'}, nil, {'$group_id' => 'u2'}) }
-          .to raise_error(ArgumentError, retarget('$group_id', 'u2', 'user_123'))
+          .to raise_error(Mixpanel::InvalidIdentityError, retarget('$group_id', 'u2', 'user_123'))
         expect { @hg.people.set(user, {'role' => 'admin'}, nil, {:'$group_id' => 'u2'}) }
-          .to raise_error(ArgumentError, retarget('$group_id', 'u2', 'user_123'))
+          .to raise_error(Mixpanel::InvalidIdentityError, retarget('$group_id', 'u2', 'user_123'))
         expect { @hg.people.unset(user, ['role'], nil, {'$group_key' => 'department'}) }
-          .to raise_error(ArgumentError, retarget('$group_key', 'department', '$user_id'))
+          .to raise_error(Mixpanel::InvalidIdentityError, retarget('$group_key', 'department', '$user_id'))
         expect { @hg.people.set(user, {'role' => 'admin'}, nil, {'$token' => 'OTHER'}) }
-          .to raise_error(ArgumentError, retarget('$token', 'OTHER', token))
+          .to raise_error(Mixpanel::InvalidIdentityError, retarget('$token', 'OTHER', token))
         expect { acme.people.set_once(user, {'role' => 'admin'}, nil, {'$group_id' => 'u2'}) }
-          .to raise_error(ArgumentError, /\$group_id "u2"/)
+          .to raise_error(Mixpanel::InvalidIdentityError, /\$group_id "u2"/)
       end
       # With user_id == company_id, a $group_key param would turn a user delete into a company delete.
       expect { @hg.people.delete_user(identity(user_id: 'acme', company_id: 'acme'), {'$group_key' => '$company_id'}) }
-        .to raise_error(ArgumentError, retarget('$group_key', '$company_id', '$user_id'))
+        .to raise_error(Mixpanel::InvalidIdentityError, retarget('$group_key', '$company_id', '$user_id'))
       expect(@log).to be_empty
     end
 
     it 'refuses a $distinct_id param naming another profile than the identity' do
       expect { @hg.people.set(user_in_acme, {'role' => 'admin'}, nil, {'$distinct_id' => '$company:acme|$user:u2'}) }
-        .to raise_error(ArgumentError, /\APass either an identity or a \$distinct_id, not both/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /\APass either an identity or a \$distinct_id, not both/)
       combined = identity(distinct_id: '$company:acme|$user:user_123')
       expect { @hg.people.set(combined, {'role' => 'admin'}, nil, {'$distinct_id' => '$company:acme|$user:u2'}) }
-        .to raise_error(ArgumentError, /\APass either an identity or a \$distinct_id, not both/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /\APass either an identity or a \$distinct_id, not both/)
       expect(@log).to be_empty
     end
 
     it 'refuses a generic user update message naming another group or token' do
       base = {'$distinct_id' => '$company:acme|$user:user_123', '$set' => {'role' => 'admin'}}
       expect { @hg.people.update(base.merge('$group_id' => 'u2')) }
-        .to raise_error(ArgumentError, retarget('$group_id', 'u2', 'user_123'))
+        .to raise_error(Mixpanel::InvalidIdentityError, retarget('$group_id', 'u2', 'user_123'))
       expect { @hg.people.update(base.merge('$group_key' => '$company_id')) }
-        .to raise_error(ArgumentError, retarget('$group_key', '$company_id', '$user_id'))
+        .to raise_error(Mixpanel::InvalidIdentityError, retarget('$group_key', '$company_id', '$user_id'))
       expect { @hg.people.update(base.merge('$token' => 'OTHER')) }
-        .to raise_error(ArgumentError, retarget('$token', 'OTHER', token))
+        .to raise_error(Mixpanel::InvalidIdentityError, retarget('$token', 'OTHER', token))
       expect(@log).to be_empty
     end
 
     it 'refuses a group or company param naming another group or token' do
       acme = @hg.for_company('acme')
       expect { acme.groups.set('dept', 'fin', {'a' => 1}, nil, {'$group_id' => 'other'}) }
-        .to raise_error(ArgumentError, retarget('$group_id', 'other', 'fin'))
+        .to raise_error(Mixpanel::InvalidIdentityError, retarget('$group_id', 'other', 'fin'))
       expect { acme.groups.set_once('dept', 'fin', {'a' => 1}, nil, {'$group_key' => 'team'}) }
-        .to raise_error(ArgumentError, retarget('$group_key', 'team', 'dept'))
-      expect { acme.groups.remove('dept', 'fin', {'a' => 1}, nil, {'$group_id' => 'other'}) }.to raise_error(ArgumentError)
-      expect { acme.groups.union('dept', 'fin', {'a' => [1]}, nil, {'$group_id' => 'other'}) }.to raise_error(ArgumentError)
-      expect { acme.groups.unset('dept', 'fin', ['a'], nil, {'$group_id' => 'other'}) }.to raise_error(ArgumentError)
-      expect { acme.groups.delete_group('dept', 'fin', {'$group_id' => 'other'}) }.to raise_error(ArgumentError)
+        .to raise_error(Mixpanel::InvalidIdentityError, retarget('$group_key', 'team', 'dept'))
+      expect { acme.groups.remove('dept', 'fin', {'a' => 1}, nil, {'$group_id' => 'other'}) }.to raise_error(Mixpanel::InvalidIdentityError)
+      expect { acme.groups.union('dept', 'fin', {'a' => [1]}, nil, {'$group_id' => 'other'}) }.to raise_error(Mixpanel::InvalidIdentityError)
+      expect { acme.groups.unset('dept', 'fin', ['a'], nil, {'$group_id' => 'other'}) }.to raise_error(Mixpanel::InvalidIdentityError)
+      expect { acme.groups.delete_group('dept', 'fin', {'$group_id' => 'other'}) }.to raise_error(Mixpanel::InvalidIdentityError)
       expect { acme.groups.set('dept', 'fin', {'a' => 1}, nil, {'$token' => 'OTHER'}) }
-        .to raise_error(ArgumentError, retarget('$token', 'OTHER', token))
+        .to raise_error(Mixpanel::InvalidIdentityError, retarget('$token', 'OTHER', token))
       expect { acme.groups.update('$group_key' => 'dept', '$group_id' => 'fin', '$set' => {}, '$token' => 'OTHER') }
-        .to raise_error(ArgumentError, retarget('$token', 'OTHER', token))
+        .to raise_error(Mixpanel::InvalidIdentityError, retarget('$token', 'OTHER', token))
       expect { @hg.groups.set('dept', 'fin', {'a' => 1}, nil, {'$company_id' => 'acme', '$group_id' => 'other'}) }
-        .to raise_error(ArgumentError, retarget('$group_id', 'other', 'fin'))
+        .to raise_error(Mixpanel::InvalidIdentityError, retarget('$group_id', 'other', 'fin'))
       expect { acme.company.set({'tier' => 'pro'}, nil, {'$group_id' => 'globex'}) }
-        .to raise_error(ArgumentError, retarget('$group_id', 'globex', 'acme'))
+        .to raise_error(Mixpanel::InvalidIdentityError, retarget('$group_id', 'globex', 'acme'))
       expect { acme.company.delete({'$group_key' => '$user_id'}) }
-        .to raise_error(ArgumentError, retarget('$group_key', '$user_id', '$company_id'))
+        .to raise_error(Mixpanel::InvalidIdentityError, retarget('$group_key', '$user_id', '$company_id'))
       expect(@log).to be_empty
     end
 
@@ -1477,24 +1496,24 @@ describe 'Hierarchical groups' do
 
     it 'refuses a $distinct_id param naming no user profile, another company or another group' do
       expect { @hg.people.set('$company:acme|$user:user_123', {'a' => 1}, nil, {'$distinct_id' => 'user_123'}) }
-        .to raise_error(ArgumentError, /distinct id "user_123" does not name both/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /distinct id "user_123" does not name both/)
       expect { @hg.people.set('$company:acme|$user:user_123', {'a' => 1}, nil, {'$distinct_id' => nil}) }
-        .to raise_error(ArgumentError, /distinct id nil does not name both/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /distinct id nil does not name both/)
       expect { @hg.people.set('$company:acme|$user:user_123', {'a' => 1}, nil, {'$distinct_id' => '$company: |$user:u'}) }
-        .to raise_error(ArgumentError, /names a blank company/)
+        .to raise_error(Mixpanel::InvalidIdentityError, /names a blank company/)
       expect do
         @hg.people.set('$company:acme|$user:user_123', {'a' => 1}, nil,
                        {'$distinct_id' => '$company:globex|$user:u2', '$company_id' => 'acme'})
-      end.to raise_error(ArgumentError, 'distinct_id $company:globex|$user:u2 names company globex, ' \
+      end.to raise_error(Mixpanel::InvalidIdentityError, 'distinct_id $company:globex|$user:u2 names company globex, ' \
                                         'but $company_id is acme. Nothing sent')
       expect do
         @hg.for_company('acme').people.set('$company:acme|$user:user_123', {'a' => 1}, nil,
                                            {'$distinct_id' => '$company:globex|$user:u2'})
-      end.to raise_error(ArgumentError, /bound to company "acme", but .*user_id=u2.* belongs to company "globex"/)
+      end.to raise_error(Mixpanel::InvalidIdentityError, /bound to company "acme", but .*user_id=u2.* belongs to company "globex"/)
       expect do
         @hg.people.set('$company:acme|$user:user_123', {'a' => 1}, nil,
                        {'$distinct_id' => '$company:acme|$user:u2', '$group_id' => 'user_123'})
-      end.to raise_error(ArgumentError, /\$group_id "user_123" does not match the message's \$group_id "u2"/)
+      end.to raise_error(Mixpanel::InvalidIdentityError, /\$group_id "user_123" does not match the message's \$group_id "u2"/)
       expect(@log).to be_empty
     end
 
@@ -1578,7 +1597,7 @@ describe 'Hierarchical groups' do
       expect(JSON.load(legacy.first[1])['data']['$distinct_id']).to eq('user_123')
 
       expect { capture(true) { |tracker| tracker.people.set('user_123', {'plan' => 'pro'}) } }
-        .to raise_error(ArgumentError)
+        .to raise_error(Mixpanel::InvalidIdentityError)
     end
 
     it 'still sends increment, plus_one, append, track_charge and generic updates' do

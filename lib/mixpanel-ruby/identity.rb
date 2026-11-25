@@ -37,7 +37,7 @@ module Mixpanel
 
     # Each id is a String or an Integer. nil leaves a value unset; an empty
     # string is a caller error rather than an absent value, as is a user_id or
-    # company_id of only whitespace, and any other type raises ArgumentError.
+    # company_id of only whitespace, and any other type raises InvalidIdentityError.
     # At least one value is required. Events, profile updates and
     # #to_flag_context send every id as a string.
     def initialize(distinct_id: nil, user_id: nil, company_id: nil, device_id: nil)
@@ -47,7 +47,7 @@ module Mixpanel
       @device_id = check_value(device_id, 'device_id')
 
       if @distinct_id.nil? && @user_id.nil? && @company_id.nil? && @device_id.nil?
-        raise ArgumentError, 'An identity needs at least one of distinct_id, user_id, company_id or device_id'
+        raise InvalidIdentityError, 'An identity needs at least one of distinct_id, user_id, company_id or device_id'
       end
 
       freeze
@@ -116,7 +116,7 @@ module Mixpanel
       return nil if value.nil?
       HierarchicalGroups.require_id_type(value, name)
       if value.respond_to?(:empty?) && value.empty?
-        raise ArgumentError, "#{name} must be non-empty"
+        raise InvalidIdentityError, "#{name} must be non-empty"
       end
       HierarchicalGroups.require_not_blank(value, name) if %w[user_id company_id].include?(name)
       value.is_a?(String) ? value.dup.freeze : value
@@ -151,7 +151,7 @@ module Mixpanel
     # <tt>$company:{company}|$user:{user}</tt>, into [company_id, user_id].
     # The company ends at the first |$user: and the user is everything after
     # it. Returns nil for a string not of that shape, and raises
-    # ArgumentError if either part is empty, only whitespace, or contains a |.
+    # InvalidIdentityError if either part is empty, only whitespace, or contains a |.
     def parse_combined_distinct_id(distinct_id)
       return nil unless distinct_id.is_a?(String) && distinct_id.start_with?(COMBINED_COMPANY_PREFIX)
       separator = distinct_id.index(COMBINED_USER_SEPARATOR, COMBINED_COMPANY_PREFIX.length)
@@ -159,17 +159,17 @@ module Mixpanel
       company_id = distinct_id[COMBINED_COMPANY_PREFIX.length...separator]
       user_id = distinct_id[(separator + COMBINED_USER_SEPARATOR.length)..-1]
       if company_id.empty? || blank?(company_id)
-        raise ArgumentError, "distinct_id #{distinct_id.inspect} names a blank company. Nothing sent"
+        raise InvalidIdentityError, "distinct_id #{distinct_id.inspect} names a blank company. Nothing sent"
       end
       if user_id.empty? || blank?(user_id)
-        raise ArgumentError, "distinct_id #{distinct_id.inspect} names a blank user. Nothing sent"
+        raise InvalidIdentityError, "distinct_id #{distinct_id.inspect} names a blank user. Nothing sent"
       end
       require_no_separator(company_id, "The company in distinct_id #{distinct_id.inspect}")
       require_no_separator(user_id, "The user in distinct_id #{distinct_id.inspect}")
       [company_id, user_id]
     end
 
-    # Raises ArgumentError if a $company_id or $user_id sent with a combined
+    # Raises InvalidIdentityError if a $company_id or $user_id sent with a combined
     # distinct id names a different company or user than the distinct id.
     # Values are compared as strings; nil is not checked. company_name and
     # user_name are the field names the message gives the values.
@@ -177,16 +177,16 @@ module Mixpanel
                                             company_name: '$company_id', user_name: '$user_id')
       parsed_company_id, parsed_user_id = parsed
       if !company_id.nil? && company_id.to_s != parsed_company_id
-        raise ArgumentError, "distinct_id #{distinct_id} names company #{parsed_company_id}, " \
+        raise InvalidIdentityError, "distinct_id #{distinct_id} names company #{parsed_company_id}, " \
           "but #{company_name} is #{company_id}. Nothing sent"
       end
       if !user_id.nil? && user_id.to_s != parsed_user_id
-        raise ArgumentError, "distinct_id #{distinct_id} names user #{parsed_user_id}, " \
+        raise InvalidIdentityError, "distinct_id #{distinct_id} names user #{parsed_user_id}, " \
           "but #{user_name} is #{user_id}. Nothing sent"
       end
     end
 
-    # Raises ArgumentError if an identity's combined distinct id has a blank
+    # Raises InvalidIdentityError if an identity's combined distinct id has a blank
     # company or user, or names a different company or user than the
     # identity's own company_id or user_id. Otherwise a profile update would
     # address the distinct id's user while its events resolve to user_id.
@@ -201,7 +201,7 @@ module Mixpanel
     # A $company_id taken from optional_params on a hierarchical groups
     # project. nil and the empty string are left to the caller to treat as
     # missing; anything else must be a String or an Integer that is not only
-    # whitespace and has no |, or ArgumentError is raised.
+    # whitespace and has no |, or InvalidIdentityError is raised.
     def require_valid_company_param(company_id)
       return if company_id.nil? || company_id == ''
       require_id_type(company_id, '$company_id')
@@ -212,14 +212,14 @@ module Mixpanel
     # Optional params are merged over a message's own keys, so on a
     # hierarchical groups project a param such as $token, $group_key or
     # $group_id naming a different value than the message writes would
-    # silently send the update to another profile. Raises ArgumentError for
+    # silently send the update to another profile. Raises InvalidIdentityError for
     # such a param; one equal to the message's own value is allowed. Keys
     # match as strings, so :$group_id is checked too.
     def require_param_matches(params, key, expected)
       params.each do |param_key, value|
         next unless param_key.to_s == key
         next if value == expected
-        raise ArgumentError, "#{key} #{value.inspect} does not match the message's #{key} #{expected.inspect}, " \
+        raise InvalidIdentityError, "#{key} #{value.inspect} does not match the message's #{key} #{expected.inspect}, " \
           'and would send the update to a different profile. Nothing sent'
       end
     end
@@ -253,16 +253,16 @@ module Mixpanel
     end
 
     def require_not_blank(value, name)
-      raise ArgumentError, "#{name} must not be only whitespace" if blank?(value)
+      raise InvalidIdentityError, "#{name} must not be only whitespace" if blank?(value)
     end
 
     # On hierarchical groups projects Mixpanel joins the company and user into
     # one distinct id with |, so a user or company id containing | cannot be
     # told apart from that separator and /groups drops the record. Raises
-    # ArgumentError for such an id. Integers never contain one.
+    # InvalidIdentityError for such an id. Integers never contain one.
     def require_no_separator(value, name)
       return unless value.is_a?(String) && value.include?('|')
-      raise ArgumentError, "#{name} #{value.inspect} must not contain '|' on hierarchical groups projects. Nothing sent"
+      raise InvalidIdentityError, "#{name} #{value.inspect} must not contain '|' on hierarchical groups projects. Nothing sent"
     end
 
     # An id as it is written to a hierarchical groups message: as a string,
@@ -274,11 +274,11 @@ module Mixpanel
     # The [company_id, user_id] a hierarchical groups user profile update
     # addresses by distinct id. User profiles on these projects are group
     # profiles that need both a user and a company, so anything but a combined
-    # distinct id raises ArgumentError.
+    # distinct id raises InvalidIdentityError.
     def require_combined_distinct_id(distinct_id)
       parsed = parse_combined_distinct_id(distinct_id)
       return parsed unless parsed.nil?
-      raise ArgumentError, 'User profile updates on hierarchical groups projects need a user and a company, ' \
+      raise InvalidIdentityError, 'User profile updates on hierarchical groups projects need a user and a company, ' \
         "and distinct id #{distinct_id.inspect} does not name both. Pass " \
         'Mixpanel::Identity.new(user_id: user_id, company_id: company_id) or a distinct id of the form ' \
         '$company:{company}|$user:{user}.'
@@ -293,10 +293,10 @@ module Mixpanel
       end
     end
 
-    # Ids are Strings or Integers. Anything else raises ArgumentError.
+    # Ids are Strings or Integers. Anything else raises InvalidIdentityError.
     def require_id_type(value, name)
       return if value.is_a?(String) || value.is_a?(Integer)
-      raise ArgumentError, "#{name} must be a String or an Integer, not #{value.inspect}"
+      raise InvalidIdentityError, "#{name} must be a String or an Integer, not #{value.inspect}"
     end
 
     # A bound company and an identity's company are the same company when
@@ -311,10 +311,10 @@ module Mixpanel
     # would be silently mis-attributed.
     def require_identity_matches_project(identity, hierarchical_groups)
       if identity.nil?
-        raise ArgumentError, 'identity must be non-nil'
+        raise InvalidIdentityError, 'identity must be non-nil'
       end
       if identity.hierarchical? && !hierarchical_groups
-        raise ArgumentError, "#{identity} requires a hierarchical groups tracker: " \
+        raise InvalidIdentityError, "#{identity} requires a hierarchical groups tracker: " \
           'Mixpanel::Tracker.new(token, hierarchical_groups: true)'
       end
       return unless hierarchical_groups
@@ -326,7 +326,7 @@ module Mixpanel
     # must not contain a |, either.
     def require_company_id(company_id, hierarchical_groups = false)
       if company_id.nil? || (company_id.respond_to?(:empty?) && company_id.empty?)
-        raise ArgumentError, 'company_id must be non-empty'
+        raise InvalidIdentityError, 'company_id must be non-empty'
       end
       require_id_type(company_id, 'company_id')
       require_not_blank(company_id, 'company_id')

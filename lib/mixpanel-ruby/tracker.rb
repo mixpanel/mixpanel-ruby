@@ -98,11 +98,11 @@ module Mixpanel
     # that is not of the form <tt>$company:{company}|$user:{user}</tt> names a
     # separate user that nothing reconciles later. User profile updates never
     # go to /engage: they accept only an identity with a user and company, or
-    # a distinct id of that form, and raise ArgumentError for any other. User
+    # a distinct id of that form, and raise Mixpanel::InvalidIdentityError for any other. User
     # profiles support only set, set_once, unset, union and delete_user; see
     # Mixpanel::People.
     #
-    # Mistakes in the calling code raise ArgumentError,
+    # Mistakes in the calling code raise Mixpanel::InvalidIdentityError,
     # Mixpanel::UnsupportedOperationError or Mixpanel::CompanyRequiredError
     # directly; they are not passed to the error handler.
     def initialize(token, error_handler=nil, credentials: nil, local_flags_config: nil, remote_flags_config: nil, hierarchical_groups: false, &block)
@@ -161,7 +161,7 @@ module Mixpanel
     #
     #     tracker.track(Mixpanel::Identity.new(user_id: '12345', company_id: 'acme'), 'Signup')
     #
-    # Raises ArgumentError if the identity does not match the project, for
+    # Raises Mixpanel::InvalidIdentityError if the identity does not match the project, for
     # example an identity with a company on a tracker created without
     # hierarchical_groups: true.
     def track(distinct_id, event, properties={}, ip=nil)
@@ -245,10 +245,10 @@ module Mixpanel
     # feature flag providers, and this tracker is unchanged. Events are not
     # affected, and user profile updates do not need it: a Mixpanel::Identity
     # carries its own company. A user from another company raises
-    # ArgumentError on the returned tracker. Available on any tracker, but
+    # Mixpanel::InvalidIdentityError on the returned tracker. Available on any tracker, but
     # only hierarchical groups projects need it.
     #
-    # Raises ArgumentError if company_id is nil or empty.
+    # Raises Mixpanel::InvalidIdentityError if company_id is nil or empty.
     def for_company(company_id)
       # Copy a string id so later changes to the caller's string do not move the bound company.
       company_id = company_id.dup.freeze if company_id.is_a?(String)
