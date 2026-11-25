@@ -1,5 +1,19 @@
 # Changelog
 
+## [v3.5.0](https://github.com/mixpanel/mixpanel-ruby/tree/v3.5.0) (2026-11-23)
+
+### Features
+- tag OpenFeature exposures with $openfeature_provider (SDK-448) ([#181](https://github.com/mixpanel/mixpanel-ruby/pull/181))
+
+### Fixes
+- surface failed imports instead of failing silently (SDK-395) ([#177](https://github.com/mixpanel/mixpanel-ruby/pull/177))
+- bump json-logic-rb minimum to 0.3 ([#175](https://github.com/mixpanel/mixpanel-ruby/pull/175))
+
+### Chores
+- explain which credential import needs (SDK-388) ([#179](https://github.com/mixpanel/mixpanel-ruby/pull/179))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-ruby/compare/v3.4.0...v3.5.0)
+
 ## [v3.4.0](https://github.com/mixpanel/mixpanel-ruby/tree/v3.4.0) (2026-09-01)
 
 ### Features

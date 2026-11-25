@@ -1,5 +1,12 @@
 # Changelog
 
+## [openfeature/v0.3.0](https://github.com/mixpanel/mixpanel-ruby/tree/openfeature/v0.3.0) (2026-11-23)
+
+### Features
+- tag OpenFeature exposures with $openfeature_provider (SDK-448) ([#181](https://github.com/mixpanel/mixpanel-ruby/pull/181))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-ruby/compare/openfeature/v0.2.0...openfeature/v0.3.0)
+
 ## [openfeature/v0.2.0](https://github.com/mixpanel/mixpanel-ruby/tree/openfeature/v0.2.0) (2026-07-28)
 
 ### Features

@@ -654,6 +654,53 @@ describe Mixpanel::Flags::LocalFlagsProvider do
       provider.get_variant_value('test_flag', 'fallback', { 'distinct_id' => 'qa_user' })
     end
 
+    it 'marks exposure with $openfeature_provider when context carries the marker (SDK-448)' do
+      flag = create_test_flag
+      stub_flag_definitions([flag])
+      provider.start_polling_for_definitions!
+
+      captured = nil
+      expect(mock_tracker).to receive(:call).once do |_distinct_id, _event_name, properties|
+        captured = properties
+      end
+
+      result = provider.get_variant_value('test_flag', 'fallback', test_context.merge('$openfeature_provider' => true))
+
+      # The marker must not change variant assignment.
+      expect(result).to eq(provider.get_variant_value('test_flag', 'fallback', test_context, report_exposure: false))
+      expect(captured['$openfeature_provider']).to eq(true)
+    end
+
+    it 'accepts a symbol-keyed $openfeature_provider marker (SDK-448)' do
+      flag = create_test_flag
+      stub_flag_definitions([flag])
+      provider.start_polling_for_definitions!
+
+      captured = nil
+      expect(mock_tracker).to receive(:call).once do |_distinct_id, _event_name, properties|
+        captured = properties
+      end
+
+      provider.get_variant_value('test_flag', 'fallback', test_context.merge('$openfeature_provider': true))
+
+      expect(captured['$openfeature_provider']).to eq(true)
+    end
+
+    it 'omits $openfeature_provider from exposure for direct SDK calls (SDK-448)' do
+      flag = create_test_flag
+      stub_flag_definitions([flag])
+      provider.start_polling_for_definitions!
+
+      captured = nil
+      expect(mock_tracker).to receive(:call).once do |_distinct_id, _event_name, properties|
+        captured = properties
+      end
+
+      provider.get_variant_value('test_flag', 'fallback', test_context)
+
+      expect(captured).not_to have_key('$openfeature_provider')
+    end
+
     it 'does not track exposure on fallback' do
       stub_flag_definitions([])
       provider.start_polling_for_definitions!
