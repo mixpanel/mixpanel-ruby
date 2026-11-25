@@ -235,7 +235,7 @@ module Mixpanel
       HierarchicalGroups.require_identity_distinct_id_agrees(identity) if @hierarchical_groups
 
       # An identity without a distinct id sends no distinct_id: Mixpanel
-      # resolves the event from $user_id, $company_id and $device_id.
+      # resolves the event from $user_id and $company_id.
       defaults = {}
       defaults['distinct_id'] = identity.distinct_id unless identity.distinct_id.nil?
       defaults.merge(
@@ -249,7 +249,7 @@ module Mixpanel
     # The identity's keys, with every id as a string.
     def identity_event_properties(identity)
       identity_properties = identity.to_properties
-      %w[distinct_id $user_id $company_id $device_id].each do |key|
+      %w[distinct_id $user_id $company_id].each do |key|
         identity_properties[key] = HierarchicalGroups.wire_id(identity_properties[key]) if identity_properties.key?(key)
       end
       identity_properties

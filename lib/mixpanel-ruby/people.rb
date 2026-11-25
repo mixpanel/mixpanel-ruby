@@ -334,10 +334,6 @@ module Mixpanel
           'User profiles are addressed by distinct id unless the project uses hierarchical groups.'
       end
       if identity.user_id.nil?
-        if identity.company_id.nil?
-          raise InvalidIdentityError, "#{identity} names no user, so it cannot identify a profile. " \
-            'Device ids identify anonymous events, not profiles.'
-        end
         raise InvalidIdentityError, "User profile updates require a user id, and #{identity} has none. " \
           'Use tracker.for_company(company_id).company.set(properties) ' \
           "to update the company's profile."

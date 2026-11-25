@@ -74,15 +74,8 @@ describe 'Hierarchical groups scenarios' do
 
   # Events
 
-  it 'Track Anonymous' do
-    @hg.track(Mixpanel::Identity.new(device_id: device_id), 'Viewed')
-
-    properties = expect_event(:event, %w[$device_id])
-    expect(properties['$device_id']).to eq(device_id)
-  end
-
   it 'Track Identified' do
-    @hg.track(Mixpanel::Identity.new(user_id: user_id, company_id: company_id, device_id: device_id), 'Signup')
+    @hg.track(user, 'Signup', {'$device_id' => device_id})
 
     properties = expect_event(:event, %w[$user_id $company_id $device_id])
     expect(properties['$user_id']).to eq(user_id)

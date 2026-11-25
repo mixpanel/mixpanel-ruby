@@ -4,15 +4,14 @@ module Mixpanel
 
   # Identifies who an event or profile update belongs to.
   #
-  # Mixpanel resolves an identity from whichever of distinct_id, $user_id,
-  # $company_id and $device_id an event carries, so an Identity sets any
-  # combination of them and leaves the rest unset (nil).
+  # Mixpanel resolves an identity from whichever of distinct_id, $user_id and
+  # $company_id an event carries, so an Identity sets any combination of them
+  # and leaves the rest unset (nil).
   #
-  #     Mixpanel::Identity.new(distinct_id: 'user_123')                       # a plain distinct id
-  #     Mixpanel::Identity.new(user_id: 'user_123', device_id: 'device_abc')  # simplified id merge
-  #     Mixpanel::Identity.new(user_id: 'user_123', company_id: 'acme')       # hierarchical groups
-  #     Mixpanel::Identity.new(device_id: 'device_abc')                       # anonymous, no user yet
-  #     Mixpanel::Identity.new(company_id: 'acme')                            # a company, no user
+  #     Mixpanel::Identity.new(distinct_id: 'user_123')                  # a plain distinct id
+  #     Mixpanel::Identity.new(user_id: 'user_123')                      # a user
+  #     Mixpanel::Identity.new(user_id: 'user_123', company_id: 'acme')  # hierarchical groups
+  #     Mixpanel::Identity.new(company_id: 'acme')                       # a company, no user
   #
   # Pass an Identity wherever Mixpanel::Tracker#track, #import, #import_events or
   # the supported Mixpanel::People methods accept a distinct_id.
@@ -33,21 +32,20 @@ module Mixpanel
   #
   # Instances are frozen.
   class Identity
-    attr_reader :distinct_id, :user_id, :company_id, :device_id
+    attr_reader :distinct_id, :user_id, :company_id
 
     # Each id is a String or an Integer. nil leaves a value unset; an empty
     # string is a caller error rather than an absent value, as is a user_id or
     # company_id of only whitespace, and any other type raises InvalidIdentityError.
     # At least one value is required. Events, profile updates and
     # #to_flag_context send every id as a string.
-    def initialize(distinct_id: nil, user_id: nil, company_id: nil, device_id: nil)
+    def initialize(distinct_id: nil, user_id: nil, company_id: nil)
       @distinct_id = check_value(distinct_id, 'distinct_id')
       @user_id = check_value(user_id, 'user_id')
       @company_id = check_value(company_id, 'company_id')
-      @device_id = check_value(device_id, 'device_id')
 
-      if @distinct_id.nil? && @user_id.nil? && @company_id.nil? && @device_id.nil?
-        raise InvalidIdentityError, 'An identity needs at least one of distinct_id, user_id, company_id or device_id'
+      if @distinct_id.nil? && @user_id.nil? && @company_id.nil?
+        raise InvalidIdentityError, 'An identity needs at least one of distinct_id, user_id or company_id'
       end
 
       freeze
@@ -65,7 +63,6 @@ module Mixpanel
       properties['distinct_id'] = @distinct_id unless @distinct_id.nil?
       properties['$user_id'] = @user_id unless @user_id.nil?
       properties['$company_id'] = @company_id unless @company_id.nil?
-      properties['$device_id'] = @device_id unless @device_id.nil?
       properties
     end
 
@@ -83,7 +80,6 @@ module Mixpanel
       context['distinct_id'] = HierarchicalGroups.wire_id(@distinct_id) unless @distinct_id.nil?
       context['$user_id'] = HierarchicalGroups.wire_id(@user_id) unless @user_id.nil?
       context['$company_id'] = HierarchicalGroups.wire_id(@company_id) unless @company_id.nil?
-      context['device_id'] = HierarchicalGroups.wire_id(@device_id) unless @device_id.nil?
       context['custom_properties'] = custom_properties.dup unless custom_properties.empty?
       context
     end
@@ -99,7 +95,7 @@ module Mixpanel
 
     def to_s
       set = [['distinct_id', @distinct_id], ['user_id', @user_id],
-             ['company_id', @company_id], ['device_id', @device_id]].reject { |_, value| value.nil? }
+             ['company_id', @company_id]].reject { |_, value| value.nil? }
       "Mixpanel::Identity{#{set.map { |name, value| "#{name}=#{value}" }.join(', ')}}"
     end
     alias inspect to_s
@@ -107,7 +103,7 @@ module Mixpanel
     protected
 
     def state
-      [@distinct_id, @user_id, @company_id, @device_id]
+      [@distinct_id, @user_id, @company_id]
     end
 
     private

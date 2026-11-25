@@ -61,25 +61,22 @@ describe 'Hierarchical groups' do
       # An empty string is a caller error; nil simply leaves the value unset.
       expect { identity(user_id: '') }.to raise_error(Mixpanel::InvalidIdentityError, /user_id/)
       expect { identity(company_id: '') }.to raise_error(Mixpanel::InvalidIdentityError, /company_id/)
-      expect { identity(device_id: '') }.to raise_error(Mixpanel::InvalidIdentityError, /device_id/)
       expect { identity(distinct_id: '') }.to raise_error(Mixpanel::InvalidIdentityError, /distinct_id/)
     end
 
     it 'accepts String and Integer ids and sends them as strings' do
-      id = identity(distinct_id: 0, user_id: 42, company_id: 7, device_id: 'dev')
+      id = identity(distinct_id: 0, user_id: 42, company_id: 7)
 
-      expect(id.to_properties).to eq('distinct_id' => 0, '$user_id' => 42, '$company_id' => 7, '$device_id' => 'dev')
+      expect(id.to_properties).to eq('distinct_id' => 0, '$user_id' => 42, '$company_id' => 7)
       @hg.track(id, 'event')
       expect(last_properties['$user_id']).to eq('42')
       expect(last_properties['$company_id']).to eq('7')
       expect(last_properties['distinct_id']).to eq('0')
-      expect(last_properties['$device_id']).to eq('dev')
     end
 
     it 'sends Integer identity ids as strings without hierarchical groups' do
-      @legacy.track(identity(user_id: 42, device_id: 9), 'event')
+      @legacy.track(identity(user_id: 42), 'event')
       expect(last_properties['$user_id']).to eq('42')
-      expect(last_properties['$device_id']).to eq('9')
     end
 
     it 'sends an Integer identity distinct id as a string' do
@@ -97,23 +94,18 @@ describe 'Hierarchical groups' do
       expect(identity(distinct_id: 5).to_flag_context).to eq('distinct_id' => '5')
     end
 
-    it 'sends an Integer device id as a string' do
-      @hg.track(identity(user_id: 'user_123', company_id: 'acme', device_id: 9), 'event')
-      expect(last_properties['$device_id']).to eq('9')
-    end
-
     it 'sends raw properties as given' do
       @legacy.track('user_123', 'event', {'$user_id' => 42, '$device_id' => 9})
       expect(last_properties).to include('$user_id' => 42, '$device_id' => 9)
-      @hg.track(identity(device_id: 'dev'), 'event', {'$user_id' => 42, '$company_id' => 7})
-      expect(last_properties).to include('$user_id' => 42, '$company_id' => 7, '$device_id' => 'dev')
+      @hg.track(identity(distinct_id: 'dev'), 'event', {'$user_id' => 42, '$company_id' => 7})
+      expect(last_properties).to include('$user_id' => 42, '$company_id' => 7, 'distinct_id' => 'dev')
     end
 
     it 'accepts a | in ids, which only hierarchical groups trackers refuse' do
-      id = identity(user_id: 'a|b', company_id: 'c|d', device_id: 'e|f')
+      id = identity(user_id: 'a|b', company_id: 'c|d')
       expect(id.user_id).to eq('a|b')
-      @legacy.track(identity(user_id: 'a|b', device_id: 'e|f'), 'event')
-      expect(last_properties).to include('$user_id' => 'a|b', '$device_id' => 'e|f')
+      @legacy.track(identity(user_id: 'a|b'), 'event')
+      expect(last_properties).to include('$user_id' => 'a|b')
     end
 
     it 'rejects a user or company id of only whitespace' do
@@ -129,7 +121,7 @@ describe 'Hierarchical groups' do
     end
 
     it 'rejects ids that are not a String or an Integer' do
-      %i[distinct_id user_id company_id device_id].each do |name|
+      %i[distinct_id user_id company_id].each do |name|
         [true, false, 1.5, ['a'], {'a' => 1}, :a].each do |value|
           expect { identity(name => value) }.to raise_error(Mixpanel::InvalidIdentityError, /#{name}/)
         end
@@ -142,10 +134,10 @@ describe 'Hierarchical groups' do
     end
 
     it 'treats nil as unset' do
-      id = identity(user_id: 'user_123', device_id: nil)
+      id = identity(user_id: 'user_123', company_id: nil)
 
       expect(id.user_id).to eq('user_123')
-      expect(id.device_id).to be_nil
+      expect(id.company_id).to be_nil
       expect(id.to_properties).to eq('$user_id' => 'user_123')
     end
 
@@ -153,7 +145,7 @@ describe 'Hierarchical groups' do
       expect(user_in_acme).to be_frozen
       expect(user_in_acme.user_id).to be_frozen
       expect(user_in_acme).to be_hierarchical
-      expect(identity(user_id: 'user_123', device_id: 'd')).not_to be_hierarchical
+      expect(identity(user_id: 'user_123')).not_to be_hierarchical
     end
 
     it 'has a readable string form and value equality' do
@@ -164,22 +156,28 @@ describe 'Hierarchical groups' do
     end
 
     it 'builds a flag context' do
-      id = identity(user_id: 'user_123', company_id: 'acme', device_id: 'device_abc')
+      id = identity(user_id: 'user_123', company_id: 'acme')
 
       expect(id.to_flag_context(groups: { 'department' => 'finance' },
                                 custom_properties: { 'plan' => 'enterprise' })).to eq(
         '$user_id' => 'user_123',
         '$company_id' => 'acme',
-        'device_id' => 'device_abc',
         'department' => 'finance',
         'custom_properties' => { 'plan' => 'enterprise' }
       )
     end
 
     it 'builds a flag context with ids as strings' do
-      expect(identity(user_id: 42, company_id: 7, device_id: 9).to_flag_context).to eq(
-        '$user_id' => '42', '$company_id' => '7', 'device_id' => '9'
+      expect(identity(user_id: 42, company_id: 7).to_flag_context).to eq(
+        '$user_id' => '42', '$company_id' => '7'
       )
+    end
+
+    it 'has no device id' do
+      expect { identity(user_id: 'user_123', device_id: 'device_abc') }.to raise_error(ArgumentError, /device_id/)
+      expect(user_in_acme).not_to respond_to(:device_id)
+      expect(user_in_acme.to_flag_context).not_to have_key('device_id')
+      expect(user_in_acme.to_properties).not_to have_key('$device_id')
     end
 
     it 'builds a flag context from a plain distinct id' do
@@ -196,9 +194,7 @@ describe 'Hierarchical groups' do
       expect(@log).to be_empty
     end
 
-    it 'accepts a | in a device id or a plain distinct id' do
-      @hg.track(identity(device_id: 'a|b'), 'Signup')
-      expect(last_properties['$device_id']).to eq('a|b')
+    it 'accepts a | in a plain distinct id' do
       @hg.track('a|b', 'Signup')
       expect(last_properties['distinct_id']).to eq('a|b')
     end
@@ -222,11 +218,13 @@ describe 'Hierarchical groups' do
       expect(last_properties['token']).to eq(token)
     end
 
-    it 'sends a device id' do
-      @hg.track(identity(user_id: 'user_123', company_id: 'acme', device_id: 'device_abc'), 'Signup')
-
-      expect(last_properties['$device_id']).to eq('device_abc')
+    it 'sends a $device_id event property as given on both kinds of tracker' do
+      @hg.track(user_in_acme, 'Signup', {'$device_id' => 'device_abc'})
+      expect(last_properties).to include('$user_id' => 'user_123', '$company_id' => 'acme', '$device_id' => 'device_abc')
       expect(last_properties).not_to have_key('distinct_id')
+
+      @legacy.track(identity(user_id: 'user_123'), 'Signup', {'$device_id' => 'device_abc'})
+      expect(last_properties).to include('$user_id' => 'user_123', '$device_id' => 'device_abc')
     end
 
     it 'sends a company-only event' do
@@ -271,41 +269,11 @@ describe 'Hierarchical groups' do
       expect(last_properties['$company_id']).to eq('acme')
     end
 
-    it 'accepts a user and device without a company for simplified id merge' do
-      # $user_id with $device_id is the standard non-hierarchical server-side identity.
-      @legacy.track(identity(user_id: 'user_123', device_id: 'device_abc'), 'Signup')
-
-      expect(last_properties['$user_id']).to eq('user_123')
-      expect(last_properties['$device_id']).to eq('device_abc')
-      expect(last_properties).not_to have_key('distinct_id')
-      expect(last_properties).not_to have_key('$company_id')
-    end
-
     it 'sends a user without a company as given on a hierarchical tracker' do
       @hg.track(identity(user_id: 'user_123'), 'Signup')
 
       expect(last_properties['$user_id']).to eq('user_123')
       expect(last_properties).not_to have_key('$company_id')
-    end
-
-    it 'allows a user with a device but no company on a hierarchical tracker' do
-      # Mixpanel ignores the user id and keeps the event under the device, which later
-      # links to the company-scoped user. Recoverable, so the library does not refuse it.
-      @hg.track(identity(user_id: 'user_123', device_id: 'device_abc'), 'Signup')
-
-      expect(last_properties['$device_id']).to eq('device_abc')
-      expect(last_properties).not_to have_key('$company_id')
-    end
-
-    it 'sends anonymous device events on both kinds of tracker' do
-      [@hg, @legacy].each do |tracker|
-        tracker.track(identity(device_id: 'device_abc'), 'Page View')
-
-        expect(last_properties['$device_id']).to eq('device_abc')
-        expect(last_properties).not_to have_key('distinct_id')
-        expect(last_properties).not_to have_key('$user_id')
-        expect(last_properties).not_to have_key('$company_id')
-      end
     end
 
     it 'passes a combined distinct id through' do
@@ -860,15 +828,15 @@ describe 'Hierarchical groups' do
       expect(last_data['$company_id']).to eq('acme')
     end
 
-    it 'takes the company from a $company_id param for a user with a device' do
-      @hg.people.set(identity(user_id: 'user_123', device_id: 'd'), {'role' => 'admin'}, nil, {'$company_id' => 'acme'})
+    it 'takes the company from a $company_id param for a user without one' do
+      @hg.people.set(identity(user_id: 'user_123'), {'role' => 'admin'}, nil, {'$company_id' => 'acme'})
 
       expect(last_type).to eq(:group_update)
       expect(last_data['$company_id']).to eq('acme')
     end
 
-    it 'requires a company for a user with a device and no $company_id param' do
-      expect { @hg.people.set(identity(user_id: 'user_123', device_id: 'd'), {'role' => 'admin'}) }
+    it 'requires a company for a user without one and no $company_id param' do
+      expect { @hg.people.set(identity(user_id: 'user_123'), {'role' => 'admin'}) }
         .to raise_error(Mixpanel::CompanyRequiredError)
     end
 
@@ -981,13 +949,6 @@ describe 'Hierarchical groups' do
       expect(last_data).not_to have_key('$distinct_id')
       expect(last_data['$group_id']).to eq('user_123')
       expect(last_data['$company_id']).to eq('acme')
-    end
-
-    it 'rejects a device identity on both kinds of tracker' do
-      device = identity(device_id: 'device_abc')
-
-      expect { @hg.people.set(device, {'plan' => 'pro'}) }.to raise_error(Mixpanel::InvalidIdentityError, /names no user/)
-      expect { @legacy.people.set(device, {'plan' => 'pro'}) }.to raise_error(Mixpanel::InvalidIdentityError, /cannot identify a profile/)
     end
 
     it 'rejects a company-only identity and points at the company profile' do
