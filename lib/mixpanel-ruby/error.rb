@@ -13,6 +13,30 @@ module Mixpanel
   class ServerError < MixpanelError
   end
 
+  # Raised directly to the caller (never passed to the ErrorHandler) when a
+  # hierarchical groups tracker is asked for a profile operation that
+  # hierarchical groups projects do not support, such as People#increment,
+  # People#append or People#track_charge. It signals a mistake in the calling
+  # code rather than a delivery failure.
+  class UnsupportedOperationError < MixpanelError
+  end
+
+  # Raised directly to the caller (never passed to the ErrorHandler) when a
+  # hierarchical groups tracker builds a group profile update without
+  # knowing its company. Use Tracker#for_company to bind one.
+  class CompanyRequiredError < MixpanelError
+  end
+
+  # Raised directly to the caller (never passed to the ErrorHandler) when an
+  # id or Mixpanel::Identity is misused: an id that is empty, only whitespace,
+  # of the wrong type or (on hierarchical groups projects) contains a |, a
+  # combined distinct id that has a blank part or conflicts with its
+  # $company_id or $user_id, an identity that does not match the project, or
+  # a param naming a different profile or company than the update targets.
+  # It signals a mistake in the calling code rather than a delivery failure.
+  class InvalidIdentityError < MixpanelError
+  end
+
 
   # The default behavior of the gem is to silence all errors
   # thrown in the consumer.  If you wish to handle MixpanelErrors

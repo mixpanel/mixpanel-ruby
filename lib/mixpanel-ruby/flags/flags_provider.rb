@@ -3,6 +3,7 @@ require 'json'
 require 'uri'
 require 'mixpanel-ruby/version'
 require 'mixpanel-ruby/error'
+require 'mixpanel-ruby/identity'
 require 'mixpanel-ruby/flags/utils'
 require 'mixpanel-ruby/flags/types'
 
@@ -12,7 +13,7 @@ module Mixpanel
     # Base class for feature flags providers
     # Provides common HTTP handling and exposure event tracking
     class FlagsProvider
-      # @param provider_config [Hash] Configuration with :token, :api_host, :request_timeout_in_seconds, :exposure_executor, :credentials (optional)
+      # @param provider_config [Hash] Configuration with :token, :api_host, :request_timeout_in_seconds, :exposure_executor, :credentials (optional), :hierarchical_groups (optional)
       # @param endpoint [String] API endpoint path (e.g., '/flags' or '/flags/definitions')
       # @param tracker_callback [Proc] Function used to track events (bound tracker.track method)
       # @param evaluation_mode [String] The feature flag evaluation mode. This is either 'local' or 'remote'
@@ -25,6 +26,7 @@ module Mixpanel
         @error_handler = error_handler
         @exposure_executor = provider_config[:exposure_executor]
         @credentials = provider_config[:credentials]
+        @hierarchical_groups = provider_config[:hierarchical_groups] ? true : false
       end
 
       # Make HTTP request to flags API endpoint
@@ -102,25 +104,41 @@ module Mixpanel
       def track_exposure_event(flag_key, selected_variant, context, latency_ms = nil)
         distinct_id = context['distinct_id'] || context[:distinct_id]
 
-        unless distinct_id
+        unless can_attribute_exposure(context)
           # Local eval succeeds when the flag's Variant Assignment Key is
           # something other than distinct_id (e.g., device_id), but the
-          # exposure event still needs distinct_id to attribute the user.
-          # Surface the drop instead of silently returning so callers can
-          # see they need to include distinct_id in the context.
+          # exposure event still needs distinct_id ($company_id for
+          # hierarchical groups) to attribute the user. Surface the drop
+          # instead of silently returning so callers can see what to include
+          # in the context.
           @error_handler&.handle(MixpanelError.new(
-            "Cannot track exposure event for flag '#{flag_key}' without a distinct_id in the context"
+            "Cannot track exposure event for flag '#{flag_key}' without a #{@hierarchical_groups ? '$company_id' : 'distinct_id'} in the context"
           ))
           return
         end
 
-        properties = {
-          'distinct_id' => distinct_id,
+        recipient = distinct_id
+        if @hierarchical_groups
+          # Sent as a Mixpanel::Identity, so the event carries whichever of
+          # distinct_id, $user_id and $company_id the context has, and no
+          # distinct_id when it has none.
+          recipient = hierarchical_exposure_identity(context)
+          conflict = combined_id_conflict(recipient)
+          if conflict
+            @error_handler&.handle(MixpanelError.new(conflict))
+            return
+          end
+          properties = recipient.to_properties
+        else
+          properties = { 'distinct_id' => distinct_id }
+        end
+
+        properties.merge!(
           'Experiment name' => flag_key,
           'Variant name' => selected_variant.variant_key,
           '$experiment_type' => 'feature_flag',
           'Flag evaluation mode' => @evaluation_mode
-        }
+        )
 
         properties['Variant fetch latency (ms)'] = latency_ms if latency_ms
         properties['$experiment_id'] = selected_variant.experiment_id if selected_variant.experiment_id
@@ -132,10 +150,70 @@ module Mixpanel
           properties['$openfeature_provider'] = true
         end
 
-        dispatch_exposure(distinct_id, properties)
+        dispatch_exposure(recipient, properties)
       end
 
       private
+
+      # True if an exposure event for this context can be attributed: by
+      # distinct_id, or on a hierarchical groups project by $company_id as
+      # well, from which Mixpanel builds the distinct id.
+      def can_attribute_exposure(context)
+        unless @hierarchical_groups
+          return context['distinct_id'] || context[:distinct_id] ? true : false
+        end
+
+        !exposure_hg_id(context_value(context, '$company_id')).nil? ||
+          Mixpanel::HierarchicalGroups.present?(context_value(context, 'distinct_id'))
+      end
+
+      def hierarchical_exposure_identity(context)
+        distinct_id = context_value(context, 'distinct_id')
+        distinct_id = nil unless Mixpanel::HierarchicalGroups.present?(distinct_id)
+
+        company_id = exposure_hg_id(context_value(context, '$company_id'))
+        # A user id is attached only with a company id, as flag evaluation
+        # only uses the user together with the company.
+        user_id = company_id && exposure_hg_id(context_value(context, '$user_id'))
+        Mixpanel::Identity.new(distinct_id: exposure_id(distinct_id), user_id: user_id, company_id: company_id)
+      end
+
+      # A context $user_id or $company_id for an exposure event: only a
+      # String that is not empty or only whitespace, as flag evaluation and
+      # the flags service treat anything else as missing; nil otherwise.
+      def exposure_hg_id(value)
+        value.is_a?(String) && Mixpanel::HierarchicalGroups.present_id?(value) ? value : nil
+      end
+
+      # The message for an exposure identity whose user or company id
+      # contains a |, or whose combined distinct id ($company:<c>|$user:<u>)
+      # has a blank company or user, or names a different company or user
+      # than its $company_id or $user_id, as track refuses it, or nil if there
+      # is no such problem.
+      def combined_id_conflict(identity)
+        Mixpanel::HierarchicalGroups.require_no_separator(identity.user_id, '$user_id')
+        Mixpanel::HierarchicalGroups.require_no_separator(identity.company_id, '$company_id')
+        distinct_id = identity.distinct_id
+        parsed = Mixpanel::HierarchicalGroups.parse_combined_distinct_id(distinct_id)
+        return nil if parsed.nil?
+        Mixpanel::HierarchicalGroups.require_consistent_with_combined_id(
+          distinct_id, parsed, company_id: identity.company_id, user_id: identity.user_id
+        )
+        nil
+      rescue InvalidIdentityError => e
+        e.message
+      end
+
+      # A context value as an identity id: Strings and Integers as given,
+      # anything else as its string form, so an exposure is not lost to a
+      # context value Mixpanel::Identity does not accept.
+      def exposure_id(value)
+        value.nil? || value.is_a?(String) || value.is_a?(Integer) ? value : value.to_s
+      end
+
+      def context_value(context, key)
+        Mixpanel::HierarchicalGroups.lookup(context, key)
+      end
 
       # Dispatch the tracker call inline or via the configured executor.
       # The executor is duck-typed — anything that responds to #post(&block)
@@ -145,6 +223,8 @@ module Mixpanel
       # doesn't terminate the executor thread silently. Inline path
       # preserves the original behavior — non-MixpanelError propagates to
       # the flag evaluator's caller unchanged.
+      #
+      # distinct_id is a Mixpanel::Identity on a hierarchical groups project.
       def dispatch_exposure(distinct_id, properties)
         if @exposure_executor
           begin

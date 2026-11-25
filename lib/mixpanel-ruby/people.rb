@@ -4,6 +4,8 @@ require 'time'
 
 require 'mixpanel-ruby/consumer'
 require 'mixpanel-ruby/error'
+require 'mixpanel-ruby/identity'
+require 'mixpanel-ruby/groups'
 
 module Mixpanel
 
@@ -14,6 +16,42 @@ module Mixpanel
   #
   #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
   #     tracker.people.set(...) # Or .append(..), or track_charge(...) etc.
+  #
+  # == Hierarchical groups
+  #
+  # On a hierarchical groups tracker (Tracker.new(token, hierarchical_groups: true))
+  # user profiles are group profiles keyed by $user_id, so they support only what
+  # /groups supports: #set, #set_once, #unset, #union and #delete_user.
+  # #increment, #plus_one, #append, #track_charge and #clear_charges raise
+  # Mixpanel::UnsupportedOperationError, as does #update with a $add, $append or
+  # $merge operation.
+  #
+  # Every user profile update on a hierarchical groups tracker goes to the
+  # $user_id group profile within a company, through /groups. Nothing is sent
+  # to /engage. Name the user and company with a Mixpanel::Identity in place
+  # of distinct_id:
+  #
+  #     tracker.people.set(Mixpanel::Identity.new(user_id: '12345', company_id: 'acme'), {
+  #         'role' => 'admin'
+  #     })
+  #
+  # The company comes from the identity, or else the company the tracker is
+  # bound to by Tracker#for_company, or else a $company_id in optional_params,
+  # so these updates do not need Tracker#for_company. On a tracker bound with
+  # #for_company, a user from another company raises Mixpanel::InvalidIdentityError and sends
+  # nothing.
+  #
+  # A distinct id, as a string or as an identity's distinct_id, must be one
+  # Mixpanel built, of the form <tt>$company:{company}|$user:{user}</tt>. It
+  # sends the same update as the identity with that user and company. Any
+  # other distinct id raises Mixpanel::InvalidIdentityError and sends nothing, as does #update
+  # with any other $distinct_id, or a $company_id in optional_params (or in
+  # the #update message) naming a different company. User and company ids
+  # are sent as strings. A $distinct_id in optional_params names the profile
+  # in place of distinct_id, the same way, and is never sent to /groups.
+  #
+  # Without hierarchical groups, a distinct id or an identity with a
+  # distinct_id updates that profile through /engage.
   class People
 
     # You likely won't need to instantiate instances of Mixpanel::People
@@ -22,9 +60,11 @@ module Mixpanel
     #     tracker = Mixpanel::Tracker.new(YOUR_MIXPANEL_TOKEN)
     #     tracker.people # An instance of Mixpanel::People
     #
-    def initialize(token, error_handler=nil, &block)
+    def initialize(token, error_handler=nil, hierarchical_groups: false, company_id: nil, &block)
       @token = token
       @error_handler = error_handler || ErrorHandler.new
+      @hierarchical_groups = hierarchical_groups ? true : false
+      @company_id = company_id
 
       if block
         @sink = block
@@ -32,6 +72,9 @@ module Mixpanel
         consumer = Consumer.new
         @sink = consumer.method(:send!)
       end
+
+      # Hierarchical groups user profiles are sent to /groups through the same sink.
+      @user_profiles = Groups.new(token, @error_handler, hierarchical_groups: @hierarchical_groups, &@sink)
     end
 
     # Sets properties on a user record. Takes a Hash with string
@@ -50,13 +93,7 @@ module Mixpanel
     # ip address for geolocation (rather than the ip of your server)
     def set(distinct_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
-      message = {
-        '$distinct_id' => distinct_id,
-        '$set' => properties,
-      }.merge(optional_params)
-      message['$ip'] = ip if ip
-
-      update(message)
+      profile_update(distinct_id, '$set', properties, ip, optional_params)
     end
 
     # set_once works just like #set, but will only change the
@@ -71,13 +108,7 @@ module Mixpanel
     #
     def set_once(distinct_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
-      message = {
-        '$distinct_id' => distinct_id,
-        '$set_once' => properties,
-      }.merge(optional_params)
-      message['$ip'] = ip if ip
-
-      update(message)
+      profile_update(distinct_id, '$set_once', properties, ip, optional_params)
     end
 
     # Changes the value of properties by a numeric amount.  Takes a
@@ -93,6 +124,7 @@ module Mixpanel
     #    });
     #
     def increment(distinct_id, properties, ip=nil, optional_params={})
+      refuse_engage_only_operation(distinct_id, '$add', 'increment')
       properties = fix_property_dates(properties)
       message = {
         '$distinct_id' => distinct_id,
@@ -125,6 +157,7 @@ module Mixpanel
     #    });
     #
     def append(distinct_id, properties, ip=nil, optional_params={})
+      refuse_engage_only_operation(distinct_id, '$append', 'append')
       properties = fix_property_dates(properties)
       message = {
         '$distinct_id' => distinct_id,
@@ -148,13 +181,7 @@ module Mixpanel
     #
     def union(distinct_id, properties, ip=nil, optional_params={})
       properties = fix_property_dates(properties)
-      message = {
-        '$distinct_id' => distinct_id,
-        '$union' => properties,
-      }.merge(optional_params)
-      message['$ip'] = ip if ip
-
-      update(message)
+      profile_update(distinct_id, '$union', properties, ip, optional_params)
     end
 
     # Removes properties and their values from a profile.
@@ -169,13 +196,7 @@ module Mixpanel
     #
     def unset(distinct_id, properties, ip=nil, optional_params={})
       properties = [properties] unless properties.is_a?(Array)
-      message = {
-        '$distinct_id' => distinct_id,
-        '$unset' => properties,
-      }.merge(optional_params)
-      message['$ip'] = ip if ip
-
-      update(message)
+      profile_update(distinct_id, '$unset', properties, ip, optional_params)
     end
 
     # Records a payment to you to a profile. Charges recorded with
@@ -198,18 +219,27 @@ module Mixpanel
     end
 
     # Clear all charges from a \Mixpanel people profile
+    #
+    # On a hierarchical groups tracker, raises Mixpanel::UnsupportedOperationError,
+    # since #track_charge is not supported there.
     def clear_charges(distinct_id, ip=nil, optional_params={})
+      if @hierarchical_groups
+        raise UnsupportedOperationError, 'clear_charges is not supported for hierarchical groups projects, ' \
+          "which can't track_charge."
+      end
       unset(distinct_id, '$transactions', ip, optional_params)
     end
 
     # Permanently delete a profile from \Mixpanel people analytics
     # To delete a user and ignore alias pass into optional params
     #   {"$ignore_alias"=>true}
+    #
+    # Like #set, accepts a Mixpanel::Identity in place of distinct_id.
+    #
+    # On a hierarchical groups tracker, which has no aliases, $ignore_alias
+    # in optional_params raises Mixpanel::UnsupportedOperationError and nothing is sent.
     def delete_user(distinct_id, optional_params={})
-      update({
-        '$distinct_id' => distinct_id,
-        '$delete' => '',
-      }.merge(optional_params))
+      profile_update(distinct_id, '$delete', '', nil, optional_params)
     end
 
     # Send a generic update to \Mixpanel people analytics.
@@ -220,7 +250,20 @@ module Mixpanel
     # or experimental features of people analytics from Ruby
     # The \Mixpanel HTTP tracking API is documented at
     # https://mixpanel.com/help/reference/http
+    #
+    # On a hierarchical groups tracker, raises Mixpanel::UnsupportedOperationError
+    # if the message carries an operation other than $set, $set_once, $unset,
+    # $union, $remove or $delete. Otherwise the message's
+    # $distinct_id must be of the form <tt>$company:{company}|$user:{user}</tt>,
+    # or Mixpanel::InvalidIdentityError is raised. The message is sent to /groups with
+    # $distinct_id replaced by the $user_id group profile and company it names.
     def update(message)
+      if @hierarchical_groups
+        unsupported = HierarchicalGroups.unsupported_operations(message)
+        raise_unsupported_operation(unsupported.first) unless unsupported.empty?
+        return user_group_message_update(message)
+      end
+
       data = {
         '$token' => @token,
         '$time' =>  (Time.now.to_f * 1000).to_i,
@@ -239,7 +282,147 @@ module Mixpanel
       ret
     end
 
+    # Returns a Mixpanel::People that refuses user profile updates for any
+    # company other than company_id, sharing this instance's consumer and
+    # error handler. The receiver is unchanged. Tracker#for_company uses it.
+    def for_company(company_id) # :nodoc:
+      People.new(@token, @error_handler, hierarchical_groups: @hierarchical_groups, company_id: company_id, &@sink)
+    end
+
     private
+
+    # Sends a supported profile operation for a distinct id or a Mixpanel::Identity.
+    def profile_update(distinct_id, operation, properties, ip, optional_params)
+      if distinct_id.is_a?(Identity)
+        identity = distinct_id
+        HierarchicalGroups.require_identity_matches_project(identity, @hierarchical_groups)
+        # The identity names the profile, so a $distinct_id param may not name another one.
+        require_no_distinct_id_param(optional_params, identity) if @hierarchical_groups
+        unless identity.distinct_id.nil?
+          HierarchicalGroups.require_identity_distinct_id_agrees(identity) if @hierarchical_groups
+          # An identity's ids are always sent as strings.
+          return profile_update(HierarchicalGroups.wire_id(identity.distinct_id), operation, properties, ip, optional_params)
+        end
+        return user_group_update(identity, operation, properties, ip, optional_params)
+      end
+
+      if @hierarchical_groups
+        # optional_params are merged last, so a $distinct_id there names the
+        # profile, as it does without hierarchical groups.
+        distinct_id = distinct_id_param(optional_params, distinct_id)
+        company_id, user_id = HierarchicalGroups.require_combined_distinct_id(distinct_id)
+        HierarchicalGroups.require_consistent_with_combined_id(distinct_id, [company_id, user_id],
+                                                               company_id: optional_params['$company_id'])
+        identity = Identity.new(user_id: user_id, company_id: company_id)
+        return user_group_update(identity, operation, properties, ip, optional_params)
+      end
+
+      message = {
+        '$distinct_id' => distinct_id,
+        operation => properties,
+      }.merge(optional_params)
+      message['$ip'] = ip if ip
+
+      update(message)
+    end
+
+    # A hierarchical groups user profile is the $user_id group profile within
+    # the identity's company.
+    def user_group_update(identity, operation, properties, ip, optional_params)
+      unless @hierarchical_groups
+        raise InvalidIdentityError, "#{identity} cannot identify a profile on this project. " \
+          'User profiles are addressed by distinct id unless the project uses hierarchical groups.'
+      end
+      if identity.user_id.nil?
+        raise InvalidIdentityError, "User profile updates require a user id, and #{identity} has none. " \
+          'Use tracker.for_company(company_id).company.set(properties) ' \
+          "to update the company's profile."
+      end
+      require_bound_company(identity.company_id, identity.to_s)
+      group_id = HierarchicalGroups.wire_id(identity.user_id)
+      HierarchicalGroups.require_param_matches(optional_params, '$group_key', HierarchicalGroups::USER_ID_GROUP_KEY)
+      HierarchicalGroups.require_param_matches(optional_params, '$group_id', group_id)
+      # The profile is named by $group_key, $group_id and $company_id, and
+      # /groups rejects a message with a $distinct_id.
+      optional_params = optional_params.reject { |key, _| key.to_s == '$distinct_id' }
+
+      message = {
+        '$group_key' => HierarchicalGroups::USER_ID_GROUP_KEY,
+        '$group_id' => group_id,
+        operation => properties,
+      }.merge(optional_params)
+      message['$ip'] = ip if ip
+      # The identity's company, or else the bound company, wins over a
+      # $company_id in optional_params. With none of them, Groups#update raises
+      # Mixpanel::CompanyRequiredError.
+      company_id = identity.company_id || @company_id
+      message['$company_id'] = HierarchicalGroups.wire_id(company_id) unless company_id.nil?
+
+      @user_profiles.update(message)
+    end
+
+    # The $distinct_id in optional_params (the last one, as merging would
+    # send), or else distinct_id. Keys match as strings, so :$distinct_id
+    # counts too.
+    def distinct_id_param(optional_params, distinct_id)
+      optional_params.each { |key, value| distinct_id = value if key.to_s == '$distinct_id' }
+      distinct_id
+    end
+
+    # An identity names the profile, so on a hierarchical groups tracker a
+    # $distinct_id param other than the identity's own distinct_id raises
+    # Mixpanel::InvalidIdentityError. Keys match as strings.
+    def require_no_distinct_id_param(optional_params, identity)
+      optional_params.each do |key, value|
+        next unless key.to_s == '$distinct_id'
+        next if value == identity.distinct_id
+        raise InvalidIdentityError, "Pass either an identity or a $distinct_id, not both: #{identity} was passed " \
+          "with $distinct_id #{value.inspect} in optional_params. Nothing sent"
+      end
+    end
+
+    # A tracker bound with Tracker#for_company refuses a user from another
+    # company rather than silently updating that company's profile.
+    def require_bound_company(company_id, described)
+      return if company_id.nil? || @company_id.nil? || HierarchicalGroups.same_company?(company_id, @company_id)
+
+      raise InvalidIdentityError, "This tracker is bound to company #{@company_id.inspect}, but #{described} " \
+        "belongs to company #{company_id.inspect}. Update the user through a tracker for that " \
+        'company, or one without for_company.'
+    end
+
+    # Sends a generic update message to the $user_id group profile its
+    # combined $distinct_id names.
+    def user_group_message_update(message)
+      company_id, user_id = HierarchicalGroups.require_combined_distinct_id(message['$distinct_id'])
+      HierarchicalGroups.require_consistent_with_combined_id(message['$distinct_id'], [company_id, user_id],
+                                                             company_id: message['$company_id'])
+      require_bound_company(company_id, message['$distinct_id'].inspect)
+      HierarchicalGroups.require_param_matches(message, '$group_key', HierarchicalGroups::USER_ID_GROUP_KEY)
+      HierarchicalGroups.require_param_matches(message, '$group_id', user_id)
+      group_message = message.reject { |key, _| key.to_s == '$distinct_id' }
+      group_message['$group_key'] = HierarchicalGroups::USER_ID_GROUP_KEY
+      group_message['$group_id'] = user_id
+      group_message['$company_id'] = company_id
+
+      @user_profiles.update(group_message)
+    end
+
+    # $add and $append exist only on /engage, so these have no hierarchical
+    # groups equivalent and no Mixpanel::Identity form.
+    def refuse_engage_only_operation(distinct_id, operation, method_name)
+      raise_unsupported_operation(operation) if @hierarchical_groups
+      if distinct_id.is_a?(Identity)
+        raise InvalidIdentityError, "#{method_name} does not accept a Mixpanel::Identity; pass a distinct id"
+      end
+    end
+
+    def raise_unsupported_operation(operation)
+      raise UnsupportedOperationError, "#{operation} is not supported for hierarchical groups projects, " \
+        'whose user profiles are group profiles keyed by $user_id. Supported operations are ' \
+        "#{HierarchicalGroups::GROUP_OPERATIONS.join(', ')}, so increment, plus_one, append and " \
+        'track_charge have no hierarchical groups equivalent.'
+    end
 
     def fix_property_dates(properties)
       properties.inject({}) do |ret, (key, value)|
