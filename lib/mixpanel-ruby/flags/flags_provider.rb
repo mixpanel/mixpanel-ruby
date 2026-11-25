@@ -158,21 +158,26 @@ module Mixpanel
           return context['distinct_id'] || context[:distinct_id] ? true : false
         end
 
-        Mixpanel::HierarchicalGroups.present_id?(context_value(context, '$company_id')) ||
+        !exposure_hg_id(context_value(context, '$company_id')).nil? ||
           Mixpanel::HierarchicalGroups.present?(context_value(context, 'distinct_id'))
       end
 
       def hierarchical_exposure_identity(context)
         distinct_id = context_value(context, 'distinct_id')
-        user_id = context_value(context, '$user_id')
-        company_id = context_value(context, '$company_id')
         distinct_id = nil unless Mixpanel::HierarchicalGroups.present?(distinct_id)
-        company_id = nil unless Mixpanel::HierarchicalGroups.present_id?(company_id)
-        user_id = nil unless Mixpanel::HierarchicalGroups.present_id?(user_id)
 
-        # User and company ids are sent as strings, as hierarchical groups events send them.
-        Mixpanel::Identity.new(distinct_id: exposure_id(distinct_id), user_id: Mixpanel::HierarchicalGroups.wire_id(user_id),
-                               company_id: Mixpanel::HierarchicalGroups.wire_id(company_id))
+        company_id = exposure_hg_id(context_value(context, '$company_id'))
+        # A user id is attached only with a company id, as flag evaluation
+        # only uses the user together with the company.
+        user_id = company_id && exposure_hg_id(context_value(context, '$user_id'))
+        Mixpanel::Identity.new(distinct_id: exposure_id(distinct_id), user_id: user_id, company_id: company_id)
+      end
+
+      # A context $user_id or $company_id for an exposure event: only a
+      # String that is not empty or only whitespace, as flag evaluation and
+      # the flags service treat anything else as missing; nil otherwise.
+      def exposure_hg_id(value)
+        value.is_a?(String) && Mixpanel::HierarchicalGroups.present_id?(value) ? value : nil
       end
 
       # The message for an exposure identity whose user or company id

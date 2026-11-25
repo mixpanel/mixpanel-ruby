@@ -412,8 +412,8 @@ describe 'Hierarchical groups feature flags' do
       provider = local_provider([flag_definition(context: 'department')], tracker, hierarchical_groups: true)
       expect(error_handler).not_to receive(:handle)
 
-      provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => '$company:42|$user:7', '$company_id' => 42,
-                                                        '$user_id' => 7, 'department' => 'x' })
+      provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => '$company:42|$user:7', '$company_id' => '42',
+                                                        '$user_id' => '7', 'department' => 'x' })
 
       identity, _, properties = calls.first
       expect(identity).to eq(Mixpanel::Identity.new(distinct_id: '$company:42|$user:7', user_id: '7', company_id: '42'))
@@ -454,40 +454,54 @@ describe 'Hierarchical groups feature flags' do
       expect(calls).to be_empty
     end
 
-    it 'attributes a hierarchical exposure without $company_id by its distinct_id and keeps $user_id' do
+    it 'attributes a hierarchical exposure without $company_id by its distinct_id and leaves off $user_id' do
       tracker, calls = recording_tracker
       provider = local_provider([flag_definition], tracker, hierarchical_groups: true)
 
       provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => 'user-123', '$user_id' => 'user-456' })
 
       identity, _, properties = calls.first
-      expect(identity).to eq(Mixpanel::Identity.new(distinct_id: 'user-123', user_id: 'user-456'))
+      expect(identity).to eq(Mixpanel::Identity.new(distinct_id: 'user-123'))
       expect(properties['distinct_id']).to eq('user-123')
-      expect(properties['$user_id']).to eq('user-456')
+      expect(properties).not_to have_key('$user_id')
       expect(properties).not_to have_key('$company_id')
     end
 
-    it 'sends context ids Mixpanel::Identity does not accept as strings' do
+    it 'drops an exposure whose only ids are not strings' do
       tracker, calls = recording_tracker
       provider = local_provider([flag_definition(context: 'department')], tracker, hierarchical_groups: true)
 
+      expect(error_handler).to receive(:handle).twice do |error|
+        expect(error.message).to eq("Cannot track exposure event for flag 'hg_flag' without a $company_id in the context")
+      end
       provider.get_variant_value('hg_flag', fallback, { '$company_id' => :acme, '$user_id' => 7, 'department' => 'x' })
-
-      identity, _, properties = calls.first
-      expect(identity).to eq(Mixpanel::Identity.new(user_id: '7', company_id: 'acme'))
-      expect(properties).to include('$user_id' => '7', '$company_id' => 'acme')
+      provider.get_variant_value('hg_flag', fallback, { '$company_id' => 42, '$user_id' => 'u1', 'department' => 'x' })
+      expect(calls).to be_empty
     end
 
-    it 'sends Integer context ids as strings on the exposure event' do
+    it 'leaves an Integer $company_id, and so the $user_id, off the exposure event' do
       log = []
       tracker = Mixpanel::Tracker.new(test_token, hierarchical_groups: true) { |_, message| log << JSON.parse(message) }
-      provider = local_provider([flag_definition(context: 'department')], tracker.method(:track), hierarchical_groups: true)
+      provider = local_provider([flag_definition], tracker.method(:track), hierarchical_groups: true)
 
-      provider.get_variant_value('hg_flag', fallback, { '$company_id' => 3190317, '$user_id' => 3190316, 'department' => 'x' })
+      provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => 'd1', '$company_id' => 42, '$user_id' => 'u1' })
 
       properties = log.last['data']['properties']
-      expect(properties).to include('$user_id' => '3190316', '$company_id' => '3190317')
-      expect(properties).not_to have_key('distinct_id')
+      expect(properties['distinct_id']).to eq('d1')
+      expect(properties).not_to have_key('$user_id')
+      expect(properties).not_to have_key('$company_id')
+    end
+
+    it 'keeps a string $company_id and leaves an Integer $user_id off the exposure event' do
+      tracker, calls = recording_tracker
+      provider = local_provider([flag_definition], tracker, hierarchical_groups: true)
+
+      provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => 'd1', '$user_id' => 7, '$company_id' => 'acme' })
+
+      identity, _, properties = calls.first
+      expect(identity).to eq(Mixpanel::Identity.new(distinct_id: 'd1', company_id: 'acme'))
+      expect(properties).to include('distinct_id' => 'd1', '$company_id' => 'acme')
+      expect(properties).not_to have_key('$user_id')
     end
 
     it 'does not attribute an exposure to a user or company id of only whitespace' do
@@ -573,7 +587,7 @@ describe 'Hierarchical groups feature flags' do
       expect(properties['Flag evaluation mode']).to eq('remote')
     end
 
-    it 'keeps $user_id on a hierarchical exposure without $company_id' do
+    it 'leaves $user_id off a hierarchical exposure without $company_id' do
       stub_remote_flags
       tracker, calls = recording_tracker
 
@@ -581,8 +595,8 @@ describe 'Hierarchical groups feature flags' do
         .get_variant_value('hg_flag', fallback, { 'distinct_id' => 'd1', '$user_id' => 'user-123' })
 
       identity, _, properties = calls.first
-      expect(identity).to eq(Mixpanel::Identity.new(distinct_id: 'd1', user_id: 'user-123'))
-      expect(properties['$user_id']).to eq('user-123')
+      expect(identity).to eq(Mixpanel::Identity.new(distinct_id: 'd1'))
+      expect(properties).not_to have_key('$user_id')
     end
 
     it 'drops a hierarchical exposure without $company_id or distinct_id' do
@@ -593,6 +607,35 @@ describe 'Hierarchical groups feature flags' do
         expect(error.message).to eq("Cannot track exposure event for flag 'hg_flag' without a $company_id in the context")
       end
       remote_provider(tracker, hierarchical_groups: true).get_variant_value('hg_flag', fallback, { '$user_id' => 'user-123' })
+      expect(calls).to be_empty
+    end
+
+    it 'attaches only string ids to a hierarchical exposure' do
+      stub_remote_flags
+      tracker, calls = recording_tracker
+      provider = remote_provider(tracker, hierarchical_groups: true)
+
+      provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => 'd1', '$user_id' => 'u1', '$company_id' => 42 })
+      provider.get_variant_value('hg_flag', fallback, { 'distinct_id' => 'd1', '$user_id' => 7, '$company_id' => 'acme' })
+
+      expect(calls.map(&:first)).to eq([Mixpanel::Identity.new(distinct_id: 'd1'),
+                                        Mixpanel::Identity.new(distinct_id: 'd1', company_id: 'acme')])
+      expect(calls[0][2]['distinct_id']).to eq('d1')
+      expect(calls[0][2]).not_to have_key('$user_id')
+      expect(calls[0][2]).not_to have_key('$company_id')
+      expect(calls[1][2]).to include('distinct_id' => 'd1', '$company_id' => 'acme')
+      expect(calls[1][2]).not_to have_key('$user_id')
+    end
+
+    it 'drops a hierarchical exposure whose $company_id is not a string and has no distinct_id' do
+      stub_remote_flags
+      tracker, calls = recording_tracker
+
+      expect(error_handler).to receive(:handle) do |error|
+        expect(error.message).to eq("Cannot track exposure event for flag 'hg_flag' without a $company_id in the context")
+      end
+      remote_provider(tracker, hierarchical_groups: true)
+        .get_variant_value('hg_flag', fallback, { '$user_id' => 'u1', '$company_id' => 42 })
       expect(calls).to be_empty
     end
 
@@ -637,7 +680,7 @@ describe 'Hierarchical groups feature flags' do
       expect(properties['token']).to eq(test_token)
     end
 
-    it 'routes a hierarchical exposure without $company_id through #track with $user_id' do
+    it 'routes a hierarchical exposure without $company_id through #track without $user_id' do
       stub_definitions([flag_definition])
       tracker, messages = tracker_with_flags(true)
       tracker.local_flags.start_polling_for_definitions!
@@ -646,7 +689,7 @@ describe 'Hierarchical groups feature flags' do
 
       properties = messages.first[1]['data']['properties']
       expect(properties['distinct_id']).to eq('d1')
-      expect(properties['$user_id']).to eq('user-123')
+      expect(properties).not_to have_key('$user_id')
       expect(properties).not_to have_key('$company_id')
     end
 
