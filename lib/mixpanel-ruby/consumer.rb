@@ -9,9 +9,13 @@ module Mixpanel
   # way to customize or configure the HTTP library of a consumer
   # is to override Consumer#request.
   #
-  # Ruby's default SSL does not verify the server certificate.
-  # To verify a certificate, or install a proxy, pass a block
-  # to Mixpanel.config_http that configures the Net::HTTP object.
+  # Connections verify the server certificate against the CA
+  # certificates of the OpenSSL that Ruby is built with. A
+  # "certificate verify failed" error usually means that CA store
+  # is missing or out of date. To use a different CA bundle, or
+  # install a proxy, pass a block to Mixpanel.config_http that
+  # configures the Net::HTTP object. Don't set verify_mode to
+  # OpenSSL::SSL::VERIFY_NONE: that turns certificate checks off.
   # For example, if running in Ubuntu Linux, you can run
   #
   #    Mixpanel.config_http do |http|
